@@ -1,0 +1,15 @@
+// Media types and `Content-Disposition`, RFC 9110 §8.3 and RFC 6266:
+// https://www.rfc-editor.org/rfc/rfc9110 and https://www.rfc-editor.org/rfc/rfc6266
+//
+// What a response says its body is, and under what name it should be saved.
+// Naming a download is a question about a format, not about a framework: the
+// answer is the same whether the bytes came from a file, a database or a
+// generator.
+import {
+  "moonbitstack/moonhttp/mime",
+}
+
+import {
+  "moonbitstack/moonhttp/media",
+  "moonbitlang/core/encoding/utf8",
+} for "test"

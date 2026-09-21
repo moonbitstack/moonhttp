@@ -21,7 +21,8 @@ Run `moon run examples/tour` for the whole surface in one go.
 | Package | What | Specification |
 |:--:|:--|:--|
 | `sse` | Server-Sent Events, both directions | WHATWG HTML, the event-stream format |
-| `mime` | `multipart/form-data` and `application/x-www-form-urlencoded` | RFC 7578, WHATWG URL §5.1 |
+| `mime` | `multipart/form-data` and `application/x-www-form-urlencoded`, and percent-encoding both ways | RFC 7578, WHATWG URL §5.1, RFC 3986 |
+| `media` | What a response says its body is, and under what name to save it | RFC 9110 §8.3, RFC 6266 |
 
 ## Configuration
 
@@ -55,6 +56,31 @@ belongs to an endpoint rather than to a request — an avatar upload and a
 spreadsheet import are two endpoints, each with its own — so the record is the
 only place it comes from and there is nothing to arbitrate. Where a setting can
 arrive from two places, as in `mooncred`, the precedence is published with it.
+
+## Downloads
+
+Naming a download is a question about a format, not about a framework: the
+answer is the same whether the bytes came from a file, a database or a
+generator. So it lives here rather than in whatever is serving them.
+
+```moonbit
+@media.type_of("report.pdf")                      // "application/pdf"
+@media.disposition("my report.pdf")               // filename*=utf-8''my%20report.pdf
+@media.disposition("cover.png", inline=true)      // display it, do not save it
+```
+
+A name that survives percent-encoding unchanged is quoted as it is; anything
+else — a space, an accent, a quote, a newline — goes out as RFC 6266's
+`filename*`, which is the only form that can carry a character outside ASCII and
+the only one a name cannot break out of.
+
+Text types carry `charset=utf-8`, because a browser handed `text/plain` with no
+charset applies its own locale's and shows something else.
+
+**Still to come for a complete download**: `Range` and `Content-Range`
+(RFC 9110 §14), which is what resumable downloads and media seeking need, and
+conditional requests. Reading the file and sending it in pieces is the server's,
+not this library's — there are no sockets here.
 
 ## Framing, not transport
 

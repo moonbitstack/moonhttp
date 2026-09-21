@@ -353,6 +353,49 @@ pub fn boundary(content_type : StringView) -> String? {
 }
 
 ///|
+/// Percent-encode text, keeping the unreserved characters and whatever `safe`
+/// names besides (RFC 3986 §2.3).
+///
+/// The counterpart of [`percent_decode`], which was here first: a form body
+/// arrives encoded and a URL or a header parameter goes out encoded, and having
+/// only one of the pair is how a caller ends up hand-rolling the other.
+///
+/// `safe` is what to leave alone beyond the unreserved set. A path passes `/`,
+/// a `Location` header passes the sub-delimiters, and a filename passes nothing.
+pub fn percent_encode(text : StringView, safe? : StringView = ""[:]) -> String {
+  let digits = "0123456789ABCDEF"
+  let raw = @utf8.encode(text)
+  let out = StringBuilder()
+  for i = 0; i < raw.length(); i = i + 1 {
+    let b = raw[i].to_int()
+    let unreserved = (b >= 0x41 && b <= 0x5A) ||
+      (b >= 0x61 && b <= 0x7A) ||
+      (b >= 0x30 && b <= 0x39) ||
+      b == 0x2D ||
+      b == 0x2E ||
+      b == 0x5F ||
+      b == 0x7E
+    let mut spared = false
+    if !unreserved && b < 0x80 {
+      for c in safe {
+        if c.to_int() == b {
+          spared = true
+          break
+        }
+      }
+    }
+    if unreserved || spared {
+      out.write_char(b.unsafe_to_char())
+    } else {
+      out.write_char('%')
+      out.write_char(digits[b / 16].unsafe_to_char())
+      out.write_char(digits[b % 16].unsafe_to_char())
+    }
+  }
+  out.to_string()
+}
+
+///|
 /// Undo percent-encoding, leaving `+` alone.
 ///
 /// A `%` that is not followed by two hexadecimal digits stands for itself,

@@ -1,0 +1,17 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitstack/moonhttp/media"
+
+// Values
+pub fn disposition(StringView, inline? : Bool) -> String
+
+pub let fallback : String
+
+pub fn type_of(StringView) -> String
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

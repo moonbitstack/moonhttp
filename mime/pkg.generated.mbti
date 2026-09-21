@@ -18,6 +18,8 @@ pub fn parse(BytesView, StringView, limits? : Limits, strict? : Bool) -> Form ra
 
 pub fn percent_decode(BytesView) -> Bytes
 
+pub fn percent_encode(StringView, safe? : StringView) -> String
+
 pub fn urlencoded(BytesView, limits? : Limits) -> Form raise Refused
 
 // Errors
