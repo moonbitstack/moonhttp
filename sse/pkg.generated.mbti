@@ -1,0 +1,33 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitstack/moonhttp/sse"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn decode(StringView) -> Array[Event]
+
+pub let media_type : String
+
+// Errors
+
+// Types and methods
+pub(all) struct Event {
+  data : String
+  kind : String?
+  id : String?
+  retry : Int?
+  comment : String?
+} derive(Eq, @debug.Debug)
+pub fn Event::encode(Self) -> String
+pub fn Event::equal(Self, Self) -> Bool
+pub fn Event::new(data? : String, kind? : String?, id? : String?, retry? : Int?, comment? : String?) -> Self
+pub fn Event::not_equal(Self, Self) -> Bool
+pub fn Event::of(String) -> Self
+pub fn Event::ping(comment? : String) -> Self
+pub fn Event::to_repr(Self) -> @debug.Repr
+
+// Type aliases
+
+// Traits

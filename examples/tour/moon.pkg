@@ -1,0 +1,8 @@
+// An event stream and a posted form: `moon run examples/tour`.
+pkgtype(kind: "executable")
+
+import {
+  "moonbitstack/moonhttp/sse",
+  "moonbitstack/moonhttp/mime",
+  "moonbitlang/core/encoding/utf8",
+}

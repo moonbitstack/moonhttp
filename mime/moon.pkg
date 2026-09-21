@@ -1,0 +1,9 @@
+// multipart/form-data, RFC 7578: https://www.rfc-editor.org/rfc/rfc7578
+// application/x-www-form-urlencoded, the WHATWG URL standard §5.1:
+// https://url.spec.whatwg.org/#urlencoded-parsing
+//
+// Both encodings a browser posts a form in, read into the same shape. Every
+// body here arrived from whoever sent it, so both are bounded.
+import {
+  "moonbitlang/core/encoding/utf8",
+}

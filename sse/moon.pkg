@@ -1,0 +1,9 @@
+// Server-Sent Events, the WHATWG event-stream format:
+// https://html.spec.whatwg.org/multipage/server-sent-events.html#event-stream-interpretation
+//
+// Framing only. Sending the frames as separate chunks is the server's job, and
+// it matters: a stream delivered as one body is not a stream, because a client
+// dispatches an event when it reads that event's blank line.
+import {
+  "moonbitlang/core/string",
+}
