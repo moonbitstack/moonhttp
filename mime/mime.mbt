@@ -128,46 +128,81 @@ pub extend Limits with Eq::{equal, not_equal}
 pub extend Limits with Debug::{to_repr}
 
 ///|
-/// A thousand parts of a megabyte each — generous for a form and far from what
-/// exhausts a server. A caller that knows its own shape should say so.
+/// A thousand parts of a megabyte each — what Starlette's `max_files` and
+/// `max_fields` default to, with python-multipart's part size. Generous for a
+/// form and far from what exhausts a server. A caller that knows its own shape
+/// should say so.
 pub let limits : Limits = { parts: 1000, part_size: 1 << 20, }
 
 ///|
-/// A form larger than it was allowed to be.
+/// Build a bound by naming the parts that differ from the default.
 ///
-/// The form is refused whole rather than truncated: a handler given the first
-/// thousand parts of a larger form would be answering a request nobody sent.
-pub(all) suberror TooBig {
+/// The same thing can be written `{ ..@mime.limits, parts: 8 }`; this form reads
+/// better when several parts differ.
+///
+/// There is no per-call mirror of these two. A bound belongs to an endpoint
+/// rather than to a request — an avatar upload and a spreadsheet import are two
+/// endpoints, each with its own — so the record is the only place it comes from,
+/// and there is nothing to arbitrate.
+pub fn Limits::new(
+  parts? : Int = limits.parts,
+  part_size? : Int = limits.part_size,
+) -> Limits {
+  { parts, part_size, }
+}
+
+///|
+/// Why a body was not read as a form.
+///
+/// A form over its bounds is refused whole rather than truncated: a handler
+/// given the first thousand parts of a larger form would be answering a request
+/// nobody sent.
+pub(all) suberror Refused {
   /// More parts than allowed.
   Parts(limit~ : Int)
   /// One part longer than allowed.
   Part(limit~ : Int, got~ : Int)
+  /// A multipart body that stops making sense at this offset. Only raised under
+  /// `strict`; otherwise the parts read so far are returned.
+  Malformed(at~ : Int)
+  /// A content type that is neither form encoding. Only raised under `strict`;
+  /// otherwise the answer is an empty form.
+  NotAForm(content_type~ : String)
 } derive(Eq, Debug)
 
 ///|
-pub extend TooBig with Eq::{equal, not_equal}
+pub extend Refused with Eq::{equal, not_equal}
 
 ///|
-pub extend TooBig with Debug::{to_repr}
+pub extend Refused with Debug::{to_repr}
 
 ///|
 /// Parse a body by what its `Content-Type` says it is.
 ///
 /// A content type that is neither form encoding yields an empty form rather
 /// than an error: "this request carried no form" is an answer, not a failure,
-/// and a caller asking for a form on a JSON request wants to hear that.
+/// and a caller asking for a form on a JSON request wants to hear that. `strict`
+/// is for the caller who would rather be told.
 pub fn parse(
   body : BytesView,
   content_type : StringView,
   limits? : Limits = limits,
-) -> Form raise TooBig {
+  strict? : Bool = false,
+) -> Form raise Refused {
   if starts_with(content_type, "multipart/form-data") {
     match boundary(content_type) {
-      Some(edge) => multipart(body, edge[:], limits~)
-      None => { fields: [], files: [], }
+      Some(edge) => multipart(body, edge[:], limits~, strict~)
+      None =>
+        if strict {
+          raise NotAForm(content_type=content_type.to_owned())
+        } else {
+          { fields: [], files: [], }
+        }
     }
   } else if starts_with(content_type, "application/x-www-form-urlencoded") {
     urlencoded(body, limits~)
+  } else if strict {
+    raise NotAForm(content_type=content_type.to_owned())
   } else {
     { fields: [], files: [], }
   }
@@ -182,7 +217,7 @@ pub fn parse(
 pub fn urlencoded(
   body : BytesView,
   limits? : Limits = limits,
-) -> Form raise TooBig {
+) -> Form raise Refused {
   let fields : Array[Field] = []
   let n = body.length()
   let mut start = 0
@@ -227,7 +262,8 @@ pub fn multipart(
   body : BytesView,
   boundary : StringView,
   limits? : Limits = limits,
-) -> Form raise TooBig {
+  strict? : Bool = false,
+) -> Form raise Refused {
   let fields : Array[Field] = []
   let files : Array[Upload] = []
   let dash = ascii("--" + boundary.to_owned())
@@ -242,8 +278,12 @@ pub fn multipart(
     let blank = index_of(body, b"\r\n\r\n"[:], head)
     let next = index_of(body, dash[:], head)
     if blank < 0 || next < 0 || blank > next {
-      // Malformed. Stopping is the only honest answer; inventing a structure
-      // for the rest would be deciding what the sender meant.
+      // Inventing a structure for the rest would be deciding what the sender
+      // meant, so the choice is between stopping with what was read and saying
+      // so; `strict` is which.
+      if strict {
+        raise Malformed(at=head)
+      }
       break
     }
     if fields.length() + files.length() == limits.parts {

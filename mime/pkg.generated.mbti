@@ -10,24 +10,26 @@ pub fn boundary(StringView) -> String?
 
 pub let limits : Limits
 
-pub fn multipart(BytesView, StringView, limits? : Limits) -> Form raise TooBig
+pub fn multipart(BytesView, StringView, limits? : Limits, strict? : Bool) -> Form raise Refused
 
 pub fn param(StringView, StringView) -> String?
 
-pub fn parse(BytesView, StringView, limits? : Limits) -> Form raise TooBig
+pub fn parse(BytesView, StringView, limits? : Limits, strict? : Bool) -> Form raise Refused
 
 pub fn percent_decode(BytesView) -> Bytes
 
-pub fn urlencoded(BytesView, limits? : Limits) -> Form raise TooBig
+pub fn urlencoded(BytesView, limits? : Limits) -> Form raise Refused
 
 // Errors
-pub(all) suberror TooBig {
+pub(all) suberror Refused {
   Parts(limit~ : Int)
   Part(limit~ : Int, got~ : Int)
+  Malformed(at~ : Int)
+  NotAForm(content_type~ : String)
 } derive(Eq, @debug.Debug)
-pub fn TooBig::equal(Self, Self) -> Bool
-pub fn TooBig::not_equal(Self, Self) -> Bool
-pub fn TooBig::to_repr(Self) -> @debug.Repr
+pub fn Refused::equal(Self, Self) -> Bool
+pub fn Refused::not_equal(Self, Self) -> Bool
+pub fn Refused::to_repr(Self) -> @debug.Repr
 
 // Types and methods
 pub(all) struct Field {
@@ -51,6 +53,7 @@ pub(all) struct Limits {
   part_size : Int
 } derive(Eq, @debug.Debug)
 pub fn Limits::equal(Self, Self) -> Bool
+pub fn Limits::new(parts? : Int, part_size? : Int) -> Self
 pub fn Limits::not_equal(Self, Self) -> Bool
 pub fn Limits::to_repr(Self) -> @debug.Repr
 

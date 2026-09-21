@@ -5,7 +5,7 @@ in, with nothing about sockets in them.
 
 ```moonbit
 // An event stream, one frame at a time.
-@sse.Event::new(data="{\"seq\":1}", kind=Some("tick"), id=Some("1")).encode()
+@sse.Event::new(data="{\"seq\":1}", kind="tick", id="1").encode()
 @sse.decode(received[:])
 
 // A posted form, whichever way the browser encoded it.
@@ -22,6 +22,39 @@ Run `moon run examples/tour` for the whole surface in one go.
 |:--:|:--|:--|
 | `sse` | Server-Sent Events, both directions | WHATWG HTML, the event-stream format |
 | `mime` | `multipart/form-data` and `application/x-www-form-urlencoded` | RFC 7578, WHATWG URL §5.1 |
+
+## Configuration
+
+Every bound and every leniency is an argument, and every default is the one the
+mainstream uses.
+
+```moonbit
+// A bound belongs to an endpoint. Either form names one.
+let small = @mime.Limits::new(parts=8, part_size=64 * 1024)
+let same = { ..@mime.limits, parts: 8, part_size: 64 * 1024 }
+
+@mime.parse(body[:], content_type[:], limits=small)
+
+// By default a body that is not a form is an empty form, and a multipart body
+// that stops making sense gives up the parts it read. `strict` says so instead.
+@mime.parse(body[:], content_type[:], strict=true)   // raises NotAForm
+@mime.multipart(body[:], edge[:], strict=true)       // raises Malformed(at~)
+
+@sse.Event::of("hello").encode(space=false)          // drop the optional space
+```
+
+| Setting | Default | Why that one |
+|:--:|:--:|:--|
+| `limits.parts` | 1000 | Starlette's `max_files` and `max_fields` |
+| `limits.part_size` | 1 MiB | python-multipart's in-memory part size |
+| `strict` | off | A truncated upload is ordinary on a dropped connection, and "this request carried no form" is an answer rather than a failure. On is for the caller who would rather be told |
+| `space` | on | The space after a colon is optional in the format and universal on the wire; a reader strips it either way |
+
+`Limits` has no per-call mirror, and therefore no precedence rule. A bound
+belongs to an endpoint rather than to a request — an avatar upload and a
+spreadsheet import are two endpoints, each with its own — so the record is the
+only place it comes from and there is nothing to arbitrate. Where a setting can
+arrive from two places, as in `mooncred`, the precedence is published with it.
 
 ## Framing, not transport
 

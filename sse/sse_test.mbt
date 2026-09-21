@@ -20,11 +20,11 @@ let stream : String =
 test "the specification's own example stream" {
   let events = @sse.decode(stream[:])
   assert_eq(events.length(), 4)
-  assert_eq(events[0], @sse.Event::new(comment=Some("test stream")))
-  assert_eq(events[1], @sse.Event::new(data="first event", id=Some("1")))
+  assert_eq(events[0], @sse.Event::new(comment="test stream"))
+  assert_eq(events[1], @sse.Event::new(data="first event", id="1"))
   // A field with no colon has an empty value, so this id is the empty string —
   // which is how a stream tells a client to forget its last event id.
-  assert_eq(events[2], @sse.Event::new(data="second event", id=Some("")))
+  assert_eq(events[2], @sse.Event::new(data="second event", id=""))
   // Exactly one space after the colon belongs to the format; the second is data.
   assert_eq(events[3], @sse.Event::new(data=" third event"))
 }
@@ -56,14 +56,14 @@ test "a frame reads back as itself" {
     @sse.Event::of(""),
     @sse.Event::of("two\nlines"),
     @sse.Event::of("three\nlines\nhere"),
-    @sse.Event::new(data="payload", kind=Some("update")),
-    @sse.Event::new(data="payload", id=Some("42"), retry=Some(3000)),
+    @sse.Event::new(data="payload", kind="update"),
+    @sse.Event::new(data="payload", id="42", retry=3000),
     @sse.Event::new(
       data="everything",
-      kind=Some("tick"),
-      id=Some("7"),
-      retry=Some(250),
-      comment=Some("a note"),
+      kind="tick",
+      id="7",
+      retry=250,
+      comment="a note",
     ),
     @sse.Event::ping(),
     @sse.Event::ping(comment="keeping warm"),
@@ -85,7 +85,7 @@ test "the bytes on the wire" {
   assert_eq(@sse.Event::ping().encode(), ": \n\n")
   assert_eq(@sse.Event::ping(comment="hi").encode(), ": hi\n\n")
   assert_eq(
-    @sse.Event::new(data="x", kind=Some("t"), id=Some("9"), retry=Some(5)).encode(),
+    @sse.Event::new(data="x", kind="t", id="9", retry=5).encode(),
     "id: 9\nevent: t\nretry: 5\ndata: x\n\n",
   )
   assert_eq(@sse.media_type, "text/event-stream")
@@ -140,4 +140,32 @@ test "an id with a NUL is dropped" {
   let events = @sse.decode("data: x\nid: a\u{00}b\n\n")
   assert_eq(events.length(), 1)
   assert_eq(events[0].id, None)
+}
+
+///|
+/// The space after each colon is optional in the format and universal on the
+/// wire, so it is written by default and can be turned off.
+test "the optional space is a knob" {
+  let event = @sse.Event::new(data="x", kind="t", id="9", retry=5)
+  assert_eq(event.encode(), "id: 9\nevent: t\nretry: 5\ndata: x\n\n")
+  assert_eq(event.encode(space=false), "id:9\nevent:t\nretry:5\ndata:x\n\n")
+  // A reader strips it either way, so the two frames carry the same event.
+  assert_eq(@sse.decode(event.encode()[:]), [event])
+  assert_eq(@sse.decode(event.encode(space=false)[:]), [event])
+  // Comments too.
+  let ping = @sse.Event::ping(comment="keep-alive")
+  assert_eq(ping.encode(), ": keep-alive\n\n")
+  assert_eq(ping.encode(space=false), ":keep-alive\n\n")
+  // What it saves: one byte per field written.
+  assert_eq(event.encode().length() - event.encode(space=false).length(), 4)
+}
+
+///|
+/// A field that is either given or not is given plainly, without a wrapper.
+test "an absent field is absent, not wrapped" {
+  assert_eq(@sse.Event::new(data="x"), @sse.Event::of("x"))
+  let named = @sse.Event::new(data="x", kind="t")
+  assert_eq(named.kind, Some("t"))
+  assert_eq(named.id, None)
+  assert_eq(@sse.Event::new().data, "")
 }

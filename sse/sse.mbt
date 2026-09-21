@@ -36,10 +36,10 @@ pub fn Event::of(data : String) -> Event {
 /// An event with whichever fields are wanted.
 pub fn Event::new(
   data? : String = "",
-  kind? : String? = None,
-  id? : String? = None,
-  retry? : Int? = None,
-  comment? : String? = None,
+  kind? : String,
+  id? : String,
+  retry? : Int,
+  comment? : String,
 ) -> Event {
   { data, kind, id, retry, comment, }
 }
@@ -52,25 +52,30 @@ pub fn Event::ping(comment? : String = "") -> Event {
 
 ///|
 /// The frame this event is sent as, ending in the blank line that dispatches it.
-pub fn Event::encode(self : Event) -> String {
+///
+/// `space` writes the one optional space after each colon, which every stream in
+/// the wild carries and which a reader strips again. Turning it off saves a byte
+/// per field on a stream where that matters, and changes nothing a client sees.
+pub fn Event::encode(self : Event, space? : Bool = true) -> String {
+  let gap = if space { " " } else { "" }
   let out = StringBuilder()
   match self.comment {
     Some(text) =>
       for line in lines(text[:]) {
-        field(out, ":", line)
+        field(out, ":", line, gap)
       }
     None => ()
   }
   match self.id {
-    Some(id) => field(out, "id:", id)
+    Some(id) => field(out, "id:", id, gap)
     None => ()
   }
   match self.kind {
-    Some(kind) => field(out, "event:", kind)
+    Some(kind) => field(out, "event:", kind, gap)
     None => ()
   }
   match self.retry {
-    Some(ms) => field(out, "retry:", ms.to_string())
+    Some(ms) => field(out, "retry:", ms.to_string(), gap)
     None => ()
   }
   // An entirely empty frame would dispatch an event with no data, so a `data:`
@@ -81,7 +86,7 @@ pub fn Event::encode(self : Event) -> String {
     self.retry is None
   if self.data != "" || bare {
     for line in lines(self.data[:]) {
-      field(out, "data:", line)
+      field(out, "data:", line, gap)
     }
   }
   out.write_char('\n')
@@ -174,9 +179,14 @@ pub let media_type : String = "text/event-stream"
 ///|
 /// The space after the colon is the optional one a reader strips again. It is
 /// written because every stream in the wild has it.
-fn field(out : StringBuilder, name : String, value : String) -> Unit {
+fn field(
+  out : StringBuilder,
+  name : String,
+  value : String,
+  gap : String,
+) -> Unit {
   out.write_string(name)
-  out.write_char(' ')
+  out.write_string(gap)
   out.write_string(value)
   out.write_char('\n')
 }

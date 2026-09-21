@@ -9,7 +9,7 @@
 fn main raise {
   // Each frame is one chunk. A stream sent as one body is not a stream.
   let events = [
-    @sse.Event::new(data="{\"seq\":1}", kind=Some("tick"), id=Some("1")),
+    @sse.Event::new(data="{\"seq\":1}", kind="tick", id="1"),
     @sse.Event::of("two\nlines"),
     @sse.Event::ping(comment="still here"),
   ]

@@ -200,3 +200,106 @@ test "percent decoding" {
   assert_eq(@mime.percent_decode(b"%zz"[:]), b"%zz")
   assert_eq(@mime.percent_decode(b""[:]), b"")
 }
+
+///|
+/// The two ways of naming a bound are the same bound.
+///
+/// There is no third way here: a bound belongs to an endpoint rather than to a
+/// request, so there are no per-call mirrors of these two fields and nothing
+/// can be given twice.
+test "the two forms agree" {
+  let built = @mime.Limits::new(parts=2, part_size=4)
+  assert_eq(@mime.Limits::new(parts=2), { ..@mime.limits, parts: 2, })
+  assert_eq(built, { parts: 2, part_size: 4, })
+  // Naming none of them is the preset itself.
+  assert_eq(@mime.Limits::new(), @mime.limits)
+  // And naming one leaves the other where it was.
+  assert_eq(@mime.Limits::new(parts=8).part_size, @mime.limits.part_size)
+  assert_eq(@mime.Limits::new(part_size=8).parts, @mime.limits.parts)
+}
+
+///|
+/// The defaults are the ones the mainstream uses: Starlette's `max_files` and
+/// `max_fields` are a thousand, and python-multipart holds a part of up to a
+/// megabyte in memory.
+test "the preset is what other frameworks default to" {
+  assert_eq(@mime.limits.parts, 1000)
+  assert_eq(@mime.limits.part_size, 1 << 20)
+}
+
+///|
+/// A body that stops making sense leaves the reader a choice: return the parts
+/// read so far, or say so. Silence is the default because a truncated upload is
+/// ordinary on a dropped connection; `strict` is for the caller who would rather
+/// be told.
+test "strict decides what happens to a body that stops making sense" {
+  let broken = "------b\r\nContent-Disposition: form-data; name=\"a\"\r\n"
+  // The default keeps what it read, which here is nothing.
+  assert_true(@mime.multipart(body(broken)[:], "----b").is_empty())
+  // Asked to be strict, it says where it gave up.
+  try @mime.multipart(body(broken)[:], "----b", strict=true) |> ignore catch {
+    e => assert_eq(e, @mime.Malformed(at=9))
+  } noraise {
+    _ => fail("a truncated multipart body passed in strict mode")
+  }
+  // A whole body is read the same either way.
+  let whole = @mime.multipart(body(upload)[:], "----WebKitFormBoundaryabc123")
+  let strictly = @mime.multipart(
+    body(upload)[:],
+    "----WebKitFormBoundaryabc123",
+    strict=true,
+  )
+  assert_eq(whole.entries().length(), strictly.entries().length())
+  assert_eq(whole.uploads().length(), strictly.uploads().length())
+}
+
+///|
+/// "This request carried no form" is an answer, not a failure — until the caller
+/// says it would rather hear about it.
+test "strict decides what a body that is not a form means" {
+  let json = body("{\"a\":1}")
+  assert_true(@mime.parse(json[:], "application/json").is_empty())
+  try @mime.parse(json[:], "application/json", strict=true) |> ignore catch {
+    e => assert_eq(e, @mime.NotAForm(content_type="application/json"))
+  } noraise {
+    _ => fail("a JSON body passed as a form in strict mode")
+  }
+  // A multipart type with no boundary parameter is not a form either: there is
+  // nothing to split it on.
+  try
+    @mime.parse(body(upload)[:], "multipart/form-data", strict=true) |> ignore
+  catch {
+    e => assert_eq(e, @mime.NotAForm(content_type="multipart/form-data"))
+  } noraise {
+    _ => fail("multipart with no boundary passed in strict mode")
+  }
+  assert_true(@mime.parse(body(upload)[:], "multipart/form-data").is_empty())
+  // A real form is unaffected by the flag.
+  assert_eq(
+    @mime.parse(
+      body("a=1")[:],
+      "application/x-www-form-urlencoded",
+      strict=true,
+    ).field("a"),
+    Some("1"),
+  )
+}
+
+///|
+/// The bound reaches the dispatching entry point too, not only the two it
+/// dispatches to.
+test "the bound reaches parse" {
+  let small = @mime.Limits::new(parts=2)
+  try
+    @mime.parse(
+      body("a=1&b=2&c=3")[:],
+      "application/x-www-form-urlencoded",
+      limits=small,
+    )
+    |> ignore
+  catch {
+    e => assert_eq(e, @mime.Parts(limit=2))
+  } noraise {
+    _ => fail("three fields passed a limit of two through parse")
+  }
+}
