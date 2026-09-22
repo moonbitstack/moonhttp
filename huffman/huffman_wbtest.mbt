@@ -7,42 +7,6 @@
 // https://www.rfc-editor.org/rfc/rfc7541#appendix-C.4
 
 ///|
-fn hexb(h : String) -> Bytes {
-  let buf = Buffer()
-  for i = 0; i < h.length(); i = i + 2 {
-    buf.write_byte(
-      ((nib(h[i].to_int()) << 4) | nib(h[i + 1].to_int())).to_byte(),
-    )
-  }
-  buf.to_bytes()
-}
-
-///|
-fn nib(c : Int) -> Int {
-  if c >= 0x30 && c <= 0x39 {
-    c - 0x30
-  } else if c >= 0x61 && c <= 0x66 {
-    c - 0x61 + 10
-  } else if c >= 0x41 && c <= 0x46 {
-    c - 0x41 + 10
-  } else {
-    0
-  }
-}
-
-///|
-fn hex(b : Bytes) -> String {
-  let digits = "0123456789abcdef"
-  let sb = StringBuilder()
-  for i = 0; i < b.length(); i = i + 1 {
-    let x = b[i].to_int()
-    sb.write_char(digits[x >> 4].unsafe_to_char())
-    sb.write_char(digits[x & 0xf].unsafe_to_char())
-  }
-  sb.to_string()
-}
-
-///|
 test "the strings RFC 7541 Appendix C codes, both ways" {
   let cases = [
     ("www.example.com", "f1e3c2e5f23a6ba0ab90f4ff"),
@@ -58,8 +22,8 @@ test "the strings RFC 7541 Appendix C codes, both ways" {
   ]
   for one in cases {
     let (plain, coded) = one
-    assert_eq(hex(encode(ascii(plain)[:])), coded)
-    assert_eq(decode(hexb(coded)[:]), ascii(plain))
+    assert_eq(@base16.encode(encode(ascii(plain)[:])), coded)
+    assert_eq(decode(@base16.decode_lossy(coded)[:]), ascii(plain))
     // The length is answered without building the output, because an encoder asks it
     // to decide whether coding is worth it at all.
     assert_eq(size(ascii(plain)[:]), coded.length() / 2)
@@ -95,7 +59,7 @@ test "the end-of-string symbol must not appear in the input (§5.2)" {
   // EOS is thirty ones, so four octets of ones carry it and then some.
   let mut refused = false
   try {
-    let _ = decode(hexb("ffffffff")[:])
+    let _ = decode(@base16.decode_lossy("ffffffff")[:])
   } catch {
     Eos => refused = true
     _ => ()
@@ -108,7 +72,7 @@ test "padding must be a short run of ones (§5.2)" {
   // Eight bits of padding is one bit too many: the octet should not be there at all.
   let mut long = false
   try {
-    let _ = decode(hexb("f1e3c2e5f23a6ba0ab90f4ffff")[:])
+    let _ = decode(@base16.decode_lossy("f1e3c2e5f23a6ba0ab90f4ffff")[:])
   } catch {
     Padding(_) => long = true
     Eos => long = true

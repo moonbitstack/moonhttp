@@ -6,7 +6,12 @@
 // §7.4.1 allows on the wire.
 //
 // The opening handshake is `upgrade`, which is where the dependencies are: proving a
-// key needs SHA-1 and base64, and framing needs nothing at all.
+// key needs SHA-1 and base64, and framing needs only the fixed-width integers.
 import {
   "moonbitlang/core/encoding/utf8",
+  "moonbitstack/moonvar/fixed",
 }
+
+import {
+  "moonbitstack/moonbase/base16",
+} for "wbtest"

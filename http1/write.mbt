@@ -169,7 +169,7 @@ pub let continue_ : Bytes = b"HTTP/1.1 100 Continue\r\n\r\n"
 /// One chunk: its size in hexadecimal, the octets, and a break (RFC 9112 §7.1).
 pub fn chunk(data : BytesView) -> Bytes {
   let buf = Buffer()
-  put(buf, hex(data.length()))
+  put(buf, data.length().to_string(radix=16))
   crlf(buf)
   buf.write_bytesview(data)
   crlf(buf)
@@ -292,25 +292,6 @@ fn put(buf : Buffer, s : String) -> Unit {
   for i = 0; i < s.length(); i = i + 1 {
     buf.write_byte((s[i].to_int() & 0xff).to_byte())
   }
-}
-
-///|
-/// A non-negative count in lowercase hexadecimal, which is what a chunk size is.
-fn hex(n : Int) -> String {
-  if n == 0 {
-    return "0"
-  }
-  let digits = "0123456789abcdef"
-  let out = StringBuilder()
-  let mut started = false
-  for shift = 28; shift >= 0; shift = shift - 4 {
-    let d = (n >> shift) & 0xf
-    if d != 0 || started {
-      out.write_char(digits[d].unsafe_to_char())
-      started = true
-    }
-  }
-  out.to_string()
 }
 
 ///|

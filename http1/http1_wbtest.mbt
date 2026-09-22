@@ -254,6 +254,9 @@ test "a chunked body is written and read back" {
   // The size is hexadecimal, which is the one thing a hand-rolled writer gets wrong.
   assert_eq(chunk(b"hello"[:]), b"5\r\nhello\r\n")
   assert_eq(chunk(b"0123456789abcdef"[:])[0], b'1')
+  // Sizes are lowercase hexadecimal with no leading zeros.
+  assert_eq(chunk(Bytes::make(26, b'x')[:])[0:4].to_owned(), b"1a\r\n")
+  assert_eq(chunk(Bytes::make(4096, b'x')[:])[0:6].to_owned(), b"1000\r\n")
   assert_eq(chunk(b"0123456789abcdef"[:])[1], b'0')
   let body = Buffer()
   let mut at = 0

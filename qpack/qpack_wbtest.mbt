@@ -1,18 +1,6 @@
 // Copyright 2026 Leo Cheng
 // SPDX-License-Identifier: Apache-2.0
 
-///|
-fn hex(b : Bytes) -> String {
-  let digits = "0123456789abcdef"
-  let sb = StringBuilder()
-  for i = 0; i < b.length(); i = i + 1 {
-    let x = b[i].to_int()
-    sb.write_char(digits[x >> 4].unsafe_to_char())
-    sb.write_char(digits[x & 0xf].unsafe_to_char())
-  }
-  sb.to_string()
-}
-
 // RFC 9204, section by section: the integer codec of §4.1.1, the static table of
 // Appendix A, the field section prefix of §4.5.1, the dynamic table of §3.2, the
 // field line representations of §4.5, and the instructions of §4.3 and §4.4. The
@@ -110,7 +98,7 @@ fn roundtrip_prefix(
 ///|
 test "section prefix: the zero Required Insert Count encodes to two zero bytes" {
   let wire = prefix(0, 0, 128)
-  assert_eq(hex(wire), "0000")
+  assert_eq(@base16.encode(wire), "0000")
   assert_eq(roundtrip_prefix(0, 0, 128), (0, 0))
 }
 
@@ -473,10 +461,10 @@ test "dynamic encode: an entry too large for the table falls back to a literal l
 ///|
 test "QPACK encoder instructions: RFC 9204 Appendix B vectors" {
   // Set Dynamic Table Capacity = 220 (Appendix B.1).
-  assert_eq(hex(Change::encode(SetCapacity(220))), "3fbd01")
+  assert_eq(@base16.encode(Change::encode(SetCapacity(220))), "3fbd01")
   // Insert With Name Reference, static index 0 (:authority), "www.example.com" (B.1).
   assert_eq(
-    hex(
+    @base16.encode(
       Change::encode(
         Insert(is_static=true, index=0, value=b"www.example.com"),
         huffman=false,
@@ -486,7 +474,7 @@ test "QPACK encoder instructions: RFC 9204 Appendix B vectors" {
   )
   // Insert With Literal Name "custom-key": "custom-value" (Appendix B.3).
   assert_eq(
-    hex(
+    @base16.encode(
       Change::encode(
         InsertLiteral(name=b"custom-key", value=b"custom-value"),
         huffman=false,
@@ -495,7 +483,7 @@ test "QPACK encoder instructions: RFC 9204 Appendix B vectors" {
     "4a637573746f6d2d6b65790c637573746f6d2d76616c7565",
   )
   // Duplicate index 0 (Appendix B.3).
-  assert_eq(hex(Change::encode(Duplicate(index=0))), "00")
+  assert_eq(@base16.encode(Change::encode(Duplicate(index=0))), "00")
 }
 
 ///|
@@ -525,9 +513,9 @@ test "QPACK encoder instructions: round-trip, raw and Huffman" {
 test "QPACK decoder instructions: vectors and round-trip" {
   // Section Acknowledgement stream 4; Stream Cancellation stream 4; Insert Count
   // Increment 1 (RFC 9204 §4.4).
-  assert_eq(hex(Ack::encode(Section(stream_id=4))), "84")
-  assert_eq(hex(Ack::encode(Cancel(stream_id=4))), "44")
-  assert_eq(hex(Ack::encode(Increment(increment=1))), "01")
+  assert_eq(@base16.encode(Ack::encode(Section(stream_id=4))), "84")
+  assert_eq(@base16.encode(Ack::encode(Cancel(stream_id=4))), "44")
+  assert_eq(@base16.encode(Ack::encode(Increment(increment=1))), "01")
   let dinsts : Array[Ack] = [
     Section(stream_id=1000),
     Cancel(stream_id=42),

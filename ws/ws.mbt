@@ -136,14 +136,10 @@ pub fn Frame::encode(self : Frame, mask? : Bytes = b"") -> Bytes {
     buf.write_byte((flag | n).to_byte())
   } else if n <= 0xffff {
     buf.write_byte((flag | 126).to_byte())
-    buf.write_byte((n >> 8).to_byte())
-    buf.write_byte(n.to_byte())
+    @fixed.write_u16(buf, n)
   } else {
     buf.write_byte((flag | 127).to_byte())
-    let len = n.to_int64()
-    for i = 7; i >= 0; i = i - 1 {
-      buf.write_byte((len >> (i * 8)).to_byte())
-    }
+    @fixed.write_u64(buf, n.to_int64().reinterpret_as_uint64())
   }
   if masked {
     buf.write_bytes(mask)
@@ -216,20 +212,14 @@ pub fn decode(
   let mut at = 2
   let mut len = (b1 & 0x7f).to_int64()
   if len == 126L {
-    if b.length() < at + 2 {
-      return None
-    }
-    len = ((b[at].to_int() << 8) | b[at + 1].to_int()).to_int64()
+    guard @fixed.read_u16(b, at~) is Some(v) else { return None }
+    len = v.to_int64()
     at = at + 2
   } else if len == 127L {
-    if b.length() < at + 8 {
-      return None
-    }
-    let mut wide = 0L
-    for i = 0; i < 8; i = i + 1 {
-      wide = (wide << 8) | b[at + i].to_int().to_int64()
-    }
-    len = wide
+    // Read signed, so a length with the top bit set — which §5.2 forbids — comes out
+    // negative and `check` refuses it.
+    guard @fixed.read_u64(b, at~) is Some(v) else { return None }
+    len = v.reinterpret_as_int64()
     at = at + 8
   }
   let opcode = check(b0, b1, len, client~, limit~)
@@ -282,8 +272,7 @@ pub(all) enum Message {
 /// A close frame's payload (RFC 6455 §5.5.1): the status big-endian, then the reason.
 pub fn close(status : Int, reason? : String = "") -> Bytes {
   let buf = Buffer()
-  buf.write_byte((status >> 8).to_byte())
-  buf.write_byte(status.to_byte())
+  @fixed.write_u16(buf, status)
   buf.write_bytes(@utf8.encode(reason))
   buf.to_bytes()
 }
@@ -294,11 +283,7 @@ pub fn close(status : Int, reason? : String = "") -> Bytes {
 /// `1005` is a local sentinel and must never be sent: a close that came with no status is
 /// echoed with no status, not with this number.
 pub fn status(payload : BytesView) -> Int {
-  if payload.length() >= 2 {
-    (payload[0].to_int() << 8) | payload[1].to_int()
-  } else {
-    1005
-  }
+  @fixed.read_u16(payload).unwrap_or(1005)
 }
 
 ///|

@@ -7,43 +7,6 @@
 // https://www.rfc-editor.org/rfc/rfc7541#appendix-C
 
 ///|
-/// A hex string as bytes, and back.
-fn hexb(h : String) -> Bytes {
-  let buf = Buffer()
-  for i = 0; i < h.length(); i = i + 2 {
-    buf.write_byte(
-      ((nib(h[i].to_int()) << 4) | nib(h[i + 1].to_int())).to_byte(),
-    )
-  }
-  buf.to_bytes()
-}
-
-///|
-fn nib(c : Int) -> Int {
-  if c >= 0x30 && c <= 0x39 {
-    c - 0x30
-  } else if c >= 0x61 && c <= 0x66 {
-    c - 0x61 + 10
-  } else if c >= 0x41 && c <= 0x46 {
-    c - 0x41 + 10
-  } else {
-    0
-  }
-}
-
-///|
-fn hex(b : Bytes) -> String {
-  let digits = "0123456789abcdef"
-  let sb = StringBuilder()
-  for i = 0; i < b.length(); i = i + 1 {
-    let x = b[i].to_int()
-    sb.write_char(digits[x >> 4].unsafe_to_char())
-    sb.write_char(digits[x & 0xf].unsafe_to_char())
-  }
-  sb.to_string()
-}
-
-///|
 /// A header list from ASCII pairs, which is how the appendix writes them.
 fn list(pairs : ArrayView[(String, String)]) -> Array[@header.Header] {
   let out : Array[@header.Header] = []
@@ -77,10 +40,10 @@ test "the three requests of RFC 7541 C.3, without Huffman" {
       (":authority", "www.example.com"),
     ][:],
   )
-  let block = hexb("828684410f7777772e6578616d706c652e636f6d")
+  let block = @base16.decode_lossy("828684410f7777772e6578616d706c652e636f6d")
   assert_eq(decoder.decode(block[:]), want)
   assert_eq(
-    hex(encoder.encode(want[:])),
+    @base16.encode(encoder.encode(want[:])),
     "828684410f7777772e6578616d706c652e636f6d",
   )
 
@@ -94,9 +57,12 @@ test "the three requests of RFC 7541 C.3, without Huffman" {
       ("cache-control", "no-cache"),
     ][:],
   )
-  let block = hexb("828684be58086e6f2d6361636865")
+  let block = @base16.decode_lossy("828684be58086e6f2d6361636865")
   assert_eq(decoder.decode(block[:]), want)
-  assert_eq(hex(encoder.encode(want[:])), "828684be58086e6f2d6361636865")
+  assert_eq(
+    @base16.encode(encoder.encode(want[:])),
+    "828684be58086e6f2d6361636865",
+  )
 
   // C.3.3
   let want = list(
@@ -108,10 +74,12 @@ test "the three requests of RFC 7541 C.3, without Huffman" {
       ("custom-key", "custom-value"),
     ][:],
   )
-  let block = hexb("828785bf400a637573746f6d2d6b65790c637573746f6d2d76616c7565")
+  let block = @base16.decode_lossy(
+    "828785bf400a637573746f6d2d6b65790c637573746f6d2d76616c7565",
+  )
   assert_eq(decoder.decode(block[:]), want)
   assert_eq(
-    hex(encoder.encode(want[:])),
+    @base16.encode(encoder.encode(want[:])),
     "828785bf400a637573746f6d2d6b65790c637573746f6d2d76616c7565",
   )
 }
@@ -131,9 +99,12 @@ test "the three requests of RFC 7541 C.4, with Huffman" {
       (":authority", "www.example.com"),
     ][:],
   )
-  let block = hexb("828684418cf1e3c2e5f23a6ba0ab90f4ff")
+  let block = @base16.decode_lossy("828684418cf1e3c2e5f23a6ba0ab90f4ff")
   assert_eq(decoder.decode(block[:]), want)
-  assert_eq(hex(encoder.encode(want[:])), "828684418cf1e3c2e5f23a6ba0ab90f4ff")
+  assert_eq(
+    @base16.encode(encoder.encode(want[:])),
+    "828684418cf1e3c2e5f23a6ba0ab90f4ff",
+  )
 
   // C.4.2
   let want = list(
@@ -145,9 +116,9 @@ test "the three requests of RFC 7541 C.4, with Huffman" {
       ("cache-control", "no-cache"),
     ][:],
   )
-  let block = hexb("828684be5886a8eb10649cbf")
+  let block = @base16.decode_lossy("828684be5886a8eb10649cbf")
   assert_eq(decoder.decode(block[:]), want)
-  assert_eq(hex(encoder.encode(want[:])), "828684be5886a8eb10649cbf")
+  assert_eq(@base16.encode(encoder.encode(want[:])), "828684be5886a8eb10649cbf")
 
   // C.4.3
   let want = list(
@@ -159,10 +130,12 @@ test "the three requests of RFC 7541 C.4, with Huffman" {
       ("custom-key", "custom-value"),
     ][:],
   )
-  let block = hexb("828785bf408825a849e95ba97d7f8925a849e95bb8e8b4bf")
+  let block = @base16.decode_lossy(
+    "828785bf408825a849e95ba97d7f8925a849e95bb8e8b4bf",
+  )
   assert_eq(decoder.decode(block[:]), want)
   assert_eq(
-    hex(encoder.encode(want[:])),
+    @base16.encode(encoder.encode(want[:])),
     "828785bf408825a849e95ba97d7f8925a849e95bb8e8b4bf",
   )
 }
@@ -182,12 +155,12 @@ test "the three responses of RFC 7541 C.5, evicting as they go" {
       ("location", "https://www.example.com"),
     ][:],
   )
-  let block = hexb(
+  let block = @base16.decode_lossy(
     "4803333032580770726976617465611d4d6f6e2c203231204f637420323031332032303a31333a323120474d546e1768747470733a2f2f7777772e6578616d706c652e636f6d",
   )
   assert_eq(decoder.decode(block[:]), want)
   assert_eq(
-    hex(encoder.encode(want[:])),
+    @base16.encode(encoder.encode(want[:])),
     "4803333032580770726976617465611d4d6f6e2c203231204f637420323031332032303a31333a323120474d546e1768747470733a2f2f7777772e6578616d706c652e636f6d",
   )
 
@@ -200,9 +173,9 @@ test "the three responses of RFC 7541 C.5, evicting as they go" {
       ("location", "https://www.example.com"),
     ][:],
   )
-  let block = hexb("4803333037c1c0bf")
+  let block = @base16.decode_lossy("4803333037c1c0bf")
   assert_eq(decoder.decode(block[:]), want)
-  assert_eq(hex(encoder.encode(want[:])), "4803333037c1c0bf")
+  assert_eq(@base16.encode(encoder.encode(want[:])), "4803333037c1c0bf")
 
   // C.5.3
   let want = list(
@@ -215,12 +188,12 @@ test "the three responses of RFC 7541 C.5, evicting as they go" {
       ("set-cookie", "foo=ASDJKHQKBZXOQWEOPIUAXQWEOIU; max-age=3600; version=1"),
     ][:],
   )
-  let block = hexb(
+  let block = @base16.decode_lossy(
     "88c1611d4d6f6e2c203231204f637420323031332032303a31333a323220474d54c05a04677a69707738666f6f3d4153444a4b48514b425a584f5157454f50495541585157454f49553b206d61782d6167653d333630303b2076657273696f6e3d31",
   )
   assert_eq(decoder.decode(block[:]), want)
   assert_eq(
-    hex(encoder.encode(want[:])),
+    @base16.encode(encoder.encode(want[:])),
     "88c1611d4d6f6e2c203231204f637420323031332032303a31333a323220474d54c05a04677a69707738666f6f3d4153444a4b48514b425a584f5157454f50495541585157454f49553b206d61782d6167653d333630303b2076657273696f6e3d31",
   )
 }
@@ -240,12 +213,12 @@ test "the three responses of RFC 7541 C.6, with Huffman and eviction" {
       ("location", "https://www.example.com"),
     ][:],
   )
-  let block = hexb(
+  let block = @base16.decode_lossy(
     "488264025885aec3771a4b6196d07abe941054d444a8200595040b8166e082a62d1bff6e919d29ad171863c78f0b97c8e9ae82ae43d3",
   )
   assert_eq(decoder.decode(block[:]), want)
   assert_eq(
-    hex(encoder.encode(want[:])),
+    @base16.encode(encoder.encode(want[:])),
     "488264025885aec3771a4b6196d07abe941054d444a8200595040b8166e082a62d1bff6e919d29ad171863c78f0b97c8e9ae82ae43d3",
   )
 
@@ -258,9 +231,9 @@ test "the three responses of RFC 7541 C.6, with Huffman and eviction" {
       ("location", "https://www.example.com"),
     ][:],
   )
-  let block = hexb("4883640effc1c0bf")
+  let block = @base16.decode_lossy("4883640effc1c0bf")
   assert_eq(decoder.decode(block[:]), want)
-  assert_eq(hex(encoder.encode(want[:])), "4883640effc1c0bf")
+  assert_eq(@base16.encode(encoder.encode(want[:])), "4883640effc1c0bf")
 
   // C.6.3
   let want = list(
@@ -273,12 +246,12 @@ test "the three responses of RFC 7541 C.6, with Huffman and eviction" {
       ("set-cookie", "foo=ASDJKHQKBZXOQWEOPIUAXQWEOIU; max-age=3600; version=1"),
     ][:],
   )
-  let block = hexb(
+  let block = @base16.decode_lossy(
     "88c16196d07abe941054d444a8200595040b8166e084a62d1bffc05a839bd9ab77ad94e7821dd7f2e6c7b335dfdfcd5b3960d5af27087f3672c1ab270fb5291f9587316065c003ed4ee5b1063d5007",
   )
   assert_eq(decoder.decode(block[:]), want)
   assert_eq(
-    hex(encoder.encode(want[:])),
+    @base16.encode(encoder.encode(want[:])),
     "88c16196d07abe941054d444a8200595040b8166e084a62d1bffc05a839bd9ab77ad94e7821dd7f2e6c7b335dfdfcd5b3960d5af27087f3672c1ab270fb5291f9587316065c003ed4ee5b1063d5007",
   )
 }
@@ -289,7 +262,7 @@ test "a prefix integer that runs off the end is this package's own fault" {
   // refusal arrives as a malformed block rather than as a second error type.
   let mut refused = false
   try {
-    let _ = reach(hexb("1f80")[:], 0, 5)
+    let _ = reach(@base16.decode_lossy("1f80")[:], 0, 5)
   } catch {
     Malformed(_) => refused = true
     _ => ()
@@ -300,10 +273,10 @@ test "a prefix integer that runs off the end is this package's own fault" {
 ///|
 test "a string literal reads back, Huffman-coded or not" {
   let plain = string(b"www.example.com"[:], huffman=false)
-  assert_eq(hex(plain), "0f7777772e6578616d706c652e636f6d")
+  assert_eq(@base16.encode(plain), "0f7777772e6578616d706c652e636f6d")
   assert_eq(@prefix.flagged(plain[:]), false)
   let coded = string(b"www.example.com"[:])
-  assert_eq(hex(coded), "8cf1e3c2e5f23a6ba0ab90f4ff")
+  assert_eq(@base16.encode(coded), "8cf1e3c2e5f23a6ba0ab90f4ff")
   assert_eq(@prefix.flagged(coded[:]), true)
   // Both read back to the same octets, the coded one through the Huffman decoder.
   assert_eq(read_string(plain[:], 0), (b"www.example.com", plain.length()))
@@ -315,7 +288,7 @@ test "a literal claiming more than the block holds is refused" {
   // Length fifteen with three octets behind it.
   let mut refused = false
   try {
-    let _ = read_string(hexb("0f414243")[:], 0)
+    let _ = read_string(@base16.decode_lossy("0f414243")[:], 0)
   } catch {
     Malformed(_) => refused = true
     _ => ()
@@ -327,9 +300,15 @@ test "a literal claiming more than the block holds is refused" {
 test "an index naming nothing is refused, and index zero is never a field" {
   let decoder = Decoder::new()
   // §6.1: an indexed header field with index 0 is a decoding error.
-  assert_eq(refused_block(decoder, hexb("80")) is Malformed(_), true)
+  assert_eq(
+    refused_block(decoder, @base16.decode_lossy("80")) is Malformed(_),
+    true,
+  )
   // Sixty-two with an empty dynamic table is one past the static table.
-  assert_eq(refused_block(Decoder::new(), hexb("be")), Index(got=62))
+  assert_eq(
+    refused_block(Decoder::new(), @base16.decode_lossy("be")),
+    Index(got=62),
+  )
 }
 
 ///|
@@ -350,7 +329,7 @@ fn refused_block(decoder : Decoder, block : Bytes) -> Refused {
 test "a size update past what the peer allowed is refused (§6.3)" {
   let decoder = Decoder::new(limit=256)
   // §6.3 writes the new maximum with a 001 prefix; 256 is exactly the cap.
-  assert_eq(hex(size_update(256)), "3fe101")
+  assert_eq(@base16.encode(size_update(256)), "3fe101")
   decoder.decode(size_update(256)[:]) |> ignore
   // One more than the cap is a decoding error.
   assert_eq(

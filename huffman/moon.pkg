@@ -7,3 +7,7 @@
 //
 // A package of its own because RFC 9204 §5.2 gives QPACK the same code: HTTP/2's header
 // compression and HTTP/3's share it rather than each carrying a copy.
+
+import {
+  "moonbitstack/moonbase/base16",
+} for "wbtest"

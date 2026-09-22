@@ -234,15 +234,14 @@ pub(all) enum Frame {
 
 // -- big-endian primitives --------------------------------------------------
 
-///|
-fn be_write_u16(buf : Buffer, n : Int) -> Unit {
-  buf.write_byte((n >> 8).to_byte())
-  buf.write_byte(n.to_byte())
-}
-
 // The frame header's widths are `moonvar`'s arithmetic. These wrappers stay because a
 // frame field is read at an offset the length check has already cleared, so they answer
 // a value rather than an `Option` the caller would have to unwrap at eighty sites.
+
+///|
+fn be_write_u16(buf : Buffer, n : Int) -> Unit {
+  @fixed.write_u16(buf, n)
+}
 
 ///|
 fn be_write_u24(buf : Buffer, n : Int) -> Unit {
@@ -273,11 +272,8 @@ fn be_read_u32(data : Bytes, off : Int) -> Int {
 /// Write a 31-bit stream identifier with the reserved top bit optionally set (the
 /// `E` exclusive bit in a priority block; always clear elsewhere per §4.1).
 fn be_write_stream_id(buf : Buffer, id : Int, top_bit : Bool) -> Unit {
-  let hi = (id >> 24) & 0x7F
-  buf.write_byte((if top_bit { hi | 0x80 } else { hi }).to_byte())
-  buf.write_byte((id >> 16).to_byte())
-  buf.write_byte((id >> 8).to_byte())
-  buf.write_byte(id.to_byte())
+  let top = if top_bit { 0x8000_0000U } else { 0U }
+  @fixed.write_u32(buf, (id.reinterpret_as_uint() & 0x7FFF_FFFFU) | top)
 }
 
 ///|

@@ -6,47 +6,10 @@
 // https://www.rfc-editor.org/rfc/rfc6455#section-5.7
 
 ///|
-/// A hex string as bytes, and back.
-fn hexb(h : String) -> Bytes {
-  let buf = Buffer()
-  for i = 0; i < h.length(); i = i + 2 {
-    buf.write_byte(
-      ((nib(h[i].to_int()) << 4) | nib(h[i + 1].to_int())).to_byte(),
-    )
-  }
-  buf.to_bytes()
-}
-
-///|
-fn nib(c : Int) -> Int {
-  if c >= 0x30 && c <= 0x39 {
-    c - 0x30
-  } else if c >= 0x61 && c <= 0x66 {
-    c - 0x61 + 10
-  } else if c >= 0x41 && c <= 0x46 {
-    c - 0x41 + 10
-  } else {
-    0
-  }
-}
-
-///|
-fn hex(b : Bytes) -> String {
-  let digits = "0123456789abcdef"
-  let sb = StringBuilder()
-  for i = 0; i < b.length(); i = i + 1 {
-    let x = b[i].to_int()
-    sb.write_char(digits[x >> 4].unsafe_to_char())
-    sb.write_char(digits[x & 0xf].unsafe_to_char())
-  }
-  sb.to_string()
-}
-
-///|
 test "a single-frame unmasked text message is §5.7's first example" {
-  let wire = hexb("810548656c6c6f")
+  let wire = @base16.decode_lossy("810548656c6c6f")
   let frame : Frame = { fin: true, opcode: Text, payload: b"Hello", }
-  assert_eq(hex(frame.encode()), hex(wire))
+  assert_eq(@base16.encode(frame.encode()), @base16.encode(wire))
   guard decode(wire[:], client=false) is Some((got, n)) else {
     fail("the published frame should decode")
   }
@@ -56,10 +19,10 @@ test "a single-frame unmasked text message is §5.7's first example" {
 
 ///|
 test "a single-frame masked text message is §5.7's second example" {
-  let wire = hexb("8185" + "37fa213d" + "7f9f4d5158")
-  let mask = hexb("37fa213d")
+  let wire = @base16.decode_lossy("8185" + "37fa213d" + "7f9f4d5158")
+  let mask = @base16.decode_lossy("37fa213d")
   let frame : Frame = { fin: true, opcode: Text, payload: b"Hello", }
-  assert_eq(hex(frame.encode(mask~)), hex(wire))
+  assert_eq(@base16.encode(frame.encode(mask~)), @base16.encode(wire))
   // A server reads it with the masking it requires, and gets the plain payload back.
   guard decode(wire[:]) is Some((got, n)) else {
     fail("the published masked frame should decode")
@@ -70,12 +33,12 @@ test "a single-frame masked text message is §5.7's second example" {
 
 ///|
 test "a fragmented unmasked text message is §5.7's third example" {
-  let first = hexb("0103" + "48656c")
-  let last = hexb("8002" + "6c6f")
+  let first = @base16.decode_lossy("0103" + "48656c")
+  let last = @base16.decode_lossy("8002" + "6c6f")
   let head : Frame = { fin: false, opcode: Text, payload: b"Hel", }
   let tail : Frame = { fin: true, opcode: Continuation, payload: b"lo", }
-  assert_eq(hex(head.encode()), hex(first))
-  assert_eq(hex(tail.encode()), hex(last))
+  assert_eq(@base16.encode(head.encode()), @base16.encode(first))
+  assert_eq(@base16.encode(tail.encode()), @base16.encode(last))
   let reader = Reader::new()
   let one = reader.feed(head)
   assert_eq(one.message, None)
@@ -87,10 +50,10 @@ test "a fragmented unmasked text message is §5.7's third example" {
 
 ///|
 test "an unmasked ping and a masked pong are §5.7's fourth example" {
-  let ping = hexb("890548656c6c6f")
-  let pong = hexb("8a85" + "37fa213d" + "7f9f4d5158")
+  let ping = @base16.decode_lossy("890548656c6c6f")
+  let pong = @base16.decode_lossy("8a85" + "37fa213d" + "7f9f4d5158")
   let frame : Frame = { fin: true, opcode: Ping, payload: b"Hello", }
-  assert_eq(hex(frame.encode()), hex(ping))
+  assert_eq(@base16.encode(frame.encode()), @base16.encode(ping))
   // A ping owes a pong carrying the same body, which the reader answers with; masking
   // it is the client's, because only the client has the randomness for a key.
   let reader = Reader::new()
@@ -99,7 +62,10 @@ test "an unmasked ping and a masked pong are §5.7's fourth example" {
   guard step.reply is Some(reply) else { fail("a ping owes a pong") }
   assert_eq(reply.opcode, Pong)
   assert_eq(reply.payload, b"Hello")
-  assert_eq(hex(reply.encode(mask=hexb("37fa213d"))), hex(pong))
+  assert_eq(
+    @base16.encode(reply.encode(mask=@base16.decode_lossy("37fa213d"))),
+    @base16.encode(pong),
+  )
 }
 
 ///|
@@ -107,11 +73,11 @@ test "the two long length forms are §5.7's last two examples" {
   // 256 bytes takes the sixteen-bit form, 65536 the sixty-four-bit one.
   let small = (
     { fin: true, opcode: Binary, payload: Bytes::make(256, b'\x07'), } : Frame).encode()
-  assert_eq(hex(small[0:4].to_owned()), "827e0100")
+  assert_eq(@base16.encode(small[0:4].to_owned()), "827e0100")
   assert_eq(small.length(), 4 + 256)
   let large = (
     { fin: true, opcode: Binary, payload: Bytes::make(65536, b'\x07'), } : Frame).encode()
-  assert_eq(hex(large[0:10].to_owned()), "827f0000000000010000")
+  assert_eq(@base16.encode(large[0:10].to_owned()), "827f0000000000010000")
   assert_eq(large.length(), 10 + 65536)
   // And both read back.
   guard decode(small[:], client=false) is Some((got, _)) else {
@@ -141,7 +107,7 @@ test "the length takes the shortest form that fits" {
 
 ///|
 test "a short buffer answers None rather than a violation" {
-  let wire = hexb("8185" + "37fa213d" + "7f9f4d5158")
+  let wire = @base16.decode_lossy("8185" + "37fa213d" + "7f9f4d5158")
   for cut = 0; cut < wire.length(); cut = cut + 1 {
     assert_eq(decode(wire[0:cut]) is None, true)
   }
@@ -166,16 +132,19 @@ test "every opcode round-trips through its wire value, and the rest are reserved
 ///|
 test "the framing rules §5.2 and §5.5 lay down are enforced" {
   // An RSV bit with no extension negotiated.
-  assert_eq(refused(hexb("c18548656c6c6f")).status(), 1002)
+  assert_eq(refused(@base16.decode_lossy("c18548656c6c6f")).status(), 1002)
   // A reserved opcode.
-  assert_eq(refused(hexb("838000000000")).status(), 1002)
+  assert_eq(refused(@base16.decode_lossy("838000000000")).status(), 1002)
   // A client frame that is not masked.
-  assert_eq(refused(hexb("810548656c6c6f")).status(), 1002)
+  assert_eq(refused(@base16.decode_lossy("810548656c6c6f")).status(), 1002)
   // A control frame carrying more than 125 bytes: 126 announced in the short form is
   // the sixteen-bit escape, so the long form is what says it.
-  assert_eq(refused(hexb("89fe0080" + "00000000")).status(), 1002)
+  assert_eq(
+    refused(@base16.decode_lossy("89fe0080" + "00000000")).status(),
+    1002,
+  )
   // A fragmented control frame.
-  assert_eq(refused(hexb("098500000000")).status(), 1002)
+  assert_eq(refused(@base16.decode_lossy("098500000000")).status(), 1002)
 }
 
 ///|
@@ -199,13 +168,13 @@ fn refused(wire : Bytes, client? : Bool = true) -> Refused {
 ///|
 test "a length past the ceiling is refused before anything is allocated" {
   // The sixty-four-bit form announcing four gibibytes, with no payload behind it.
-  let header = hexb("827f" + "0000000100000000")
+  let header = @base16.decode_lossy("827f" + "0000000100000000")
   let e = refused(header, client=false)
   assert_eq(e.status(), 1009)
   assert_eq(e is Exceeded(_), true)
   // And the sign bit §5.2 reserves is refused too, rather than read as negative.
   assert_eq(
-    refused(hexb("827f" + "ffffffffffffffff"), client=false).status(),
+    refused(@base16.decode_lossy("827f" + "ffffffffffffffff"), client=false).status(),
     1009,
   )
 }
@@ -290,7 +259,7 @@ test "a text message that is not UTF-8 fails with 1007 (§8.1)" {
     let _ = reader.feed({
       fin: true,
       opcode: Text,
-      payload: hexb("48656c6cff"),
+      payload: @base16.decode_lossy("48656c6cff"),
     })
   } catch {
     Payload(_) => refused = true
@@ -302,16 +271,16 @@ test "a text message that is not UTF-8 fails with 1007 (§8.1)" {
   let step = other.feed({
     fin: true,
     opcode: Binary,
-    payload: hexb("48656c6cff"),
+    payload: @base16.decode_lossy("48656c6cff"),
   })
-  assert_eq(step.message, Some(Binary(hexb("48656c6cff"))))
+  assert_eq(step.message, Some(Binary(@base16.decode_lossy("48656c6cff"))))
 }
 
 ///|
 test "a close carries its status and reason, and is echoed (§5.5.1)" {
   let reader = Reader::new()
   let payload = close(1000, reason="bye")
-  assert_eq(hex(payload), "03e8627965")
+  assert_eq(@base16.encode(payload), "03e8627965")
   let step = reader.feed({ fin: true, opcode: Close, payload, })
   assert_eq(step.message, Some(Close(status=1000, reason=b"bye")))
   // The echo carries the status but not the reason.
@@ -361,8 +330,8 @@ test "only the statuses §7.4.1 allows may arrive on the wire" {
 test "a close reason that is not UTF-8 is refused" {
   let reader = Reader::new()
   let payload = Buffer()
-  payload.write_bytes(hexb("03e8"))
-  payload.write_bytes(hexb("ff"))
+  payload.write_bytes(@base16.decode_lossy("03e8"))
+  payload.write_bytes(@base16.decode_lossy("ff"))
   let mut refused = false
   try {
     let _ = reader.feed({
