@@ -141,14 +141,7 @@ pub fn decode(input : StringView) -> Array[Event] {
       continue
     }
     started = true
-    let colon = find(line, ':')
-    let name = if colon < 0 { line[:] } else { line[0:colon] }
-    // One optional space after the colon belongs to the format, not the value.
-    let mut from = colon + 1
-    if colon >= 0 && from < line.length() && line.at(from).to_int() == 0x20 {
-      from += 1
-    }
-    let value = if colon < 0 { "" } else { line[from:].to_owned() }
+    let (name, value) = split(line)
     match name {
       "" => {
         comment.write_string(value)
@@ -173,8 +166,80 @@ pub fn decode(input : StringView) -> Array[Event] {
 }
 
 ///|
+/// The events an `EventSource` dispatches from a stream: what a browser hands its
+/// listeners, where [`decode`] answers the frames as they were written.
+///
+/// Three rules differ, all from the specification's "Interpreting an event
+/// stream". A frame with no `data:` line dispatches nothing, so a comment or a
+/// lone `retry:` is not an event. The type is always set, `message` when the
+/// frame named none or named the empty string. And `id` and `retry` are the
+/// stream's, not the frame's: each holds the last value the stream set until a
+/// later line changes it, which is what a client sends back as `Last-Event-ID`
+/// and waits before reconnecting.
+///
+/// A trailing frame not yet closed by a blank line is left out, as in `decode`.
+pub fn events(input : StringView) -> Array[Event] {
+  let out : Array[Event] = []
+  let data = StringBuilder()
+  let mut kind = ""
+  let mut id : String? = None
+  let mut retry : Int? = None
+  let mut some = false
+  for line in lines(input) {
+    if line == "" {
+      if some {
+        let text = data.to_string()
+        out.push({
+          data: text[0:text.length() - 1].to_owned(),
+          kind: Some(if kind == "" { "message" } else { kind }),
+          id,
+          retry,
+          comment: None,
+        })
+      }
+      data.reset()
+      kind = ""
+      some = false
+      continue
+    }
+    let (name, value) = split(line)
+    match name {
+      "data" => {
+        data.write_string(value)
+        data.write_char('\n')
+        some = true
+      }
+      "event" => kind = value
+      "id" => if !value.contains_char('\u{00}') { id = Some(value) }
+      "retry" =>
+        if value.length() > 0 && all_digits(value[:]) {
+          retry = Some(@string.parse_int(value[:]) catch { _ => 0 })
+        }
+      _ => ()
+    }
+  }
+  out
+}
+
+///|
 /// The media type an event stream is served as.
 pub let media_type : String = "text/event-stream"
+
+///|
+/// A line as its field name and value. A line with no colon is a name with an
+/// empty value; a line starting with one is a comment, whose name is empty.
+fn split(line : String) -> (String, String) {
+  let colon = find(line, ':')
+  if colon < 0 {
+    return (line, "")
+  }
+  // One optional space after the colon belongs to the format, not the value.
+  let mut from = colon + 1
+  if from < line.length() && line.at(from).to_int() == 0x20 {
+    from += 1
+  }
+  (line[0:colon].to_owned(), line[from:].to_owned())
+}
 
 ///|
 /// The space after the colon is the optional one a reader strips again. It is

@@ -6,7 +6,8 @@ in, with nothing about sockets in them.
 ```moonbit
 // An event stream, one frame at a time.
 @sse.Event::new(data="{\"seq\":1}", kind="tick", id="1").encode()
-@sse.decode(received[:])
+@sse.decode(received[:])  // the frames as written
+@sse.events(received[:])  // what an EventSource dispatches from them
 
 // A posted form, whichever way the browser encoded it.
 let form = @mime.parse(body[:], content_type[:])
@@ -115,6 +116,11 @@ bytes of a frame and back; sending each frame as its own chunk is the server's
 job, and it matters — a stream delivered as one body is not a stream, because a
 client dispatches an event only when it reads that event's blank line.
 
+A client wants the second of `sse`'s two readings. `decode` answers each frame as
+written; `events` answers what a browser's `EventSource` hands its listeners —
+no event for a frame without data, the type defaulting to `message`, and the id
+and reconnection delay carried from frame to frame as the stream's own state.
+
 `mime` reads a body that has already arrived. Both of its encodings are bounded
 by a `Limits` the caller sets, because the body came from whoever sent it: a
 million empty parts and one enormous part are two ways of asking a server to
@@ -128,7 +134,9 @@ answering a request nobody sent.
 prints, which are the cases an implementation that trims too much or too little
 gets wrong; then every frame it writes is read back as the event that wrote it,
 the exact bytes of each frame are pinned, all three line endings are accepted,
-and the things a reader must ignore rather than refuse are ignored.
+and the things a reader must ignore rather than refuse are ignored. `events` is
+read against the same streams, and each rule by which it differs from `decode`
+is checked by a test that turns red when the rule is removed.
 
 `mime` is measured against a `multipart/form-data` body written the way a
 browser writes one — repeated names, a file with its own headers, the trailing

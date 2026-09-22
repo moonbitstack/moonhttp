@@ -169,3 +169,86 @@ test "an absent field is absent, not wrapped" {
   assert_eq(named.id, None)
   assert_eq(@sse.Event::new().data, "")
 }
+
+///|
+test "events: the specification's example stream, as a browser dispatches it" {
+  let events = @sse.events(stream[:])
+  // The comment-only frame dispatches nothing.
+  assert_eq(events.length(), 3)
+  assert_eq(
+    events[0],
+    @sse.Event::new(data="first event", kind="message", id="1"),
+  )
+  assert_eq(
+    events[1],
+    @sse.Event::new(data="second event", kind="message", id=""),
+  )
+  // The id is the stream's: the third frame names none and keeps the second's.
+  assert_eq(
+    events[2],
+    @sse.Event::new(data=" third event", kind="message", id=""),
+  )
+}
+
+///|
+test "events: a frame with no data line is not an event" {
+  let text =
+    #|data
+    #|
+    #|data
+    #|data
+    #|
+    #|retry: 500
+    #|
+    #|: keep-alive
+    #|
+    #|data:
+    #|
+  let events = @sse.events(text[:])
+  assert_eq(events.map(e => e.data), ["", "\n", ""])
+  // `decode` answers the two data-less frames as well.
+  assert_eq(@sse.decode(text[:]).length(), 5)
+}
+
+///|
+test "events: the id and the retry carry over, the type does not" {
+  let text =
+    #|event: add
+    #|id: 7
+    #|retry: 3000
+    #|data: 73857293
+    #|
+    #|data: 2153
+    #|
+    #|event:
+    #|id: 8
+    #|data: 113411
+    #|
+  let events = @sse.events(text[:])
+  assert_eq(events.length(), 3)
+  assert_eq(
+    events[0],
+    @sse.Event::new(data="73857293", kind="add", id="7", retry=3000),
+  )
+  assert_eq(
+    events[1],
+    @sse.Event::new(data="2153", kind="message", id="7", retry=3000),
+  )
+  // An empty type is no type.
+  assert_eq(
+    events[2],
+    @sse.Event::new(data="113411", kind="message", id="8", retry=3000),
+  )
+  // Frame by frame, only the first carries them.
+  let frames = @sse.decode(text[:])
+  assert_eq(frames[1].id, None)
+  assert_eq(frames[1].kind, None)
+}
+
+///|
+test "events: several data lines join, and the last partial frame waits" {
+  let text = "data: YHOO\ndata: +2\ndata: 10\n\ndata: not yet"
+  assert_eq(@sse.events(text[:]), [
+    @sse.Event::new(data="YHOO\n+2\n10", kind="message"),
+  ])
+}
