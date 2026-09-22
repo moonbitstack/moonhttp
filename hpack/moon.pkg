@@ -1,0 +1,12 @@
+// HTTP/2 header compression, RFC 7541:
+// https://www.rfc-editor.org/rfc/rfc7541
+//
+// The static table of Appendix A, the dynamic table and its eviction (§2.3.2, §4), the
+// integer and string literal codecs (§5), the six field representations (§6), and the
+// encoder and decoder that share one index space across both tables.
+//
+// Octets throughout, not strings: an HTTP/2 field name and value are byte sequences, and
+// gRPC's `-bin` metadata is binary.
+import {
+  "moonbitstack/moonhttp/huffman",
+}

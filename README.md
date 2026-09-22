@@ -25,6 +25,8 @@ Run `moon run examples/tour` for the whole surface in one go.
 | `media` | What a response says its body is, and under what name to save it | RFC 9110 §8.3, RFC 6266 |
 | `ws` | WebSocket framing: opcodes, masking, fragment reassembly, close statuses | RFC 6455 §5, §7.4.1 |
 | `upgrade` | The WebSocket opening handshake, both sides | RFC 6455 §4 |
+| `huffman` | The Huffman code both header compressions use | RFC 7541 Appendix B |
+| `hpack` | HTTP/2 header compression: both tables, both ends | RFC 7541 |
 
 ## One vocabulary
 
@@ -121,6 +123,13 @@ CRLF that belongs to the delimiter and not the content — and against the
 percent-encoding edges, including a stray `%` that is not an escape and the `+`
 that is a space in a form body and nowhere else.
 
+`hpack` is measured against all twelve worked examples of RFC 7541 Appendix C, in
+both directions: the encoder reproduces the published blocks octet for octet and
+the decoder reproduces the published header lists, with the three requests of a
+series sharing one dynamic table and the three responses evicting under a
+256-octet ceiling. `huffman` is measured against the coded strings those same
+blocks contain.
+
 `ws` is measured against all five frames RFC 6455 §5.7 prints: the unmasked and
 masked text messages, the fragmented one, the ping with its pong, and the two
 long length forms. `upgrade` is measured against the key and proof §1.3 prints,
@@ -128,7 +137,7 @@ which is the one computation in it.
 
 ## What is not here yet
 
-HTTP/1.1 message framing, HTTP/2 with HPACK, HTTP/3 with QPACK, content
+HTTP/1.1 message framing, HTTP/2 framing, HTTP/3 with QPACK, content
 negotiation, cookies, ranges, caching and conditional requests. They are planned
 in that order; the tracking list lives with the project.
 

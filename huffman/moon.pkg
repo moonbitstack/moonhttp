@@ -1,0 +1,9 @@
+// The Huffman code HTTP header compression uses, RFC 7541 Appendix B:
+// https://www.rfc-editor.org/rfc/rfc7541#appendix-B
+//
+// One canonical table of 256 symbols and an end-of-string marker, an encoder that pads
+// the last octet with the leading bits of that marker, and a prefix-trie decoder that
+// refuses the marker in the input and any padding that is not a short run of ones.
+//
+// A package of its own because RFC 9204 §5.2 gives QPACK the same code: HTTP/2's header
+// compression and HTTP/3's share it rather than each carrying a copy.
