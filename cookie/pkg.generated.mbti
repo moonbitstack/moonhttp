@@ -1,0 +1,50 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitstack/moonhttp/cookie"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitstack/moondate",
+}
+
+// Values
+pub fn decode(StringView) -> Array[(String, String)]
+
+pub fn encode(ArrayView[(String, String)]) -> String
+
+pub fn get(StringView, StringView) -> String?
+
+// Errors
+
+// Types and methods
+pub(all) struct Cookie {
+  name : String
+  value : String
+  expires : @moondate.Moment?
+  max_age : Int?
+  domain : String?
+  path : String?
+  secure : Bool
+  http_only : Bool
+  same_site : SameSite?
+} derive(Eq, @debug.Debug)
+pub fn Cookie::decode(StringView) -> Self?
+pub fn Cookie::encode(Self) -> String
+pub fn Cookie::equal(Self, Self) -> Bool
+pub fn Cookie::new(String, String, expires? : @moondate.Moment, max_age? : Int, domain? : String, path? : String?, secure? : Bool, http_only? : Bool, same_site? : SameSite?) -> Self
+pub fn Cookie::not_equal(Self, Self) -> Bool
+pub fn Cookie::to_repr(Self) -> @debug.Repr
+
+pub(all) enum SameSite {
+  Strict
+  Lax
+  Unrestricted
+} derive(Eq, @debug.Debug)
+pub fn SameSite::code(Self) -> String
+pub fn SameSite::equal(Self, Self) -> Bool
+pub fn SameSite::not_equal(Self, Self) -> Bool
+pub fn SameSite::of(StringView) -> Self?
+pub fn SameSite::to_repr(Self) -> @debug.Repr
+
+// Type aliases
+
+// Traits

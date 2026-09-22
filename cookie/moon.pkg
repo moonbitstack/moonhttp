@@ -1,0 +1,18 @@
+// Cookies, RFC 6265 (and the `SameSite` attribute of its 2022 revision):
+// https://www.rfc-editor.org/rfc/rfc6265
+//
+// Two headers, each read and written: `Cookie`, which is a list of name/value pairs
+// a client sends, and `Set-Cookie`, which is one cookie with its attributes a server
+// sends back. A server needs both directions and so does a client, which is why they
+// live together rather than in whichever library wrote one of them first.
+//
+// `Expires` is an HTTP-date the format itself defines, so it is a moment here, not a
+// string the caller has to spell.
+import {
+  "moonbitstack/moondate",
+  "moonbitlang/core/string",
+}
+
+import {
+  "moonbitstack/moondate",
+} for "test"

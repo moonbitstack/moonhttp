@@ -9,6 +9,10 @@ in, with nothing about sockets in them.
 @sse.decode(received[:])  // the frames as written
 @sse.events(received[:])  // what an EventSource dispatches from them
 
+// A cookie set on the way out and read on the way back.
+@cookie.Cookie::new("sid", token, http_only=true, secure=true).encode()
+@cookie.get(request_header[:], "sid"[:])
+
 // A posted form, whichever way the browser encoded it.
 let form = @mime.parse(body[:], content_type[:])
 form.field("name")
@@ -32,6 +36,7 @@ moon run examples/07-qpack-field    moon run examples/11-http3-conn
 | `sse` | Server-Sent Events, both directions | WHATWG HTML, the event-stream format |
 | `mime` | `multipart/form-data` and `application/x-www-form-urlencoded`, and percent-encoding both ways | RFC 7578, WHATWG URL §5.1, RFC 3986 |
 | `media` | What a response says its body is, and under what name to save it | RFC 9110 §8.3, RFC 6266 |
+| `cookie` | `Cookie` and `Set-Cookie`, each read and written | RFC 6265, and its revision for `SameSite` |
 | `ws` | WebSocket framing: opcodes, masking, fragment reassembly, close statuses | RFC 6455 §5, §7.4.1 |
 | `upgrade` | The WebSocket opening handshake, both sides | RFC 6455 §4 |
 | `huffman` | The Huffman code both header compressions use | RFC 7541 Appendix B |
@@ -167,8 +172,8 @@ which is the one computation in it.
 
 ## What is not here yet
 
-Content negotiation, cookies, ranges, caching and conditional requests. They are
-planned in that order; the tracking list lives with the project.
+Content negotiation, ranges, caching and conditional requests. They are planned in
+that order; the tracking list lives with the project.
 
 The variable-length integers are not here either. HTTP/3's frames are counted in
 QUIC's varint and both header compressions count in RFC 7541's prefixed integer;
