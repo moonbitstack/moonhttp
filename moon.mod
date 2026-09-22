@@ -1,6 +1,6 @@
 name = "moonbitstack/moonhttp"
 
-version = "0.3.0"
+version = "0.4.0"
 
 readme = "README.md"
 
@@ -18,7 +18,7 @@ keywords = [
   "moonbit",
 ]
 
-description = "moonhttp — the HTTP family for MoonBit: WebSocket framing, Server-Sent Events, and multipart and URL-encoded bodies, each a package of its own."
+description = "moonhttp — the HTTP family for MoonBit: WebSocket framing and its handshake, Server-Sent Events, multipart and URL-encoded bodies, and media types, each a package of its own. Bytes in, events out; no sockets."
 
 preferred_target = "wasm-gc"
 
