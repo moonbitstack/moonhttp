@@ -1,0 +1,99 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitstack/moonhttp/http1"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitstack/moonhttp/header",
+}
+
+// Values
+pub fn chunk(BytesView) -> Bytes
+
+pub fn chunked(BytesView) -> Chunk raise Refused
+
+pub let continue_ : Bytes
+
+pub fn last_chunk(trailers? : Array[@header.Header]) -> Bytes
+
+pub let limits : Limits
+
+pub fn phrase(Int) -> String
+
+pub fn request(BytesView, limits? : Limits) -> (Request, Int) raise Refused
+
+pub fn response(BytesView, verb? : String, limits? : Limits) -> (Response, Int) raise Refused
+
+// Errors
+pub(all) suberror Refused {
+  Partial
+  Malformed(String)
+  Exceeded(limit~ : Int, got~ : Int)
+  Smuggled(String)
+} derive(Eq, @debug.Debug)
+pub fn Refused::equal(Self, Self) -> Bool
+pub fn Refused::not_equal(Self, Self) -> Bool
+pub fn Refused::output(Self, &Logger) -> Unit
+pub fn Refused::status(Self) -> Int
+pub fn Refused::to_repr(Self) -> @debug.Repr
+pub fn Refused::to_string(Self) -> String
+pub impl Show for Refused
+
+// Types and methods
+pub(all) enum Body {
+  Empty
+  Sized(Int)
+  Chunked
+  Closed
+} derive(Eq, @debug.Debug)
+pub fn Body::equal(Self, Self) -> Bool
+pub fn Body::not_equal(Self, Self) -> Bool
+pub fn Body::to_repr(Self) -> @debug.Repr
+
+pub(all) enum Chunk {
+  Piece(Bytes, Int)
+  Done(Array[@header.Header], Int)
+} derive(Eq)
+pub fn Chunk::equal(Self, Self) -> Bool
+pub fn Chunk::not_equal(Self, Self) -> Bool
+
+pub(all) struct Limits {
+  head : Int
+  fields : Int
+} derive(Eq, @debug.Debug)
+pub fn Limits::equal(Self, Self) -> Bool
+pub fn Limits::new(head? : Int, fields? : Int) -> Self
+pub fn Limits::not_equal(Self, Self) -> Bool
+pub fn Limits::to_repr(Self) -> @debug.Repr
+
+pub(all) struct Request {
+  verb : String
+  target : String
+  version : String
+  fields : Array[@header.Header]
+  body : Body
+  expects : Bool
+  keep_alive : Bool
+} derive(Eq)
+pub fn Request::encode(Self) -> Bytes
+pub fn Request::equal(Self, Self) -> Bool
+pub fn Request::field(Self, String) -> Bytes?
+pub fn Request::not_equal(Self, Self) -> Bool
+pub fn Request::of(String, String, fields? : Array[@header.Header], version? : String, body? : Body, host? : String, keep_alive? : Bool) -> Self
+
+pub(all) struct Response {
+  version : String
+  status : Int
+  reason : String
+  fields : Array[@header.Header]
+  body : Body
+  keep_alive : Bool
+} derive(Eq)
+pub fn Response::encode(Self) -> Bytes
+pub fn Response::equal(Self, Self) -> Bool
+pub fn Response::field(Self, String) -> Bytes?
+pub fn Response::not_equal(Self, Self) -> Bool
+pub fn Response::of(Int, fields? : Array[@header.Header], reason? : String, version? : String, body? : Body, keep_alive? : Bool) -> Self
+
+// Type aliases
+
+// Traits

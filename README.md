@@ -37,6 +37,8 @@ moon run examples/07-qpack-field    moon run examples/11-http3-conn
 | `header` | A header field: a name and a value, as octets | RFC 9110 §5 |
 | `hpack` | HTTP/2 header compression: both tables, both ends | RFC 7541 |
 | `qpack` | HTTP/3 header compression: both tables, the field lines, both instruction streams | RFC 9204 |
+| `http1` | HTTP/1.1 messages: the request and status lines, field lines, body framing and the chunked coding | RFC 9112 |
+| `http2` | HTTP/2 framing: the nine-octet header, all ten frame types, the connection preface | RFC 9113 |
 | `http3` | HTTP/3 frames, their placement rules, settings, stream types and connection | RFC 9114 |
 
 ## One vocabulary
@@ -157,9 +159,8 @@ which is the one computation in it.
 
 ## What is not here yet
 
-HTTP/1.1 message framing, HTTP/2 framing, content negotiation, cookies, ranges,
-caching and conditional requests. They are planned in that order; the tracking
-list lives with the project.
+Content negotiation, cookies, ranges, caching and conditional requests. They are
+planned in that order; the tracking list lives with the project.
 
 The variable-length integers are not here either. HTTP/3's frames are counted in
 QUIC's varint and both header compressions count in RFC 7541's prefixed integer;

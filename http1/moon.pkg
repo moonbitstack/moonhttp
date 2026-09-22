@@ -1,0 +1,12 @@
+// HTTP/1.1 message syntax, RFC 9112: https://www.rfc-editor.org/rfc/rfc9112
+//
+// The request and status lines of §3 and §4, the field lines of §5, the body
+// framing of §6 and the chunked transfer coding of §7 — read from a buffer and
+// written to one, with no socket anywhere.
+//
+// A head that has not all arrived raises `Partial` rather than blocking, so the
+// caller reads more and asks again. That is what lets the same codec drive a
+// server on a socket, a client on a TLS stream, and a test on a byte array.
+import {
+  "moonbitstack/moonhttp/header",
+}

@@ -1,0 +1,133 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitstack/moonhttp/http2"
+
+// Values
+pub fn decode(Bytes, offset? : Int) -> (Frame, Int) raise Refused
+
+pub let error_cancel : Int
+
+pub let error_compression_error : Int
+
+pub let error_connect_error : Int
+
+pub let error_enhance_your_calm : Int
+
+pub let error_flow_control_error : Int
+
+pub let error_frame_size_error : Int
+
+pub let error_http_1_1_required : Int
+
+pub let error_inadequate_security : Int
+
+pub let error_internal_error : Int
+
+pub let error_no_error : Int
+
+pub let error_protocol_error : Int
+
+pub let error_refused_stream : Int
+
+pub let error_settings_timeout : Int
+
+pub let error_stream_closed : Int
+
+pub let flag_ack : Int
+
+pub let flag_end_headers : Int
+
+pub let flag_end_stream : Int
+
+pub let flag_padded : Int
+
+pub let flag_priority : Int
+
+pub let frame_continuation : Int
+
+pub let frame_data : Int
+
+pub let frame_goaway : Int
+
+pub let frame_headers : Int
+
+pub let frame_ping : Int
+
+pub let frame_priority : Int
+
+pub let frame_push_promise : Int
+
+pub let frame_rst_stream : Int
+
+pub let frame_settings : Int
+
+pub let frame_window_update : Int
+
+pub fn has_preface(Bytes) -> Bool
+
+pub let preface : Bytes
+
+pub let settings_enable_push : Int
+
+pub let settings_header_table_size : Int
+
+pub let settings_initial_window_size : Int
+
+pub let settings_max_concurrent_streams : Int
+
+pub let settings_max_frame_size : Int
+
+pub let settings_max_header_list_size : Int
+
+// Errors
+pub(all) suberror Refused {
+  Incomplete
+  FrameSizeError(String)
+  ProtocolError(String)
+} derive(Eq)
+pub fn Refused::equal(Self, Self) -> Bool
+pub fn Refused::not_equal(Self, Self) -> Bool
+pub fn Refused::output(Self, &Logger) -> Unit
+pub fn Refused::to_string(Self) -> String
+pub impl Show for Refused
+
+// Types and methods
+pub(all) enum Frame {
+  Data(stream_id~ : Int, data~ : Bytes, end_stream~ : Bool, padding~ : Int)
+  Headers(stream_id~ : Int, fragment~ : Bytes, end_stream~ : Bool, end_headers~ : Bool, priority~ : Priority?, padding~ : Int)
+  Priority(stream_id~ : Int, priority~ : Priority)
+  RstStream(stream_id~ : Int, error_code~ : Int)
+  Settings(params~ : Array[(Int, Int)], ack~ : Bool)
+  PushPromise(stream_id~ : Int, promised_id~ : Int, fragment~ : Bytes, end_headers~ : Bool, padding~ : Int)
+  Ping(payload~ : Bytes, ack~ : Bool)
+  GoAway(last_stream_id~ : Int, error_code~ : Int, debug~ : Bytes)
+  WindowUpdate(stream_id~ : Int, increment~ : Int)
+  Continuation(stream_id~ : Int, fragment~ : Bytes, end_headers~ : Bool)
+  Unknown(ftype~ : Int, flags~ : Int, stream_id~ : Int, payload~ : Bytes)
+} derive(Eq)
+pub fn Frame::code(Self) -> Int
+pub fn Frame::encode(Self) -> Bytes
+pub fn Frame::equal(Self, Self) -> Bool
+pub fn Frame::not_equal(Self, Self) -> Bool
+
+pub(all) struct FrameHeader {
+  length : Int
+  ftype : Int
+  flags : Int
+  stream_id : Int
+} derive(Eq)
+pub fn FrameHeader::decode(Bytes, offset? : Int) -> Self raise Refused
+pub fn FrameHeader::encode(Self) -> Bytes
+pub fn FrameHeader::equal(Self, Self) -> Bool
+pub fn FrameHeader::not_equal(Self, Self) -> Bool
+
+pub(all) struct Priority {
+  exclusive : Bool
+  stream_dependency : Int
+  weight : Int
+} derive(Eq)
+pub fn Priority::equal(Self, Self) -> Bool
+pub fn Priority::not_equal(Self, Self) -> Bool
+
+// Type aliases
+
+// Traits

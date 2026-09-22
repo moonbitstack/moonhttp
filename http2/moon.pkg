@@ -1,0 +1,12 @@
+// HTTP/2 framing, RFC 9113 §4 and §6: https://www.rfc-editor.org/rfc/rfc9113
+//
+// The nine-octet header and all ten frame types, with padding stripped on the way
+// in and re-emitted on the way out, and the connection preface of §3.4. An
+// unrecognised frame is kept verbatim (§4.1) so a reader can forward or ignore it
+// rather than fail.
+//
+// The header compression these frames carry is `moonhttp/hpack`; this package is
+// the envelope and knows nothing about what is inside it.
+import {
+  "moonbitstack/moonvar/fixed",
+}
