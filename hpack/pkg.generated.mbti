@@ -3,10 +3,11 @@ package "moonbitstack/moonhttp/hpack"
 
 import {
   "moonbitlang/core/debug",
+  "moonbitstack/moonhttp/header",
 }
 
 // Values
-pub fn entry(Int) -> Header?
+pub fn entry(Int) -> @header.Header?
 
 pub fn integer(Int, Int) -> Bytes
 
@@ -22,7 +23,7 @@ pub fn read_string(BytesView, Int) -> (Bytes, Int) raise Refused
 
 pub fn size_update(Int) -> Bytes
 
-pub let static_table : Array[Header]
+pub let static_table : Array[@header.Header]
 
 pub fn string(BytesView, huffman? : Bool) -> Bytes
 
@@ -44,23 +45,15 @@ pub(all) struct Decoder {
   table : Table
   limit : Int
 }
-pub fn Decoder::decode(Self, BytesView) -> Array[Header] raise Refused
+pub fn Decoder::decode(Self, BytesView) -> Array[@header.Header] raise Refused
 pub fn Decoder::new(limit? : Int) -> Self
 
 pub(all) struct Encoder {
   table : Table
   mut huffman : Bool
 }
-pub fn Encoder::encode(Self, ArrayView[Header]) -> Bytes
+pub fn Encoder::encode(Self, ArrayView[@header.Header]) -> Bytes
 pub fn Encoder::new(limit? : Int, huffman? : Bool) -> Self
-
-pub(all) struct Header {
-  name : Bytes
-  value : Bytes
-} derive(Eq, @debug.Debug)
-pub fn Header::equal(Self, Self) -> Bool
-pub fn Header::not_equal(Self, Self) -> Bool
-pub fn Header::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Table {
   mut entries : Array[(Bytes, Bytes)]
@@ -69,7 +62,7 @@ pub(all) struct Table {
 }
 pub fn Table::add(Self, Bytes, Bytes) -> Unit
 pub fn Table::count(Self) -> Int
-pub fn Table::get(Self, Int) -> Header?
+pub fn Table::get(Self, Int) -> @header.Header?
 pub fn Table::limit(Self) -> Int
 pub fn Table::new(limit? : Int) -> Self
 pub fn Table::resize(Self, Int) -> Unit

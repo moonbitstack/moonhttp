@@ -1,0 +1,13 @@
+// HTTP/3 header compression, RFC 9204:
+// https://www.rfc-editor.org/rfc/rfc9204
+//
+// The static table of Appendix A, the dynamic table with its absolute and relative
+// indexing (§3.2), the field section prefix (§4.5.1), the field line representations
+// (§4.5), and the instructions the two unidirectional streams carry (§4.3, §4.4).
+//
+// The Huffman code is RFC 7541's, which §5.2 adopts unchanged, so it comes from
+// `huffman` rather than from a second copy here.
+import {
+  "moonbitstack/moonhttp/huffman",
+  "moonbitstack/moonhttp/header",
+}

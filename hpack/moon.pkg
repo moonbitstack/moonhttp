@@ -9,4 +9,5 @@
 // gRPC's `-bin` metadata is binary.
 import {
   "moonbitstack/moonhttp/huffman",
+  "moonbitstack/moonhttp/header",
 }

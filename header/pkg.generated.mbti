@@ -1,0 +1,26 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitstack/moonhttp/header"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub(all) struct Header {
+  name : Bytes
+  value : Bytes
+} derive(Eq, @debug.Debug)
+pub fn Header::ascii(Self) -> (String, String)
+pub fn Header::cost(Self, overhead? : Int) -> Int
+pub fn Header::equal(Self, Self) -> Bool
+pub fn Header::not_equal(Self, Self) -> Bool
+pub fn Header::of(String, String) -> Self
+pub fn Header::to_repr(Self) -> @debug.Repr
+
+// Type aliases
+
+// Traits

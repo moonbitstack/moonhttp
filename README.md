@@ -26,7 +26,9 @@ Run `moon run examples/tour` for the whole surface in one go.
 | `ws` | WebSocket framing: opcodes, masking, fragment reassembly, close statuses | RFC 6455 §5, §7.4.1 |
 | `upgrade` | The WebSocket opening handshake, both sides | RFC 6455 §4 |
 | `huffman` | The Huffman code both header compressions use | RFC 7541 Appendix B |
+| `header` | A header field: a name and a value, as octets | RFC 9110 §5 |
 | `hpack` | HTTP/2 header compression: both tables, both ends | RFC 7541 |
+| `qpack` | HTTP/3 header compression: both tables, the field lines, both instruction streams | RFC 9204 |
 
 ## One vocabulary
 
@@ -130,6 +132,10 @@ series sharing one dynamic table and the three responses evicting under a
 256-octet ceiling. `huffman` is measured against the coded strings those same
 blocks contain.
 
+`qpack` is measured against the instruction vectors of RFC 9204 Appendix B and,
+section by section, against every representation §4.5 defines — indexed and
+post-base, relative and absolute, with a name reference and with a literal name.
+
 `ws` is measured against all five frames RFC 6455 §5.7 prints: the unmasked and
 masked text messages, the fragmented one, the ping with its pong, and the two
 long length forms. `upgrade` is measured against the key and proof §1.3 prints,
@@ -137,9 +143,9 @@ which is the one computation in it.
 
 ## What is not here yet
 
-HTTP/1.1 message framing, HTTP/2 framing, HTTP/3 with QPACK, content
-negotiation, cookies, ranges, caching and conditional requests. They are planned
-in that order; the tracking list lives with the project.
+HTTP/1.1 message framing, HTTP/2 framing, HTTP/3 framing, content negotiation,
+cookies, ranges, caching and conditional requests. They are planned in that
+order; the tracking list lives with the project.
 
 TLS is `moontls` and QUIC is `moonquic`, so that parsing an HTTP message does
 not mean carrying a handshake. Compression is `moonzip`.

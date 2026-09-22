@@ -111,7 +111,7 @@ let ascii_table : Array[(String, String)] = [
 ///|
 /// Look up an HPACK static-table entry by its 1-based RFC index (`1..=61`),
 /// returning `(name, value)` or `None` when the index is out of range.
-pub fn entry(index : Int) -> Header? {
+pub fn entry(index : Int) -> @header.Header? {
   if index < 1 || index > static_table.length() {
     None
   } else {
@@ -246,14 +246,6 @@ pub fn read_literal(
 // address spaces. Byte-oriented throughout so binary metadata (`-bin`) survives.
 
 ///|
-/// A decoded header field: `name` and `value` as raw octet strings (HTTP/2 header
-/// names and values are byte sequences, and gRPC `-bin` metadata is binary).
-pub(all) struct Header {
-  name : Bytes
-  value : Bytes
-} derive(Eq, Debug)
-
-///|
 /// ASCII/latin-1 `String` → `Bytes`, one octet per code unit. Used only for the
 /// static table, whose entries are all ASCII (RFC 7541 Appendix A).
 fn octets(s : String) -> Bytes {
@@ -267,8 +259,8 @@ fn octets(s : String) -> Bytes {
 ///|
 /// The static table as `(name, value)` octet pairs, in RFC index order (index 1
 /// at position 0). Derived once from `static_table`.
-pub let static_table : Array[Header] = {
-  let out : Array[Header] = []
+pub let static_table : Array[@header.Header] = {
+  let out : Array[@header.Header] = []
   for e in ascii_table {
     out.push({ name: octets(e.0), value: octets(e.1), })
   }
@@ -360,7 +352,7 @@ pub fn Table::add(self : Table, name : Bytes, value : Bytes) -> Unit {
 /// The field an HPACK index names, across the static and dynamic tables together
 /// (RFC 7541 §2.3.3): one through sixty-one are the static table, and everything above
 /// is this table, newest first. `None` when the index names nothing.
-pub fn Table::get(self : Table, index : Int) -> Header? {
+pub fn Table::get(self : Table, index : Int) -> @header.Header? {
   lookup(self, index)
 }
 
@@ -386,7 +378,7 @@ pub fn Table::size(self : Table) -> Int {
 /// Resolve an HPACK index against the combined static + dynamic address space
 /// (RFC 7541 §2.3.3): `1..=61` index the static table; `62..` index the dynamic
 /// table newest-first. Returns `None` when out of range.
-fn lookup(dt : Table, index : Int) -> Header? {
+fn lookup(dt : Table, index : Int) -> @header.Header? {
   let fixed = static_table.length()
   if index >= 1 && index <= fixed {
     Some(static_table[index - 1])
@@ -455,14 +447,14 @@ fn Decoder::read_name(
 pub fn Decoder::decode(
   self : Decoder,
   block : BytesView,
-) -> Array[Header] raise Refused {
-  let out : Array[Header] = []
+) -> Array[@header.Header] raise Refused {
+  let out : Array[@header.Header] = []
   let mut off = 0
   let n = block.length()
   while off < n {
     let b = block[off].to_int()
     if (b & 0x80) != 0 {
-      // §6.1 Indexed Header Field.
+      // §6.1 Indexed @header.Header Field.
       let (index, consumed) = read_integer(block, off, 7)
       off = off + consumed
       if index == 0 {
@@ -473,7 +465,7 @@ pub fn Decoder::decode(
         None => raise Index(got=index)
       }
     } else if (b & 0x40) != 0 {
-      // §6.2.1 Literal Header Field with Incremental Indexing.
+      // §6.2.1 Literal @header.Header Field with Incremental Indexing.
       let (index, consumed) = read_integer(block, off, 6)
       off = off + consumed
       let (name, name_consumed) = self.read_name(block, index, off)
@@ -574,7 +566,10 @@ fn prefixed(buf : Buffer, value : Int, prefix : Int, flag : Int) -> Unit {
 /// where possible and literal-with-incremental-indexing otherwise (mutating the
 /// dynamic table to mirror what the peer decoder will build). The output decodes
 /// back to the same header list via `Decoder`.
-pub fn Encoder::encode(self : Encoder, headers : ArrayView[Header]) -> Bytes {
+pub fn Encoder::encode(
+  self : Encoder,
+  headers : ArrayView[@header.Header],
+) -> Bytes {
   let buf = Buffer()
   for h in headers {
     let (idx, exact) = self.find(h.name, h.value)
@@ -593,9 +588,3 @@ pub fn Encoder::encode(self : Encoder, headers : ArrayView[Header]) -> Bytes {
   }
   buf.to_bytes()
 }
-
-///|
-pub extend Header with Debug::{to_repr}
-
-///|
-pub extend Header with Eq::{not_equal, equal}

@@ -1,0 +1,6 @@
+// A header field, RFC 9110 §5:
+// https://www.rfc-editor.org/rfc/rfc9110#section-5
+//
+// A name and a value as octets, and nothing else. Both header compressions produce and
+// consume these, so HTTP/2 and HTTP/3 speak of a header list in one type — a package of
+// its own so neither compression has to be linked to name the other's output.

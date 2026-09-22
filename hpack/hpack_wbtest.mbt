@@ -45,8 +45,8 @@ fn hex(b : Bytes) -> String {
 
 ///|
 /// A header list from ASCII pairs, which is how the appendix writes them.
-fn list(pairs : ArrayView[(String, String)]) -> Array[Header] {
-  let out : Array[Header] = []
+fn list(pairs : ArrayView[(String, String)]) -> Array[@header.Header] {
+  let out : Array[@header.Header] = []
   for p in pairs {
     out.push({ name: ascii(p.0), value: ascii(p.1), })
   }
