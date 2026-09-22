@@ -1,6 +1,6 @@
 name = "moonbitstack/moonhttp"
 
-version = "0.5.0"
+version = "0.6.0"
 
 readme = "README.md"
 
@@ -10,15 +10,15 @@ license = "Apache-2.0"
 
 keywords = [
   "http",
+  "http3",
   "websocket",
-  "sse",
-  "multipart",
-  "mime",
+  "hpack",
+  "qpack",
   "protocol",
   "moonbit",
 ]
 
-description = "moonhttp — the HTTP family for MoonBit: WebSocket framing and its handshake, Server-Sent Events, multipart and URL-encoded bodies, and media types, each a package of its own. Bytes in, events out; no sockets."
+description = "moonhttp — the HTTP family for MoonBit: HTTP/3 framing, HPACK and QPACK header compression, WebSocket framing and its handshake, Server-Sent Events, multipart bodies and media types, each a package of its own. Bytes in, events out; no sockets."
 
 preferred_target = "wasm-gc"
 

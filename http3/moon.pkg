@@ -1,0 +1,16 @@
+// HTTP/3, RFC 9114:
+// https://www.rfc-editor.org/rfc/rfc9114
+//
+// The frame layer of §7.1 and §7.2 with the placement rules that say which frame may
+// arrive on which stream, the settings of §7.2.4, the unidirectional stream types of
+// §6.2, a request and a response as field sections, and the connection state an endpoint
+// keeps while the two control streams find each other.
+//
+// Header compression is `qpack` and the frame lengths are written in the variable-length
+// integer of `varint`. The QUIC transport underneath is `moonquic`, which this package
+// never names: a frame layer reads bytes, and where they came from is the caller's.
+import {
+  "moonbitstack/moonhttp/varint",
+  "moonbitstack/moonhttp/qpack",
+  "moonbitstack/moonhttp/header",
+}

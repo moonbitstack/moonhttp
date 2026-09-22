@@ -29,6 +29,8 @@ Run `moon run examples/tour` for the whole surface in one go.
 | `header` | A header field: a name and a value, as octets | RFC 9110 §5 |
 | `hpack` | HTTP/2 header compression: both tables, both ends | RFC 7541 |
 | `qpack` | HTTP/3 header compression: both tables, the field lines, both instruction streams | RFC 9204 |
+| `varint` | The variable-length integer HTTP/3 writes its frames in | RFC 9000 §16 |
+| `http3` | HTTP/3 frames, their placement rules, settings, stream types and connection | RFC 9114 |
 
 ## One vocabulary
 
@@ -132,6 +134,11 @@ series sharing one dynamic table and the three responses evicting under a
 256-octet ceiling. `huffman` is measured against the coded strings those same
 blocks contain.
 
+`http3` is measured section by section: every frame type round-trips, every
+placement rule of §7.2 is checked on each of the three stream kinds, the
+settings and the unidirectional stream types round-trip, and a request stream
+decodes into its pseudo-headers, its fields and its body.
+
 `qpack` is measured against the instruction vectors of RFC 9204 Appendix B and,
 section by section, against every representation §4.5 defines — indexed and
 post-base, relative and absolute, with a name reference and with a literal name.
@@ -143,9 +150,14 @@ which is the one computation in it.
 
 ## What is not here yet
 
-HTTP/1.1 message framing, HTTP/2 framing, HTTP/3 framing, content negotiation,
-cookies, ranges, caching and conditional requests. They are planned in that
-order; the tracking list lives with the project.
+HTTP/1.1 message framing, HTTP/2 framing, content negotiation, cookies, ranges,
+caching and conditional requests. They are planned in that order; the tracking
+list lives with the project.
+
+`varint` is a second copy of what `moonquic/varint` holds, on purpose: depending
+on that module would put a whole QUIC stack in the download of anyone who wanted
+only an event stream, and mooncakes downloads by module. The encoding is four
+lines of arithmetic fixed by an RFC that will not change.
 
 TLS is `moontls` and QUIC is `moonquic`, so that parsing an HTTP message does
 not mean carrying a handshake. Compression is `moonzip`.
