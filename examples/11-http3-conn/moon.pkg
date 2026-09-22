@@ -1,0 +1,5 @@
+import {
+  "moonbitstack/moonhttp/http3",
+}
+
+pkgtype(kind: "executable")

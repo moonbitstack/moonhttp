@@ -14,7 +14,15 @@ form.field("name")
 form.file("avatar")
 ```
 
-Run `moon run examples/tour` for the whole surface in one go.
+Run `moon run examples/tour` for the whole surface in one go. The eleven worked
+examples run a package each:
+
+```
+moon run examples/04-ws-handshake   moon run examples/08-qpack-dynamic
+moon run examples/05-ws-frame       moon run examples/09-http3-frames
+moon run examples/06-qpack-primitives   moon run examples/10-http3-message
+moon run examples/07-qpack-field    moon run examples/11-http3-conn
+```
 
 ## Packages
 
