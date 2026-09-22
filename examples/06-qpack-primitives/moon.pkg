@@ -1,6 +1,7 @@
 import {
   "moonbitstack/moonhttp/header",
   "moonbitstack/moonhttp/qpack",
+  "moonbitstack/moonvar/prefix",
 }
 
 pkgtype(kind: "executable")

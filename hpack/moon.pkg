@@ -8,6 +8,7 @@
 // Octets throughout, not strings: an HTTP/2 field name and value are byte sequences, and
 // gRPC's `-bin` metadata is binary.
 import {
+  "moonbitstack/moonvar/prefix",
   "moonbitstack/moonhttp/huffman",
   "moonbitstack/moonhttp/header",
 }

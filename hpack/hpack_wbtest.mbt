@@ -284,50 +284,27 @@ test "the three responses of RFC 7541 C.6, with Huffman and eviction" {
 }
 
 ///|
-test "the three integers RFC 7541 C.1 works out" {
-  // C.1.1: ten fits the five-bit prefix.
-  assert_eq(hex(integer(10, 5)), "0a")
-  // C.1.2: 1337 does not, so the prefix is all ones and the rest continues.
-  assert_eq(hex(integer(1337, 5)), "1f9a0a")
-  // C.1.3: forty-two at an octet boundary, which is an eight-bit prefix.
-  assert_eq(hex(integer(42, 8)), "2a")
-  // And each reads back, ignoring whatever flag bits sit above the prefix.
-  assert_eq(read_integer(hexb("ea")[:], 0, 5), (10, 1))
-  assert_eq(read_integer(hexb("ff9a0a")[:], 0, 5), (1337, 3))
-  assert_eq(read_integer(hexb("2a")[:], 0, 8), (42, 1))
-}
-
-///|
-test "an integer that runs off the end, or past what an Int holds, is refused" {
-  // The prefix says the value continues but nothing follows.
-  assert_eq(refused_integer(hexb("1f")), true)
-  assert_eq(refused_integer(hexb("1f80")), true)
-  // Ten continuation octets is more than a thirty-one bit value can need.
-  assert_eq(refused_integer(hexb("1fffffffffffffffffff7f")), true)
-  // An empty buffer has no prefix at all.
-  assert_eq(refused_integer(b""), true)
-}
-
-///|
-fn refused_integer(b : Bytes) -> Bool {
-  let mut out = false
+test "a prefix integer that runs off the end is this package's own fault" {
+  // The arithmetic itself is `moonvar`'s and tested there; what belongs here is that its
+  // refusal arrives as a malformed block rather than as a second error type.
+  let mut refused = false
   try {
-    let _ = read_integer(b[:], 0, 5)
+    let _ = reach(hexb("1f80")[:], 0, 5)
   } catch {
-    Malformed(_) => out = true
+    Malformed(_) => refused = true
     _ => ()
   }
-  out
+  assert_eq(refused, true)
 }
 
 ///|
 test "a string literal reads back, Huffman-coded or not" {
   let plain = string(b"www.example.com"[:], huffman=false)
   assert_eq(hex(plain), "0f7777772e6578616d706c652e636f6d")
-  assert_eq(is_huffman(plain[:], 0), false)
+  assert_eq(@prefix.flagged(plain[:]), false)
   let coded = string(b"www.example.com"[:])
   assert_eq(hex(coded), "8cf1e3c2e5f23a6ba0ab90f4ff")
-  assert_eq(is_huffman(coded[:], 0), true)
+  assert_eq(@prefix.flagged(coded[:]), true)
   // Both read back to the same octets, the coded one through the Huffman decoder.
   assert_eq(read_string(plain[:], 0), (b"www.example.com", plain.length()))
   assert_eq(read_string(coded[:], 0), (b"www.example.com", coded.length()))

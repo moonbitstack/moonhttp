@@ -10,7 +10,7 @@
 // integer of `varint`. The QUIC transport underneath is `moonquic`, which this package
 // never names: a frame layer reads bytes, and where they came from is the caller's.
 import {
-  "moonbitstack/moonhttp/varint",
+  "moonbitstack/moonvar/quic",
   "moonbitstack/moonhttp/qpack",
   "moonbitstack/moonhttp/header",
 }

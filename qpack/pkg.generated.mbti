@@ -25,13 +25,9 @@ pub fn find_name(Bytes) -> Int?
 
 pub fn insert_count(Int, Int, Int) -> Int raise Refused
 
-pub fn integer(Int, Int, Int) -> Bytes
-
 pub fn max_entries(Int) -> Int
 
 pub fn prefix(Int, Int, Int) -> Bytes
-
-pub fn read_integer(BytesView, Int) -> (Int, Int)?
 
 pub fn read_prefix(BytesView, Int, Int) -> (Int, Int, Int)? raise Refused
 
@@ -60,7 +56,7 @@ pub(all) enum Ack {
   Cancel(stream_id~ : Int)
   Increment(increment~ : Int)
 } derive(Eq, @debug.Debug)
-pub fn Ack::decode(BytesView) -> (Self, Int)?
+pub fn Ack::decode(BytesView) -> (Self, Int)? raise Refused
 pub fn Ack::encode(Self) -> Bytes
 pub fn Ack::equal(Self, Self) -> Bool
 pub fn Ack::not_equal(Self, Self) -> Bool

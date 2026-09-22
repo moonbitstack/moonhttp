@@ -8,6 +8,7 @@
 // The Huffman code is RFC 7541's, which §5.2 adopts unchanged, so it comes from
 // `huffman` rather than from a second copy here.
 import {
+  "moonbitstack/moonvar/prefix",
   "moonbitstack/moonhttp/huffman",
   "moonbitstack/moonhttp/header",
 }

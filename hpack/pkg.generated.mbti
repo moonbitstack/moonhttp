@@ -9,13 +9,7 @@ import {
 // Values
 pub fn entry(Int) -> @header.Header?
 
-pub fn integer(Int, Int) -> Bytes
-
-pub fn is_huffman(BytesView, Int) -> Bool
-
 pub let limit : Int
-
-pub fn read_integer(BytesView, Int, Int) -> (Int, Int) raise Refused
 
 pub fn read_literal(BytesView, Int) -> (Bytes, Int) raise Refused
 

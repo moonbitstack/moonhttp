@@ -89,17 +89,17 @@ pub fn Frame::encode(frame : Frame) -> Bytes {
   let (frame_type, payload) = match frame {
     Data(body) => (data, body)
     Headers(block) => (headers, block)
-    CancelPush(id) => (cancel_push, @varint.encode(id))
+    CancelPush(id) => (cancel_push, @quic.encode(id))
     Settings(pairs) => (settings_type, settings(pairs))
     PushPromise(id, block) => (push_promise, prefixed(id, block))
-    GoAway(id) => (goaway, @varint.encode(id))
-    MaxPushId(id) => (max_push_id, @varint.encode(id))
+    GoAway(id) => (goaway, @quic.encode(id))
+    MaxPushId(id) => (max_push_id, @quic.encode(id))
     Reserved(t, body) => (t, body)
     ReservedHttp2(t) => (t, b"")
   }
   let buf = Buffer()
-  buf.write_bytes(@varint.encode(frame_type))
-  buf.write_bytes(@varint.encode(payload.length().to_uint64()))
+  buf.write_bytes(@quic.encode(frame_type))
+  buf.write_bytes(@quic.encode(payload.length().to_uint64()))
   buf.write_bytes(payload)
   buf.to_bytes()
 }
@@ -108,7 +108,7 @@ pub fn Frame::encode(frame : Frame) -> Bytes {
 /// A varint-prefixed id followed by an opaque block (a PUSH_PROMISE payload).
 fn prefixed(id : UInt64, block : Bytes) -> Bytes {
   let buf = Buffer()
-  buf.write_bytes(@varint.encode(id))
+  buf.write_bytes(@quic.encode(id))
   buf.write_bytes(block)
   buf.to_bytes()
 }
@@ -119,8 +119,8 @@ fn prefixed(id : UInt64, block : Bytes) -> Bytes {
 pub fn settings(pairs : Array[(UInt64, UInt64)]) -> Bytes {
   let buf = Buffer()
   for pair in pairs {
-    buf.write_bytes(@varint.encode(pair.0))
-    buf.write_bytes(@varint.encode(pair.1))
+    buf.write_bytes(@quic.encode(pair.0))
+    buf.write_bytes(@quic.encode(pair.1))
   }
   buf.to_bytes()
 }
@@ -131,12 +131,12 @@ pub fn settings(pairs : Array[(UInt64, UInt64)]) -> Bytes {
 /// the length, or the payload has not fully arrived), and raises on a malformed frame
 /// (a truncated SETTINGS pair or a required varint field that is absent).
 pub fn decode(input : BytesView) -> (Frame, Int)? raise Refused {
-  let (frame_type, type_len) = match @varint.decode(input) {
+  let (frame_type, type_len) = match @quic.decode(input) {
     Some(v) => v
     None => return None
   }
   let rest = input[type_len:]
-  let (length, len_len) = match @varint.decode(rest) {
+  let (length, len_len) = match @quic.decode(rest) {
     Some(v) => v
     None => return None
   }
@@ -185,12 +185,12 @@ pub fn read_settings(payload : Bytes) -> Array[(UInt64, UInt64)] raise Refused {
   let mut off = 0
   let n = view.length()
   while off < n {
-    let (id, id_len) = match @varint.decode(view[off:]) {
+    let (id, id_len) = match @quic.decode(view[off:]) {
       Some(v) => v
       None => raise Malformed("truncated SETTINGS identifier")
     }
     off += id_len
-    let (value, val_len) = match @varint.decode(view[off:]) {
+    let (value, val_len) = match @quic.decode(view[off:]) {
       Some(v) => v
       None => raise Malformed("truncated SETTINGS value")
     }
@@ -210,7 +210,7 @@ fn one(payload : Bytes, name : String) -> UInt64 raise Refused {
 ///|
 /// The leading varint of a payload plus the octets it consumed.
 fn lead(payload : Bytes, name : String) -> (UInt64, Int) raise Refused {
-  match @varint.decode(payload[:]) {
+  match @quic.decode(payload[:]) {
     Some(v) => v
     None => raise Malformed(name + " frame missing its varint field")
   }
@@ -406,16 +406,16 @@ pub(all) enum Stream {
 /// push stream (RFC 9114 §6.2.2).
 pub fn Stream::encode(stream : Stream) -> Bytes {
   match stream {
-    ControlKind => @varint.encode(0x00)
+    ControlKind => @quic.encode(0x00)
     PushKind(push_id) => {
       let buf = Buffer()
-      buf.write_bytes(@varint.encode(0x01))
-      buf.write_bytes(@varint.encode(push_id))
+      buf.write_bytes(@quic.encode(0x01))
+      buf.write_bytes(@quic.encode(push_id))
       buf.to_bytes()
     }
-    EncoderKind => @varint.encode(0x02)
-    DecoderKind => @varint.encode(0x03)
-    ReservedKind(t) => @varint.encode(t)
+    EncoderKind => @quic.encode(0x02)
+    DecoderKind => @quic.encode(0x03)
+    ReservedKind(t) => @quic.encode(t)
   }
 }
 
@@ -423,14 +423,14 @@ pub fn Stream::encode(stream : Stream) -> Bytes {
 /// Decode a unidirectional stream's opening bytes: the type varint (and a push id for a push
 /// stream). Returns the stream kind and bytes consumed, or `None` on a partial read.
 pub fn Stream::decode(input : BytesView) -> (Stream, Int)? {
-  let (stream_type, type_len) = match @varint.decode(input) {
+  let (stream_type, type_len) = match @quic.decode(input) {
     Some(v) => v
     None => return None
   }
   match stream_type {
     0x00 => Some((ControlKind, type_len))
     0x01 =>
-      match @varint.decode(input[type_len:]) {
+      match @quic.decode(input[type_len:]) {
         Some((push_id, id_len)) => Some((PushKind(push_id), type_len + id_len))
         None => None
       }

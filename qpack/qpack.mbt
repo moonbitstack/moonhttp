@@ -32,62 +32,29 @@ pub extend Refused with Show::{to_string, output}
 ///|
 pub extend Refused with Eq::{not_equal, equal}
 
-// QPACK's prefixed-integer codec (RFC 9204 §4.1.1, which adopts RFC 7541 §5.1): an
-// integer is carried in the low N bits of the first byte, with the representation's
-// pattern flags in the high bits; a value that does not fit in N bits sets those bits
-// to all-ones and spills the remainder over continuation bytes, 7 bits each. This is
-// the arithmetic every QPACK field-line representation is built from — an index, a
-// string length, the field-section prefix's insert count and base.
+// QPACK's integers are RFC 7541 §5.1 unchanged (RFC 9204 §4.1.1), so the arithmetic is
+// `moonvar`'s. What is this package's is how a refusal reads on a stream: a value still
+// arriving is `None` and will be retried, a value past what an `Int` holds is a fault and
+// will not improve by waiting.
 
 ///|
-/// Encode `value` as an RFC 7541 §5.1 `prefix`-prefix integer, OR-ing `flags` into
-/// the high `8 - prefix` bits of the first byte (the representation's pattern).
-pub fn integer(value : Int, prefix : Int, flags : Int) -> Bytes {
-  let buf = Buffer()
-  let max_prefix = (1 << prefix) - 1
-  if value < max_prefix {
-    buf.write_byte((flags | value).to_byte())
-  } else {
-    buf.write_byte((flags | max_prefix).to_byte())
-    let mut remainder = value - max_prefix
-    while remainder >= 128 {
-      buf.write_byte((remainder % 128 + 128).to_byte())
-      remainder = remainder / 128
-    }
-    buf.write_byte(remainder.to_byte())
+/// A prefix integer from the front of `input`, or `None` while it is still arriving.
+fn partial(input : BytesView, prefix : Int) -> (Int, Int)? raise Refused {
+  try @prefix.decode(input, prefix~) catch {
+    @prefix.Truncated(_) => None
+    e => raise Malformed("a prefix integer: \{e}")
+  } noraise {
+    v => Some(v)
   }
-  buf.to_bytes()
 }
 
 ///|
-/// Decode an RFC 7541 §5.1 `prefix`-prefix integer from the front of `input` (its
-/// first byte holds the value in its low `prefix`, any flags in the high bits are
-/// ignored). Returns `(value, bytes-consumed)`, or `None` when a continuation byte has
-/// not yet arrived (a partial read).
-pub fn read_integer(input : BytesView, prefix : Int) -> (Int, Int)? {
-  if input.length() == 0 {
-    return None
+/// A prefix integer at `off`, where there is nothing more to wait for and truncation is
+/// itself the fault.
+fn reach(view : BytesView, off : Int, prefix : Int) -> (Int, Int) raise Refused {
+  @prefix.decode(view, at=off, prefix~) catch {
+    e => raise Malformed("a prefix integer: \{e}")
   }
-  let max_prefix = (1 << prefix) - 1
-  let mut value = input[0].to_int() & max_prefix
-  if value < max_prefix {
-    return Some((value, 1))
-  }
-  let mut shift = 0
-  let mut off = 1
-  for ;; {
-    if off >= input.length() {
-      return None
-    }
-    let b = input[off].to_int()
-    value = value + ((b & 127) << shift)
-    shift = shift + 7
-    off = off + 1
-    if (b & 128) == 0 {
-      break
-    }
-  }
-  Some((value, off))
 }
 
 // The QPACK static table (RFC 9204 Appendix A): 99 predefined (name, value) entries,
@@ -275,11 +242,13 @@ pub fn prefix(req_insert_count : Int, base : Int, max_entries : Int) -> Bytes {
     req_insert_count % (2 * max_entries) + 1
   }
   let buf = Buffer()
-  buf.write_bytes(integer(enc_ric, 8, 0))
+  buf.write_bytes(@prefix.encode(enc_ric, prefix=8, flags=0))
   if base >= req_insert_count {
-    buf.write_bytes(integer(base - req_insert_count, 7, 0))
+    buf.write_bytes(@prefix.encode(base - req_insert_count, prefix=7, flags=0))
   } else {
-    buf.write_bytes(integer(req_insert_count - base - 1, 7, 0x80))
+    buf.write_bytes(
+      @prefix.encode(req_insert_count - base - 1, prefix=7, flags=0x80),
+    )
   }
   buf.to_bytes()
 }
@@ -323,7 +292,7 @@ pub fn read_prefix(
   max_entries : Int,
   total_inserts : Int,
 ) -> (Int, Int, Int)? raise Refused {
-  let (enc_ric, ric_len) = match read_integer(input, 8) {
+  let (enc_ric, ric_len) = match partial(input, 8) {
     Some(v) => v
     None => return None
   }
@@ -332,7 +301,7 @@ pub fn read_prefix(
     return None
   }
   let sign = (input[ric_len].to_int() & 0x80) != 0
-  let (delta_base, base_len) = match read_integer(input[ric_len:], 7) {
+  let (delta_base, base_len) = match partial(input[ric_len:], 7) {
     Some(v) => v
     None => return None
   }
@@ -495,7 +464,9 @@ pub fn string(
   let payload = if huffman { @huffman.encode(data) } else { data }
   let h_bit = if huffman { 1 << prefix } else { 0 }
   let buf = Buffer()
-  buf.write_bytes(integer(payload.length(), prefix, pattern | h_bit))
+  buf.write_bytes(
+    @prefix.encode(payload.length(), prefix~, flags=pattern | h_bit),
+  )
   buf.write_bytes(payload)
   buf.to_bytes()
 }
@@ -512,7 +483,7 @@ pub fn read_string(
     return None
   }
   let huffman = ((input[0].to_int() >> prefix) & 1) == 1
-  let (length, len_consumed) = match read_integer(input, prefix) {
+  let (length, len_consumed) = match partial(input, prefix) {
     Some(v) => v
     None => return None
   }
@@ -547,13 +518,14 @@ pub fn encode(headers : Array[@header.Header], huffman? : Bool = true) -> Bytes 
     let value = header.value
     match find(name, value) {
       // Indexed Field Line (§4.5.2), static table: `1 T=1 | Index(6-bit prefix)`.
-      Some(index) => buf.write_bytes(integer(index, 6, 0xc0))
+      Some(index) =>
+        buf.write_bytes(@prefix.encode(index, prefix=6, flags=0xc0))
       None =>
         match find_name(name) {
           // Literal Field Line With Name Reference (§4.5.4), static: `0 1 N=0 T=1 |
           // Name Index(4-bit prefix)`, then the value string (7-bit prefix).
           Some(index) => {
-            buf.write_bytes(integer(index, 4, 0x50))
+            buf.write_bytes(@prefix.encode(index, prefix=4, flags=0x50))
             buf.write_bytes(string(value, 7, 0, huffman))
           }
           // Literal Field Line With Literal Name (§4.5.6): `0 0 1 N=0 H | Name
@@ -576,14 +548,14 @@ pub fn encode(headers : Array[@header.Header], huffman? : Bool = true) -> Bytes 
 pub fn decode(input : Bytes) -> Array[@header.Header] raise Refused {
   let view = input[:]
   // Encoded Field Section Prefix: Required Insert Count then S + Delta Base.
-  let (insert_count, ric_len) = match read_integer(view, 8) {
+  let (insert_count, ric_len) = match partial(view, 8) {
     Some(v) => v
     None => raise Malformed("truncated field section prefix (insert count)")
   }
   if insert_count != 0 {
     raise Malformed("non-zero Required Insert Count needs the dynamic table")
   }
-  let (_base, base_len) = match read_integer(view[ric_len:], 7) {
+  let (_base, base_len) = match partial(view[ric_len:], 7) {
     Some(v) => v
     None => raise Malformed("truncated field section prefix (base)")
   }
@@ -596,7 +568,7 @@ pub fn decode(input : Bytes) -> Array[@header.Header] raise Refused {
       if (b0 & 0x40) == 0 {
         raise Malformed("dynamic-table indexed field line unsupported")
       }
-      let (index, consumed) = read_integer_at(view, off, 6)
+      let (index, consumed) = reach(view, off, 6)
       headers.push(static_entry(index))
       off += consumed
     } else if (b0 & 0x40) != 0 {
@@ -604,7 +576,7 @@ pub fn decode(input : Bytes) -> Array[@header.Header] raise Refused {
       if (b0 & 0x10) == 0 {
         raise Malformed("dynamic-table name reference unsupported")
       }
-      let (index, name_consumed) = read_integer_at(view, off, 4)
+      let (index, name_consumed) = reach(view, off, 4)
       let name = static_entry(index).name
       off += name_consumed
       let (value, value_consumed) = read_string_at(view, off, 7)
@@ -631,19 +603,6 @@ fn static_entry(index : Int) -> @header.Header raise Refused {
   match entry(index) {
     Some(entry) => entry
     None => raise Malformed("static index out of range: " + index.to_string())
-  }
-}
-
-///|
-/// Decode a prefix integer starting at `off` in `view`, raising on truncation.
-fn read_integer_at(
-  view : BytesView,
-  off : Int,
-  prefix : Int,
-) -> (Int, Int) raise Refused {
-  match read_integer(view[off:], prefix) {
-    Some(v) => v
-    None => raise Malformed("truncated field-line integer")
   }
 }
 
@@ -725,7 +684,7 @@ pub fn decode_with(
     if (b0 & 0x80) != 0 {
       // Indexed Field Line (§4.5.2): T at bit 6 (1 = static).
       let is_static = (b0 & 0x40) != 0
-      let (index, consumed) = read_integer_at(view, off, 6)
+      let (index, consumed) = reach(view, off, 6)
       headers.push(
         if is_static {
           static_entry(index)
@@ -737,7 +696,7 @@ pub fn decode_with(
     } else if (b0 & 0x40) != 0 {
       // Literal Field Line With Name Reference (§4.5.4): T at bit 4.
       let is_static = (b0 & 0x10) != 0
-      let (index, name_consumed) = read_integer_at(view, off, 4)
+      let (index, name_consumed) = reach(view, off, 4)
       let name = if is_static {
         static_entry(index).name
       } else {
@@ -756,13 +715,13 @@ pub fn decode_with(
       off += value_consumed
     } else if (b0 & 0x10) != 0 {
       // Indexed Field Line With Post-Base Index (§4.5.3): `0001` + index (4-bit prefix).
-      let (index, consumed) = read_integer_at(view, off, 4)
+      let (index, consumed) = reach(view, off, 4)
       headers.push(postbase(table, base, index))
       off += consumed
     } else {
       // Literal Field Line With Post-Base Name Reference (§4.5.5): `0000 N` + name index
       // (3-bit prefix), then the value.
-      let (index, name_consumed) = read_integer_at(view, off, 3)
+      let (index, name_consumed) = reach(view, off, 3)
       let name = postbase(table, base, index).name
       off += name_consumed
       let (value, value_consumed) = read_string_at(view, off, 7)
@@ -834,8 +793,12 @@ pub fn encode_with(
   section.write_bytes(prefix(base, base, max_entries))
   for r in refs {
     match r {
-      RefStatic(index) => section.write_bytes(integer(index, 6, 0xc0))
-      RefDynamic(abs) => section.write_bytes(integer(base - 1 - abs, 6, 0x80))
+      RefStatic(index) =>
+        section.write_bytes(@prefix.encode(index, prefix=6, flags=0xc0))
+      RefDynamic(abs) =>
+        section.write_bytes(
+          @prefix.encode(base - 1 - abs, prefix=6, flags=0x80),
+        )
       RefLiteral(name, value) => {
         section.write_bytes(string(name, 3, 0x20, huffman))
         section.write_bytes(string(value, 7, 0, huffman))
@@ -885,11 +848,15 @@ pub(all) enum Ack {
 /// literal strings of the insert instructions are Huffman-coded.
 pub fn Change::encode(inst : Change, huffman? : Bool = true) -> Bytes {
   match inst {
-    SetCapacity(capacity) => integer(capacity, 5, 0x20)
+    SetCapacity(capacity) => @prefix.encode(capacity, prefix=5, flags=0x20)
     Insert(is_static~, index~, value~) => {
       let buf = Buffer()
       buf.write_bytes(
-        integer(index, 6, 0x80 | (if is_static { 0x40 } else { 0 })),
+        @prefix.encode(
+          index,
+          prefix=6,
+          flags=0x80 | (if is_static { 0x40 } else { 0 }),
+        ),
       )
       buf.write_bytes(string(value, 7, 0, huffman))
       buf.to_bytes()
@@ -900,7 +867,7 @@ pub fn Change::encode(inst : Change, huffman? : Bool = true) -> Bytes {
       buf.write_bytes(string(value, 7, 0, huffman))
       buf.to_bytes()
     }
-    Duplicate(index~) => integer(index, 5, 0x00)
+    Duplicate(index~) => @prefix.encode(index, prefix=5, flags=0x00)
   }
 }
 
@@ -915,7 +882,7 @@ pub fn Change::decode(input : BytesView) -> (Change, Int)? raise Refused {
   let b0 = input[0].to_int()
   if (b0 & 0x80) != 0 {
     let is_static = (b0 & 0x40) != 0
-    let (index, ic) = match read_integer(input, 6) {
+    let (index, ic) = match partial(input, 6) {
       Some(v) => v
       None => return None
     }
@@ -933,12 +900,12 @@ pub fn Change::decode(input : BytesView) -> (Change, Int)? raise Refused {
       None => None
     }
   } else if (b0 & 0x20) != 0 {
-    match read_integer(input, 5) {
+    match partial(input, 5) {
       Some((capacity, cc)) => Some((SetCapacity(capacity), cc))
       None => None
     }
   } else {
-    match read_integer(input, 5) {
+    match partial(input, 5) {
       Some((index, dc)) => Some((Duplicate(index~), dc))
       None => None
     }
@@ -949,32 +916,32 @@ pub fn Change::decode(input : BytesView) -> (Change, Int)? raise Refused {
 /// Encode a decoder-stream instruction (RFC 9204 §4.4).
 pub fn Ack::encode(inst : Ack) -> Bytes {
   match inst {
-    Section(stream_id~) => integer(stream_id, 7, 0x80)
-    Cancel(stream_id~) => integer(stream_id, 6, 0x40)
-    Increment(increment~) => integer(increment, 6, 0x00)
+    Section(stream_id~) => @prefix.encode(stream_id, prefix=7, flags=0x80)
+    Cancel(stream_id~) => @prefix.encode(stream_id, prefix=6, flags=0x40)
+    Increment(increment~) => @prefix.encode(increment, prefix=6, flags=0x00)
   }
 }
 
 ///|
 /// Decode one decoder-stream instruction from the front of `input` (RFC 9204 §4.4).
 /// Returns `(instruction, bytes-consumed)`, or `None` on a partial read.
-pub fn Ack::decode(input : BytesView) -> (Ack, Int)? {
+pub fn Ack::decode(input : BytesView) -> (Ack, Int)? raise Refused {
   if input.length() == 0 {
     return None
   }
   let b0 = input[0].to_int()
   if (b0 & 0x80) != 0 {
-    match read_integer(input, 7) {
+    match partial(input, 7) {
       Some((sid, c)) => Some((Section(stream_id=sid), c))
       None => None
     }
   } else if (b0 & 0x40) != 0 {
-    match read_integer(input, 6) {
+    match partial(input, 6) {
       Some((sid, c)) => Some((Cancel(stream_id=sid), c))
       None => None
     }
   } else {
-    match read_integer(input, 6) {
+    match partial(input, 6) {
       Some((inc, c)) => Some((Increment(increment=inc), c))
       None => None
     }

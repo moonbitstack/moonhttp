@@ -19,57 +19,23 @@ fn hex(b : Bytes) -> String {
 // instruction vectors are the ones Appendix B prints.
 
 ///|
-test "qpack int: RFC 7541 C.1 canonical vectors" {
-  // C.1.1: 10 with a 5-bit prefix fits in the first byte.
-  assert_eq(integer(10, 5, 0), b"\x0a")
-  // C.1.2: 1337 with a 5-bit prefix spills over two continuation bytes.
-  assert_eq(integer(1337, 5, 0), b"\x1f\x9a\x0a")
-  // C.1.3: 42 with an 8-bit prefix fits in the first byte.
-  assert_eq(integer(42, 8, 0), b"\x2a")
-}
-
-///|
-test "qpack int: flags occupy the high bits, decode ignores them" {
-  // A 6-bit prefix with the 0x80 pattern bit set (e.g. an indexed field line).
-  let encoded = integer(2, 6, 0x80)
-  assert_eq(encoded, b"\x82")
-  // Decoding reads the low 6 bits and ignores the flags.
-  assert_eq(read_integer(encoded[:], 6), Some((2, 1)))
-}
-
-///|
-test "qpack int: decode C.1 vectors and boundary round-trips" {
-  assert_eq(read_integer(b"\x0a"[:], 5), Some((10, 1)))
-  assert_eq(read_integer(b"\x1f\x9a\x0a"[:], 5), Some((1337, 3)))
-  assert_eq(read_integer(b"\x2a"[:], 8), Some((42, 1)))
-  // The all-ones prefix value (31) needs one continuation byte holding 0.
-  assert_eq(integer(31, 5, 0), b"\x1f\x00")
-  assert_eq(read_integer(b"\x1f\x00"[:], 5), Some((31, 2)))
-}
-
-///|
-test "qpack int: round-trips across prefix sizes and magnitudes" {
-  let values = [0, 1, 30, 31, 32, 127, 128, 255, 256, 16383, 16384, 1000000]
-  for bits = 1; bits <= 8; bits = bits + 1 {
-    for v in values {
-      let encoded = integer(v, bits, 0)
-      match read_integer(encoded[:], bits) {
-        Some((decoded, consumed)) => {
-          assert_eq(decoded, v)
-          assert_eq(consumed, encoded.length())
-        }
-        None => abort("expected a complete integer")
-      }
-    }
+test "qpack int: a value still arriving is None, a value too large is a fault" {
+  // The arithmetic is `moonvar`'s and tested there. What is this package's is the
+  // reading of a refusal on a stream: 0x1f says the prefix overflowed and 0x9a has its
+  // continuation bit set, so another octet is owed and may yet come.
+  assert_eq(partial(b""[:], 5), None)
+  assert_eq(partial(b""[:], 5), None)
+  // Whereas a complete value is a value, flags above the prefix and all.
+  assert_eq(partial(b""[:], 6), Some((2, 1)))
+  // And one that no `Int` could hold will not improve by waiting, so it is malformed.
+  let mut refused = false
+  try {
+    let _ = partial(b"ÿÿÿÿÿÿÿÿ"[:], 5)
+  } catch {
+    Malformed(_) => refused = true
+    _ => ()
   }
-}
-
-///|
-test "qpack int: a truncated continuation yields None" {
-  // 0x1f says "prefix overflowed"; the continuation byte 0x9a has its high bit set,
-  // so another byte is required but absent.
-  assert_eq(read_integer(b"\x1f\x9a"[:], 5), None)
-  assert_eq(read_integer(b""[:], 5), None)
+  assert_eq(refused, true)
 }
 
 ///|
@@ -387,8 +353,8 @@ test "dynamic field: indexed lines by relative index (Base above the entries)" {
   // Required Insert Count 2, Base 2: relative index 0 -> absolute 1, relative 1 -> 0.
   let prefix = prefix(2, 2, 128)
   let wire = field_section(prefix, [
-    integer(0, 6, 0x80), // Indexed, T=0 (dynamic), relative 0
-    integer(1, 6, 0x80), // Indexed, T=0 (dynamic), relative 1
+    @prefix.encode(0, prefix=6, flags=0x80), // Indexed, T=0 (dynamic), relative 0
+    @prefix.encode(1, prefix=6, flags=0x80), // Indexed, T=0 (dynamic), relative 1
   ])
   assert_eq(decode_with(wire, t, 128), [
     @header.Header::of("custom-key", "custom-value"),
@@ -402,8 +368,8 @@ test "dynamic field: indexed lines by post-base index (Base below the entries)" 
   // Base 0: post-base index 0 -> absolute 0, post-base index 1 -> absolute 1.
   let prefix = prefix(2, 0, 128)
   let wire = field_section(prefix, [
-    integer(0, 4, 0x10), // Indexed With Post-Base Index 0
-    integer(1, 4, 0x10), // Indexed With Post-Base Index 1
+    @prefix.encode(0, prefix=4, flags=0x10), // Indexed With Post-Base Index 0
+    @prefix.encode(1, prefix=4, flags=0x10), // Indexed With Post-Base Index 1
   ])
   assert_eq(decode_with(wire, t, 128), [
     @header.Header::of(":authority", "www.example.com"),
@@ -416,7 +382,7 @@ test "dynamic field: literal with a dynamic name reference" {
   let t = dyn_table_two()
   let prefix = prefix(2, 2, 128)
   // Literal With Name Reference, T=0, relative index 1 -> name at absolute 0 (":authority").
-  let name_ref = integer(1, 4, 0x40)
+  let name_ref = @prefix.encode(1, prefix=4, flags=0x40)
   let value = string(b"example.org", 7, 0, false)
   let wire = field_section(prefix, [name_ref, value])
   assert_eq(decode_with(wire, t, 128), [
@@ -429,7 +395,7 @@ test "dynamic field: literal with a post-base name reference" {
   let t = dyn_table_two()
   let prefix = prefix(2, 0, 128)
   // Post-Base Name Reference, post-base index 0 -> name at absolute 0 (":authority").
-  let name_ref = integer(0, 3, 0x00)
+  let name_ref = @prefix.encode(0, prefix=3, flags=0x00)
   let value = string(b"v", 7, 0, false)
   let wire = field_section(prefix, [name_ref, value])
   assert_eq(decode_with(wire, t, 128), [@header.Header::of(":authority", "v")])
@@ -440,8 +406,8 @@ test "dynamic field: static and dynamic references mixed in one section" {
   let t = dyn_table_two()
   let prefix = prefix(2, 2, 128)
   let wire = field_section(prefix, [
-    integer(1, 6, 0xc0), // Indexed static, index 1 = @header.Header::of(":path", "/")
-    integer(0, 6, 0x80), // Indexed dynamic, relative 0 = ("custom-key", ...)
+    @prefix.encode(1, prefix=6, flags=0xc0), // Indexed static, index 1 = @header.Header::of(":path", "/")
+    @prefix.encode(0, prefix=6, flags=0x80), // Indexed dynamic, relative 0 = ("custom-key", ...)
   ])
   assert_eq(decode_with(wire, t, 128), [
     @header.Header::of(":path", "/"),

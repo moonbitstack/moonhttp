@@ -1,8 +1,8 @@
 ///|
 /// QPACK primitives (RFC 9204): the 99-entry static table with exact and
-/// name-only lookups (Appendix A), the RFC 7541 prefixed-integer coding, and the
-/// string literal coding raw and Huffman — the building blocks the field-section
-/// encoder is assembled from.
+/// name-only lookups (Appendix A) and the string literal coding raw and Huffman — the
+/// building blocks the field-section encoder is assembled from. The prefixed integer
+/// under them all is RFC 7541 §5.1 unchanged, so it comes from `moonvar`.
 ///
 ///     moon run examples/27-qpack-primitives --target native
 #coverage.skip
@@ -21,12 +21,10 @@ fn run() -> Unit raise {
   println(
     "max_entries(4096)=\{@qpack.max_entries(4096)} entry_size(:method,GET)=\{@qpack.cost(b":method", b"GET")}",
   )
-  let enc = @qpack.integer(1337, 5, 0)
+  let enc = @prefix.encode(1337, prefix=5)
   println("int 1337 (5-bit prefix) = \{hex(enc)}")
-  match @qpack.read_integer(enc[:], 5) {
-    Some((v, n)) => println("decoded = \{v} in \{n} bytes")
-    None => println("truncated")
-  }
+  let (v, n) = @prefix.decode(enc[:], prefix=5)
+  println("decoded = \{v} in \{n} bytes")
   let raw = @qpack.string(b"hello", 7, 0, false)
   let huff = @qpack.string(b"hello", 7, 0, true)
   println(

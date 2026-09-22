@@ -1,9 +1,0 @@
-// The variable-length integer, RFC 9000 §16:
-// https://www.rfc-editor.org/rfc/rfc9000#section-16
-//
-// QUIC's encoding, which RFC 9114 §7.1 writes every HTTP/3 frame length and type in.
-//
-// The same fifty-nine lines live in `moonquic/varint`, deliberately. Depending on that
-// module would put a whole QUIC stack in the download of anyone who wanted only this
-// module's event streams or multipart bodies, and mooncakes downloads by module; the
-// encoding is four lines of arithmetic fixed by an RFC that will not change.

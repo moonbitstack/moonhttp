@@ -120,80 +120,6 @@ pub fn entry(index : Int) -> @header.Header? {
 }
 
 ///|
-/// Encode `value` as an HPACK integer with an `prefix`-bit prefix (RFC 7541
-/// §5.1). The high `8 - prefix` bits of the first octet are left zero for
-/// the caller to OR in any flag bits. Examples: `10` on a 5-bit prefix is
-/// `[0x0A]`; `1337` on a 5-bit prefix is `[0x1F, 0x9A, 0x0A]`.
-pub fn integer(value : Int, prefix : Int) -> Bytes {
-  let buf = Buffer()
-  let max_prefix = (1 << prefix) - 1
-  if value < max_prefix {
-    buf.write_byte(value.to_byte())
-  } else {
-    buf.write_byte(max_prefix.to_byte())
-    let mut rest = value - max_prefix
-    while rest >= 128 {
-      buf.write_byte((rest % 128 + 128).to_byte())
-      rest = rest / 128
-    }
-    buf.write_byte(rest.to_byte())
-  }
-  buf.to_bytes()
-}
-
-///|
-/// Decode an HPACK integer with an `prefix`-bit prefix from `data` starting
-/// at `offset` (RFC 7541 §5.1), returning `(value, bytes_consumed)`. Any flag
-/// bits above the prefix in the first octet are masked off and ignored.
-pub fn read_integer(
-  data : BytesView,
-  offset : Int,
-  prefix : Int,
-) -> (Int, Int) raise Refused {
-  if offset >= data.length() {
-    raise Malformed("truncated HPACK integer prefix")
-  }
-  let max_prefix = (1 << prefix) - 1
-  let first = data[offset].to_int() & max_prefix
-  if first < max_prefix {
-    (first, 1)
-  } else {
-    // Accumulate in 64 bits and reject anything that would not fit a positive 32-bit
-    // Int (RFC 7541 §5.1), so a truncated or over-long continuation raises instead of
-    // reading past the buffer or overflowing.
-    let mut value = max_prefix.to_int64()
-    let mut shift = 0
-    let mut consumed = 1
-    for ;; {
-      if offset + consumed >= data.length() {
-        raise Malformed("truncated HPACK integer")
-      }
-      if shift >= 35 {
-        raise Malformed("HPACK integer too long")
-      }
-      let octet = data[offset + consumed].to_int()
-      consumed = consumed + 1
-      value = value + (octet & 127).to_int64() * (1L << shift)
-      shift = shift + 7
-      if value > 0x7FFFFFFFL {
-        raise Malformed("HPACK integer too large")
-      }
-      if (octet & 128) == 0 {
-        break
-      }
-    }
-    (value.to_int(), consumed)
-  }
-}
-
-///|
-/// Whether the string literal at `offset` is Huffman-coded, i.e. the `H` bit
-/// (the top bit of the length octet) is set (RFC 7541 §5.2).
-pub fn is_huffman(data : BytesView, offset : Int) -> Bool {
-  (data[offset].to_int() & 0x80) != 0
-}
-
-///|
 /// A string literal (RFC 7541 §5.2): the length as a seven-bit-prefix integer, then the
 /// octets, with the `H` bit saying whether they are Huffman-coded.
 ///
@@ -206,15 +132,13 @@ pub fn string(octets : BytesView, huffman? : Bool = true) -> Bytes {
   let plain = octets.to_owned()
   if huffman && @huffman.size(octets) <= octets.length() {
     let coded = @huffman.encode(octets)
-    let head = integer(coded.length(), 7)
     let buf = Buffer()
-    buf.write_byte((head[0].to_int() | 0x80).to_byte())
-    buf.write_bytes(head[1:].to_owned())
+    buf.write_bytes(@prefix.encode(coded.length(), prefix=7, flags=0x80))
     buf.write_bytes(coded)
     buf.to_bytes()
   } else {
     let buf = Buffer()
-    buf.write_bytes(integer(plain.length(), 7))
+    buf.write_bytes(@prefix.encode(plain.length(), prefix=7))
     buf.write_bytes(plain)
     buf.to_bytes()
   }
@@ -223,14 +147,13 @@ pub fn string(octets : BytesView, huffman? : Bool = true) -> Bytes {
 ///|
 /// Decode an HPACK string literal from `data` at `offset`, returning `(octets,
 /// bytes_consumed)`. The length is read as a 7-bit-prefix integer (the `H` bit
-/// is masked off); this is the inverse of `string_raw` for `H = 0`.
-/// Use `is_huffman` first if the literal may be Huffman-coded, as
-/// Huffman decoding is not applied here.
+/// is masked off); this is the inverse of `string` for `H = 0`. Huffman decoding is not
+/// applied here, so ask `@prefix.flagged` first if the literal may be coded.
 pub fn read_literal(
   data : BytesView,
   offset : Int,
 ) -> (Bytes, Int) raise Refused {
-  let (len, int_len) = read_integer(data, offset, 7)
+  let (len, int_len) = reach(data, offset, 7)
   let start = offset + int_len
   // Bound the literal against the buffer without recomputing `start + len` (which
   // could wrap), so a length claiming more than remains raises instead of slicing OOB.
@@ -277,7 +200,7 @@ pub fn read_string(
   data : BytesView,
   offset : Int,
 ) -> (Bytes, Int) raise Refused {
-  let huff = is_huffman(data, offset)
+  let huff = @prefix.flagged(data, at=offset)
   let (raw, consumed) = read_literal(data, offset)
   if huff {
     (
@@ -396,7 +319,7 @@ fn lookup(dt : Table, index : Int) -> @header.Header? {
 /// Encode a dynamic table size update (RFC 7541 §6.3): `001` prefix with the new
 /// maximum size as a 5-bit-prefix integer.
 pub fn size_update(limit : Int) -> Bytes {
-  let e = integer(limit, 5)
+  let e = @prefix.encode(limit, prefix=5)
   let buf = Buffer()
   buf.write_byte((e[0].to_int() | 0x20).to_byte())
   buf.write_bytes(e[1:].to_owned())
@@ -455,7 +378,7 @@ pub fn Decoder::decode(
     let b = block[off].to_int()
     if (b & 0x80) != 0 {
       // §6.1 Indexed @header.Header Field.
-      let (index, consumed) = read_integer(block, off, 7)
+      let (index, consumed) = reach(block, off, 7)
       off = off + consumed
       if index == 0 {
         raise Malformed("indexed header field with index 0")
@@ -466,7 +389,7 @@ pub fn Decoder::decode(
       }
     } else if (b & 0x40) != 0 {
       // §6.2.1 Literal @header.Header Field with Incremental Indexing.
-      let (index, consumed) = read_integer(block, off, 6)
+      let (index, consumed) = reach(block, off, 6)
       off = off + consumed
       let (name, name_consumed) = self.read_name(block, index, off)
       off = off + name_consumed
@@ -476,7 +399,7 @@ pub fn Decoder::decode(
       out.push({ name, value, })
     } else if (b & 0x20) != 0 {
       // §6.3 Dynamic Table Size Update.
-      let (limit, consumed) = read_integer(block, off, 5)
+      let (limit, consumed) = reach(block, off, 5)
       off = off + consumed
       if limit > self.limit {
         raise Exceeded(limit=self.limit, got=limit)
@@ -484,7 +407,7 @@ pub fn Decoder::decode(
       self.table.resize(limit)
     } else {
       // §6.2.2 without indexing (0x00) / §6.2.3 never indexed (0x10); 4-bit prefix.
-      let (index, consumed) = read_integer(block, off, 4)
+      let (index, consumed) = reach(block, off, 4)
       off = off + consumed
       let (name, name_consumed) = self.read_name(block, index, off)
       off = off + name_consumed
@@ -554,14 +477,6 @@ fn Encoder::literal(self : Encoder, octets : Bytes) -> Bytes {
 }
 
 ///|
-/// Write an integer with a flag OR'd into the high bits of its first octet.
-fn prefixed(buf : Buffer, value : Int, prefix : Int, flag : Int) -> Unit {
-  let e = integer(value, prefix)
-  buf.write_byte((e[0].to_int() | flag).to_byte())
-  buf.write_bytes(e[1:].to_owned())
-}
-
-///|
 /// Encode a header list into a header block (RFC 7541 §6), using indexed fields
 /// where possible and literal-with-incremental-indexing otherwise (mutating the
 /// dynamic table to mirror what the peer decoder will build). The output decodes
@@ -574,10 +489,10 @@ pub fn Encoder::encode(
   for h in headers {
     let (idx, exact) = self.find(h.name, h.value)
     if exact {
-      prefixed(buf, idx, 7, 0x80)
+      buf.write_bytes(@prefix.encode(idx, prefix=7, flags=0x80))
     } else {
       if idx != 0 {
-        prefixed(buf, idx, 6, 0x40)
+        buf.write_bytes(@prefix.encode(idx, prefix=6, flags=0x40))
       } else {
         buf.write_byte(b'\x40')
         buf.write_bytes(self.literal(h.name))
@@ -587,4 +502,13 @@ pub fn Encoder::encode(
     }
   }
   buf.to_bytes()
+}
+
+///|
+/// A prefix integer, with `moonvar`'s refusal folded into this package's: a header block
+/// that does not parse is one fault however far in the number went wrong.
+fn reach(b : BytesView, at : Int, prefix : Int) -> (Int, Int) raise Refused {
+  @prefix.decode(b, at~, prefix~) catch {
+    e => raise Malformed("a prefix integer: \{e}")
+  }
 }

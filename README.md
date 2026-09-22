@@ -37,7 +37,6 @@ moon run examples/07-qpack-field    moon run examples/11-http3-conn
 | `header` | A header field: a name and a value, as octets | RFC 9110 §5 |
 | `hpack` | HTTP/2 header compression: both tables, both ends | RFC 7541 |
 | `qpack` | HTTP/3 header compression: both tables, the field lines, both instruction streams | RFC 9204 |
-| `varint` | The variable-length integer HTTP/3 writes its frames in | RFC 9000 §16 |
 | `http3` | HTTP/3 frames, their placement rules, settings, stream types and connection | RFC 9114 |
 
 ## One vocabulary
@@ -162,10 +161,10 @@ HTTP/1.1 message framing, HTTP/2 framing, content negotiation, cookies, ranges,
 caching and conditional requests. They are planned in that order; the tracking
 list lives with the project.
 
-`varint` is a second copy of what `moonquic/varint` holds, on purpose: depending
-on that module would put a whole QUIC stack in the download of anyone who wanted
-only an event stream, and mooncakes downloads by module. The encoding is four
-lines of arithmetic fixed by an RFC that will not change.
+The variable-length integers are not here either. HTTP/3's frames are counted in
+QUIC's varint and both header compressions count in RFC 7541's prefixed integer;
+neither belongs to HTTP, and both are written in more than one protocol. They
+are `moonvar`, which this depends on and which depends on nothing.
 
 TLS is `moontls` and QUIC is `moonquic`, so that parsing an HTTP message does
 not mean carrying a handshake. Compression is `moonzip`.
