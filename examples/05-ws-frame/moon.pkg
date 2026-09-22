@@ -1,0 +1,5 @@
+import {
+  "moonbitstack/moonhttp/ws",
+}
+
+pkgtype(kind: "executable")

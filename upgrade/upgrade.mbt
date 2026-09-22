@@ -143,7 +143,7 @@ pub extend Refused with Eq::{not_equal, equal}
 /// Header names are matched without regard to case, and `Connection` is read as the
 /// comma-separated list §4.2.1 allows it to be, because a proxy may have added to it.
 /// A version other than 13 is refused, which is what §4.4 asks a server to answer.
-pub fn read(
+pub fn read_request(
   headers : ArrayView[(String, String)],
 ) -> (String, Array[String]) raise Refused {
   guard find(headers, "upgrade") is Some(upgrade) else {
@@ -182,7 +182,7 @@ pub fn read(
 ///
 /// A client that skips this accepts an upgrade from anything that can write `101`, which
 /// is the case §4.2.2's proof exists to rule out.
-pub fn check(
+pub fn read_response(
   key : String,
   headers : ArrayView[(String, String)],
 ) -> Unit raise Refused {

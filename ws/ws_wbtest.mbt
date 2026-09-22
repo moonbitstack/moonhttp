@@ -46,7 +46,7 @@ fn hex(b : Bytes) -> String {
 test "a single-frame unmasked text message is §5.7's first example" {
   let wire = hexb("810548656c6c6f")
   let frame : Frame = { fin: true, opcode: Text, payload: b"Hello", }
-  assert_eq(hex(encode(frame)), hex(wire))
+  assert_eq(hex(frame.encode()), hex(wire))
   guard decode(wire[:], client=false) is Some((got, n)) else {
     fail("the published frame should decode")
   }
@@ -59,7 +59,7 @@ test "a single-frame masked text message is §5.7's second example" {
   let wire = hexb("8185" + "37fa213d" + "7f9f4d5158")
   let mask = hexb("37fa213d")
   let frame : Frame = { fin: true, opcode: Text, payload: b"Hello", }
-  assert_eq(hex(encode(frame, mask~)), hex(wire))
+  assert_eq(hex(frame.encode(mask~)), hex(wire))
   // A server reads it with the masking it requires, and gets the plain payload back.
   guard decode(wire[:]) is Some((got, n)) else {
     fail("the published masked frame should decode")
@@ -74,8 +74,8 @@ test "a fragmented unmasked text message is §5.7's third example" {
   let last = hexb("8002" + "6c6f")
   let head : Frame = { fin: false, opcode: Text, payload: b"Hel", }
   let tail : Frame = { fin: true, opcode: Continuation, payload: b"lo", }
-  assert_eq(hex(encode(head)), hex(first))
-  assert_eq(hex(encode(tail)), hex(last))
+  assert_eq(hex(head.encode()), hex(first))
+  assert_eq(hex(tail.encode()), hex(last))
   let reader = Reader::new()
   let one = reader.feed(head)
   assert_eq(one.message, None)
@@ -90,7 +90,7 @@ test "an unmasked ping and a masked pong are §5.7's fourth example" {
   let ping = hexb("890548656c6c6f")
   let pong = hexb("8a85" + "37fa213d" + "7f9f4d5158")
   let frame : Frame = { fin: true, opcode: Ping, payload: b"Hello", }
-  assert_eq(hex(encode(frame)), hex(ping))
+  assert_eq(hex(frame.encode()), hex(ping))
   // A ping owes a pong carrying the same body, which the reader answers with; masking
   // it is the client's, because only the client has the randomness for a key.
   let reader = Reader::new()
@@ -99,24 +99,18 @@ test "an unmasked ping and a masked pong are §5.7's fourth example" {
   guard step.reply is Some(reply) else { fail("a ping owes a pong") }
   assert_eq(reply.opcode, Pong)
   assert_eq(reply.payload, b"Hello")
-  assert_eq(hex(encode(reply, mask=hexb("37fa213d"))), hex(pong))
+  assert_eq(hex(reply.encode(mask=hexb("37fa213d"))), hex(pong))
 }
 
 ///|
 test "the two long length forms are §5.7's last two examples" {
   // 256 bytes takes the sixteen-bit form, 65536 the sixty-four-bit one.
-  let small = encode({
-    fin: true,
-    opcode: Binary,
-    payload: Bytes::make(256, b'\x07'),
-  })
+  let small = (
+    { fin: true, opcode: Binary, payload: Bytes::make(256, b'\x07'), } : Frame).encode()
   assert_eq(hex(small[0:4].to_owned()), "827e0100")
   assert_eq(small.length(), 4 + 256)
-  let large = encode({
-    fin: true,
-    opcode: Binary,
-    payload: Bytes::make(65536, b'\x07'),
-  })
+  let large = (
+    { fin: true, opcode: Binary, payload: Bytes::make(65536, b'\x07'), } : Frame).encode()
   assert_eq(hex(large[0:10].to_owned()), "827f0000000000010000")
   assert_eq(large.length(), 10 + 65536)
   // And both read back.
@@ -133,20 +127,14 @@ test "the two long length forms are §5.7's last two examples" {
 ///|
 test "the length takes the shortest form that fits" {
   for n in [0, 1, 125] {
-    let b = encode({
-      fin: true,
-      opcode: Binary,
-      payload: Bytes::make(n, b'\x00'),
-    })
+    let b = (
+      { fin: true, opcode: Binary, payload: Bytes::make(n, b'\x00'), } : Frame).encode()
     assert_eq(b[1].to_int(), n)
     assert_eq(b.length(), 2 + n)
   }
   // 126 is the first that does not fit in seven bits.
-  let b = encode({
-    fin: true,
-    opcode: Binary,
-    payload: Bytes::make(126, b'\x00'),
-  })
+  let b = (
+    { fin: true, opcode: Binary, payload: Bytes::make(126, b'\x00'), } : Frame).encode()
   assert_eq(b[1].to_int(), 126)
   assert_eq(b.length(), 4 + 126)
 }
@@ -170,7 +158,7 @@ test "every opcode round-trips through its wire value, and the rest are reserved
   for code in [3, 4, 5, 6, 7, 11, 12, 13, 14, 15] {
     assert_eq(Opcode::of(code), None)
   }
-  assert_eq(named.map(op => op.control()), [
+  assert_eq(named.map(op => op.is_control()), [
     false, false, false, true, true, true,
   ])
 }
@@ -178,16 +166,16 @@ test "every opcode round-trips through its wire value, and the rest are reserved
 ///|
 test "the framing rules §5.2 and §5.5 lay down are enforced" {
   // An RSV bit with no extension negotiated.
-  assert_eq(refused(hexb("c18548656c6c6f")).code(), 1002)
+  assert_eq(refused(hexb("c18548656c6c6f")).status(), 1002)
   // A reserved opcode.
-  assert_eq(refused(hexb("838000000000")).code(), 1002)
+  assert_eq(refused(hexb("838000000000")).status(), 1002)
   // A client frame that is not masked.
-  assert_eq(refused(hexb("810548656c6c6f")).code(), 1002)
+  assert_eq(refused(hexb("810548656c6c6f")).status(), 1002)
   // A control frame carrying more than 125 bytes: 126 announced in the short form is
   // the sixteen-bit escape, so the long form is what says it.
-  assert_eq(refused(hexb("89fe0080" + "00000000")).code(), 1002)
+  assert_eq(refused(hexb("89fe0080" + "00000000")).status(), 1002)
   // A fragmented control frame.
-  assert_eq(refused(hexb("098500000000")).code(), 1002)
+  assert_eq(refused(hexb("098500000000")).status(), 1002)
 }
 
 ///|
@@ -213,11 +201,11 @@ test "a length past the ceiling is refused before anything is allocated" {
   // The sixty-four-bit form announcing four gibibytes, with no payload behind it.
   let header = hexb("827f" + "0000000100000000")
   let e = refused(header, client=false)
-  assert_eq(e.code(), 1009)
-  assert_eq(e is TooBig(_), true)
+  assert_eq(e.status(), 1009)
+  assert_eq(e is Exceeded(_), true)
   // And the sign bit §5.2 reserves is refused too, rather than read as negative.
   assert_eq(
-    refused(hexb("827f" + "ffffffffffffffff"), client=false).code(),
+    refused(hexb("827f" + "ffffffffffffffff"), client=false).status(),
     1009,
   )
 }
@@ -242,7 +230,7 @@ test "a message is bounded across its fragments, not only within one" {
       let _ = reader.feed(frame)
     }
   } catch {
-    TooBig(limit~, got~) => {
+    Exceeded(limit~, got~) => {
       assert_eq(limit, 10)
       assert_eq(got, 12L)
       refused = true
@@ -325,7 +313,7 @@ test "a close carries its status and reason, and is echoed (§5.5.1)" {
   let payload = close(1000, reason="bye")
   assert_eq(hex(payload), "03e8627965")
   let step = reader.feed({ fin: true, opcode: Close, payload, })
-  assert_eq(step.message, Some(Close(code=1000, reason=b"bye")))
+  assert_eq(step.message, Some(Close(status=1000, reason=b"bye")))
   // The echo carries the status but not the reason.
   assert_eq(
     step.reply,
@@ -337,10 +325,10 @@ test "a close carries its status and reason, and is echoed (§5.5.1)" {
 test "a close with no status reads as 1005 and is echoed with none" {
   let reader = Reader::new()
   let step = reader.feed({ fin: true, opcode: Close, payload: b"", })
-  assert_eq(step.message, Some(Close(code=1005, reason=b"")))
+  assert_eq(step.message, Some(Close(status=1005, reason=b"")))
   // 1005 is a local sentinel: it must not go back onto the wire.
   assert_eq(step.reply, Some({ fin: true, opcode: Close, payload: b"", }))
-  assert_eq(code(b""[:]), 1005)
+  assert_eq(status(b""[:]), 1005)
   assert_eq(reason(b""[:]), b"")
 }
 
@@ -393,17 +381,14 @@ test "a close reason that is not UTF-8 is refused" {
 test "the ceiling is a knob on both sides" {
   assert_eq(limit, 16 * 1024 * 1024)
   // A frame under the default and over a tighter one.
-  let wire = encode({
-    fin: true,
-    opcode: Binary,
-    payload: Bytes::make(200, b'\x00'),
-  })
+  let wire = (
+    { fin: true, opcode: Binary, payload: Bytes::make(200, b'\x00'), } : Frame).encode()
   assert_eq(decode(wire[:], client=false) is Some(_), true)
   let mut refused = false
   try {
     let _ = decode(wire[:], client=false, limit=100)
   } catch {
-    TooBig(limit~, got~) => {
+    Exceeded(limit~, got~) => {
       assert_eq(limit, 100)
       assert_eq(got, 200L)
       refused = true
@@ -415,12 +400,12 @@ test "the ceiling is a knob on both sides" {
 
 ///|
 test "a server's frames are read with masking not required" {
-  let wire = encode({ fin: true, opcode: Text, payload: b"Hello", })
+  let wire = ({ fin: true, opcode: Text, payload: b"Hello", } : Frame).encode()
   // As a client reading a server: unmasked is what §5.1 requires of it.
   guard decode(wire[:], client=false) is Some((got, _)) else {
     fail("a server frame should decode")
   }
   assert_eq(got.payload, b"Hello")
   // The same bytes read as if from a client are a violation.
-  assert_eq(refused(wire).code(), 1002)
+  assert_eq(refused(wire).status(), 1002)
 }

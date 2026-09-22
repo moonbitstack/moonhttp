@@ -17,17 +17,17 @@ pub(all) suberror Refused {
   /// §7.4.1 does not allow on the wire.
   Payload(String)
   /// The peer announced or sent more than this endpoint accepts.
-  TooBig(limit~ : Int, got~ : Int64)
+  Exceeded(limit~ : Int, got~ : Int64)
 } derive(Eq, Debug)
 
 ///|
 /// The §7.4.1 status a violation is closed with: `1002` for framing, `1007` for payload,
 /// `1009` for size.
-pub fn Refused::code(self : Refused) -> Int {
+pub fn Refused::status(self : Refused) -> Int {
   match self {
     Protocol(_) => 1002
     Payload(_) => 1007
-    TooBig(..) => 1009
+    Exceeded(..) => 1009
   }
 }
 
@@ -37,8 +37,8 @@ pub impl Show for Refused with fn output(self, logger) {
   match self {
     Protocol(m) => logger.write_string("Protocol(1002, " + m + ")")
     Payload(m) => logger.write_string("Payload(1007, " + m + ")")
-    TooBig(limit~, got~) =>
-      logger.write_string("TooBig(1009, limit=\{limit}, got=\{got})")
+    Exceeded(limit~, got~) =>
+      logger.write_string("Exceeded(1009, limit=\{limit}, got=\{got})")
   }
 }
 
@@ -101,7 +101,7 @@ pub fn Opcode::of(code : Int) -> Opcode? {
 ///|
 /// Whether this is a control opcode, which §5.5 holds to tighter rules than a data
 /// frame: at most 125 bytes of payload, and never fragmented.
-pub fn Opcode::control(self : Opcode) -> Bool {
+pub fn Opcode::is_control(self : Opcode) -> Bool {
   match self {
     Close | Ping | Pong => true
     Continuation | Text | Binary => false
@@ -125,12 +125,12 @@ pub(all) struct Frame {
 ///
 /// The length takes the shortest of the three forms — seven bits up to 125, sixteen bits
 /// under `126`, sixty-four under `127`.
-pub fn encode(frame : Frame, mask? : Bytes = b"") -> Bytes {
+pub fn Frame::encode(self : Frame, mask? : Bytes = b"") -> Bytes {
   let buf = Buffer()
-  let first = (if frame.fin { 0x80 } else { 0 }) | frame.opcode.code()
+  let first = (if self.fin { 0x80 } else { 0 }) | self.opcode.code()
   buf.write_byte(first.to_byte())
   let masked = mask.length() == 4
-  let n = frame.payload.length()
+  let n = self.payload.length()
   let flag = if masked { 0x80 } else { 0 }
   if n <= 125 {
     buf.write_byte((flag | n).to_byte())
@@ -149,11 +149,11 @@ pub fn encode(frame : Frame, mask? : Bytes = b"") -> Bytes {
     buf.write_bytes(mask)
     for i = 0; i < n; i = i + 1 {
       buf.write_byte(
-        (frame.payload[i].to_int() ^ mask[i % 4].to_int()).to_byte(),
+        (self.payload[i].to_int() ^ mask[i % 4].to_int()).to_byte(),
       )
     }
   } else {
-    buf.write_bytes(frame.payload)
+    buf.write_bytes(self.payload)
   }
   buf.to_bytes()
 }
@@ -183,7 +183,7 @@ pub fn check(
   if client && (b1 & 0x80) == 0 {
     raise Protocol("a client frame that is not masked")
   }
-  if opcode.control() {
+  if opcode.is_control() {
     if len > 125L {
       raise Protocol("a control frame carrying more than 125 bytes")
     }
@@ -192,7 +192,7 @@ pub fn check(
     }
   }
   if len < 0L || len > limit.to_int64() {
-    raise TooBig(limit~, got=len)
+    raise Exceeded(limit~, got=len)
   }
   opcode
 }
@@ -275,15 +275,15 @@ pub fn decode(
 pub(all) enum Message {
   Text(String)
   Binary(Bytes)
-  Close(code~ : Int, reason~ : Bytes)
+  Close(status~ : Int, reason~ : Bytes)
 } derive(Eq, Debug)
 
 ///|
 /// A close frame's payload (RFC 6455 §5.5.1): the status big-endian, then the reason.
-pub fn close(code : Int, reason? : String = "") -> Bytes {
+pub fn close(status : Int, reason? : String = "") -> Bytes {
   let buf = Buffer()
-  buf.write_byte((code >> 8).to_byte())
-  buf.write_byte(code.to_byte())
+  buf.write_byte((status >> 8).to_byte())
+  buf.write_byte(status.to_byte())
   buf.write_bytes(@utf8.encode(reason))
   buf.to_bytes()
 }
@@ -293,7 +293,7 @@ pub fn close(code : Int, reason? : String = "") -> Bytes {
 ///
 /// `1005` is a local sentinel and must never be sent: a close that came with no status is
 /// echoed with no status, not with this number.
-pub fn code(payload : BytesView) -> Int {
+pub fn status(payload : BytesView) -> Int {
   if payload.length() >= 2 {
     (payload[0].to_int() << 8) | payload[1].to_int()
   } else {
@@ -318,10 +318,10 @@ pub fn reason(payload : BytesView) -> Bytes {
 /// locally — a peer that sends one has broken the protocol. `1012` through `1014` were
 /// registered after RFC 6455 and are allowed here, because refusing a registered status
 /// would break a real deployment for the sake of a closed reading of §7.4.1.
-pub fn allowed(code : Int) -> Bool {
-  (code >= 1000 && code <= 1003) ||
-  (code >= 1007 && code <= 1014) ||
-  (code >= 3000 && code <= 4999)
+pub fn allowed(status : Int) -> Bool {
+  (status >= 1000 && status <= 1003) ||
+  (status >= 1007 && status <= 1014) ||
+  (status >= 3000 && status <= 4999)
 }
 
 ///|
@@ -371,7 +371,7 @@ pub fn Reader::feed(self : Reader, frame : Frame) -> Step raise Refused {
       }
     Pong => { message: None, reply: None, }
     Close => {
-      let got = code(frame.payload[:])
+      let got = status(frame.payload[:])
       if frame.payload.length() >= 2 && !allowed(got) {
         raise Payload(
           "a close status §7.4.1 does not allow on the wire: \{got}",
@@ -387,7 +387,7 @@ pub fn Reader::feed(self : Reader, frame : Frame) -> Step raise Refused {
       // reach the wire.
       let echo = if frame.payload.length() >= 2 { close(got) } else { b"" }
       {
-        message: Some(Close(code=got, reason=why)),
+        message: Some(Close(status=got, reason=why)),
         reply: Some({ fin: true, opcode: Close, payload: echo, }),
       }
     }
@@ -423,7 +423,7 @@ pub fn Reader::feed(self : Reader, frame : Frame) -> Step raise Refused {
 fn Reader::add(self : Reader, part : Bytes) -> Unit raise Refused {
   let total = self.payload.length() + part.length()
   if total > self.limit {
-    raise TooBig(limit=self.limit, got=total.to_int64())
+    raise Exceeded(limit=self.limit, got=total.to_int64())
   }
   self.payload.write_bytes(part)
 }

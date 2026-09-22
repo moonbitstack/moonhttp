@@ -13,26 +13,24 @@ pub fn check(Int, Int, Int64, client~ : Bool, limit? : Int) -> Opcode raise Refu
 
 pub fn close(Int, reason? : String) -> Bytes
 
-pub fn code(BytesView) -> Int
-
 pub fn decode(BytesView, client? : Bool, limit? : Int) -> (Frame, Int)? raise Refused
-
-pub fn encode(Frame, mask? : Bytes) -> Bytes
 
 pub let limit : Int
 
 pub fn reason(BytesView) -> Bytes
 
+pub fn status(BytesView) -> Int
+
 // Errors
 pub(all) suberror Refused {
   Protocol(String)
   Payload(String)
-  TooBig(limit~ : Int, got~ : Int64)
+  Exceeded(limit~ : Int, got~ : Int64)
 } derive(Eq, @debug.Debug)
-pub fn Refused::code(Self) -> Int
 pub fn Refused::equal(Self, Self) -> Bool
 pub fn Refused::not_equal(Self, Self) -> Bool
 pub fn Refused::output(Self, &Logger) -> Unit
+pub fn Refused::status(Self) -> Int
 pub fn Refused::to_repr(Self) -> @debug.Repr
 pub fn Refused::to_string(Self) -> String
 pub impl Show for Refused
@@ -43,6 +41,7 @@ pub(all) struct Frame {
   opcode : Opcode
   payload : Bytes
 } derive(Eq, @debug.Debug)
+pub fn Frame::encode(Self, mask? : Bytes) -> Bytes
 pub fn Frame::equal(Self, Self) -> Bool
 pub fn Frame::not_equal(Self, Self) -> Bool
 pub fn Frame::to_repr(Self) -> @debug.Repr
@@ -50,7 +49,7 @@ pub fn Frame::to_repr(Self) -> @debug.Repr
 pub(all) enum Message {
   Text(String)
   Binary(Bytes)
-  Close(code~ : Int, reason~ : Bytes)
+  Close(status~ : Int, reason~ : Bytes)
 } derive(Eq, @debug.Debug)
 pub fn Message::equal(Self, Self) -> Bool
 pub fn Message::not_equal(Self, Self) -> Bool
@@ -65,8 +64,8 @@ pub(all) enum Opcode {
   Pong
 } derive(Eq, @debug.Debug)
 pub fn Opcode::code(Self) -> Int
-pub fn Opcode::control(Self) -> Bool
 pub fn Opcode::equal(Self, Self) -> Bool
+pub fn Opcode::is_control(Self) -> Bool
 pub fn Opcode::not_equal(Self, Self) -> Bool
 pub fn Opcode::of(Int) -> Self?
 pub fn Opcode::to_repr(Self) -> @debug.Repr

@@ -1,0 +1,5 @@
+import {
+  "moonbitstack/moonhttp/upgrade",
+}
+
+pkgtype(kind: "executable")

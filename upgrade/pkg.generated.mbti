@@ -8,13 +8,13 @@ import {
 // Values
 pub fn accept(String) -> String
 
-pub fn check(String, ArrayView[(String, String)]) -> Unit raise Refused
-
 pub let guid : String
 
 pub fn key(BytesView) -> String
 
-pub fn read(ArrayView[(String, String)]) -> (String, Array[String]) raise Refused
+pub fn read_request(ArrayView[(String, String)]) -> (String, Array[String]) raise Refused
+
+pub fn read_response(String, ArrayView[(String, String)]) -> Unit raise Refused
 
 pub fn request(host~ : String, key~ : String, path? : String, protocols? : ArrayView[String], origin? : String, extra? : ArrayView[(String, String)]) -> Bytes
 

@@ -26,6 +26,15 @@ Run `moon run examples/tour` for the whole surface in one go.
 | `ws` | WebSocket framing: opcodes, masking, fragment reassembly, close statuses | RFC 6455 §5, §7.4.1 |
 | `upgrade` | The WebSocket opening handshake, both sides | RFC 6455 §4 |
 
+## One vocabulary
+
+The same word means the same thing in every package here, and in every other
+package the organisation publishes. `encode` and `decode` are a pair, and
+`parse` is for a format with no symmetric writer. `code` is an enum's value on
+the wire, so a WebSocket close status is `status` and never `code`. A limit
+passed is `Exceeded(limit~, got~)`, a predicate reads as an adjective or is
+named `is_`, and a refusal is `Refused`.
+
 ## Configuration
 
 Every bound and every leniency is an argument, and every default is the one the

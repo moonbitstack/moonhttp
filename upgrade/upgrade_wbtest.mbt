@@ -111,7 +111,7 @@ test "a server reads the key and the subprotocols a client offered" {
     ("Sec-WebSocket-Version", "13"),
     ("Sec-WebSocket-Protocol", "chat, superchat"),
   ]
-  let (got, offered) = read(headers[:])
+  let (got, offered) = read_request(headers[:])
   assert_eq(got, sample)
   assert_eq(offered, ["chat", "superchat"])
   // Names are matched without regard to case, and a proxy may have added to Connection.
@@ -121,7 +121,7 @@ test "a server reads the key and the subprotocols a client offered" {
     ("sec-websocket-key", " " + sample + " "),
     ("Sec-Websocket-Version", "13"),
   ]
-  let (got, offered) = read(odd[:])
+  let (got, offered) = read_request(odd[:])
   assert_eq(got, sample)
   assert_eq(offered, [])
 }
@@ -134,7 +134,7 @@ test "a request that is not a WebSocket upgrade is refused with the reason" {
     ("Sec-WebSocket-Key", sample),
     ("Sec-WebSocket-Version", "13"),
   ]
-  assert_eq(read(base[:]) is (_, _), true)
+  assert_eq(read_request(base[:]) is (_, _), true)
   assert_eq(refused([("Connection", "Upgrade")][:]) is NotAnUpgrade(_), true)
   assert_eq(
     refused([("Upgrade", "h2c"), ("Connection", "Upgrade")][:])
@@ -159,7 +159,7 @@ test "only version 13 is accepted, which is what §4.4 asks a server to answer" 
       ("Sec-WebSocket-Version", v),
     ]
   }
-  assert_eq(read(of("13")[:]) is (_, _), true)
+  assert_eq(read_request(of("13")[:]) is (_, _), true)
   assert_eq(refused(of("8")[:]), Version(got="8"))
   assert_eq(refused(of("")[:]), Version(got=""))
   // Absent altogether.
@@ -197,7 +197,7 @@ test "a key that is not sixteen bytes of base64 is refused" {
 fn refused(headers : ArrayView[(String, String)]) -> Refused {
   let mut out : Refused? = None
   try {
-    let _ = read(headers)
+    let _ = read_request(headers)
   } catch {
     e => out = Some(e)
   }
@@ -214,7 +214,7 @@ test "a client checks the proof, and a wrong one is the case §4.2.2 rules out" 
     ("Connection", "Upgrade"),
     ("Sec-WebSocket-Accept", proof),
   ]
-  check(sample, good[:])
+  read_response(sample, good[:])
   // A server that echoed the key instead of proving it.
   let echoed = [
     ("Upgrade", "websocket"),
@@ -238,7 +238,7 @@ test "a client checks the proof, and a wrong one is the case §4.2.2 rules out" 
 /// What checking this response refuses with.
 fn checked(key : String, headers : ArrayView[(String, String)]) -> Refused {
   let mut out : Refused? = None
-  check(key, headers) catch {
+  read_response(key, headers) catch {
     e => out = Some(e)
   }
   match out {
