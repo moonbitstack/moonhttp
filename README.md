@@ -23,6 +23,8 @@ Run `moon run examples/tour` for the whole surface in one go.
 | `sse` | Server-Sent Events, both directions | WHATWG HTML, the event-stream format |
 | `mime` | `multipart/form-data` and `application/x-www-form-urlencoded`, and percent-encoding both ways | RFC 7578, WHATWG URL §5.1, RFC 3986 |
 | `media` | What a response says its body is, and under what name to save it | RFC 9110 §8.3, RFC 6266 |
+| `ws` | WebSocket framing: opcodes, masking, fragment reassembly, close statuses | RFC 6455 §5, §7.4.1 |
+| `upgrade` | The WebSocket opening handshake, both sides | RFC 6455 §4 |
 
 ## Configuration
 
@@ -110,11 +112,16 @@ CRLF that belongs to the delimiter and not the content — and against the
 percent-encoding edges, including a stray `%` that is not an escape and the `+`
 that is a space in a form body and nowhere else.
 
+`ws` is measured against all five frames RFC 6455 §5.7 prints: the unmasked and
+masked text messages, the fragmented one, the ping with its pong, and the two
+long length forms. `upgrade` is measured against the key and proof §1.3 prints,
+which is the one computation in it.
+
 ## What is not here yet
 
-HTTP/1.1 message framing, HTTP/2 with HPACK, HTTP/3 with QPACK, WebSocket
-framing, content negotiation, cookies, ranges, caching and conditional requests.
-They are planned in that order; the tracking list lives with the project.
+HTTP/1.1 message framing, HTTP/2 with HPACK, HTTP/3 with QPACK, content
+negotiation, cookies, ranges, caching and conditional requests. They are planned
+in that order; the tracking list lives with the project.
 
 TLS is `moontls` and QUIC is `moonquic`, so that parsing an HTTP message does
 not mean carrying a handshake. Compression is `moonzip`.

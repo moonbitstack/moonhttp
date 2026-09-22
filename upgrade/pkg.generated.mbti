@@ -1,0 +1,43 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitstack/moonhttp/upgrade"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn accept(String) -> String
+
+pub fn check(String, ArrayView[(String, String)]) -> Unit raise Refused
+
+pub let guid : String
+
+pub fn key(BytesView) -> String
+
+pub fn read(ArrayView[(String, String)]) -> (String, Array[String]) raise Refused
+
+pub fn request(host~ : String, key~ : String, path? : String, protocols? : ArrayView[String], origin? : String, extra? : ArrayView[(String, String)]) -> Bytes
+
+pub fn response(String, protocol? : String, extra? : ArrayView[(String, String)]) -> Bytes
+
+pub fn subprotocol(ArrayView[String], ArrayView[String]) -> String?
+
+// Errors
+pub(all) suberror Refused {
+  NotAnUpgrade(String)
+  Version(got~ : String)
+  Key(String)
+  Proof(want~ : String, got~ : String)
+} derive(Eq, @debug.Debug)
+pub fn Refused::equal(Self, Self) -> Bool
+pub fn Refused::not_equal(Self, Self) -> Bool
+pub fn Refused::output(Self, &Logger) -> Unit
+pub fn Refused::to_repr(Self) -> @debug.Repr
+pub fn Refused::to_string(Self) -> String
+pub impl Show for Refused
+
+// Types and methods
+
+// Type aliases
+
+// Traits

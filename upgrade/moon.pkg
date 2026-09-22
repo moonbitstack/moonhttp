@@ -1,0 +1,14 @@
+// The WebSocket opening handshake, RFC 6455 §4:
+// https://www.rfc-editor.org/rfc/rfc6455#section-4
+//
+// The GET that asks for the upgrade, the 101 that grants it, and the proof that makes
+// the difference between a server which understood the protocol and one which merely
+// echoed what it was sent.
+//
+// Separate from `ws` because proving a key costs a SHA-1 and a base64, and framing costs
+// nothing: a proxy or a client library that only reads frames should not carry them.
+import {
+  "moonbitlang/core/encoding/utf8",
+  "moonbitstack/mooncrypt/hash/sha1",
+  "moonbitstack/moonbase/base64",
+}

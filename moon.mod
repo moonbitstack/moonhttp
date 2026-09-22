@@ -21,3 +21,8 @@ keywords = [
 description = "moonhttp — the HTTP family for MoonBit: WebSocket framing, Server-Sent Events, and multipart and URL-encoded bodies, each a package of its own."
 
 preferred_target = "wasm-gc"
+
+import {
+  "moonbitstack/mooncrypt@0.3.0",
+  "moonbitstack/moonbase@0.4.0",
+}

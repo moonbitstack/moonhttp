@@ -1,0 +1,12 @@
+// The WebSocket frame layer, RFC 6455 §5:
+// https://www.rfc-editor.org/rfc/rfc6455#section-5
+//
+// Opcodes, the frame codec with its masking, the reassembly of a fragmented message
+// (§5.4) around the control frames interleaved with it (§5.5), and the close statuses
+// §7.4.1 allows on the wire.
+//
+// The opening handshake is `upgrade`, which is where the dependencies are: proving a
+// key needs SHA-1 and base64, and framing needs nothing at all.
+import {
+  "moonbitlang/core/encoding/utf8",
+}

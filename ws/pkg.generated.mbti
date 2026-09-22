@@ -1,0 +1,93 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitstack/moonhttp/ws"
+
+import {
+  "moonbitlang/core/buffer",
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn allowed(Int) -> Bool
+
+pub fn check(Int, Int, Int64, client~ : Bool, limit? : Int) -> Opcode raise Refused
+
+pub fn close(Int, reason? : String) -> Bytes
+
+pub fn code(BytesView) -> Int
+
+pub fn decode(BytesView, client? : Bool, limit? : Int) -> (Frame, Int)? raise Refused
+
+pub fn encode(Frame, mask? : Bytes) -> Bytes
+
+pub let limit : Int
+
+pub fn reason(BytesView) -> Bytes
+
+// Errors
+pub(all) suberror Refused {
+  Protocol(String)
+  Payload(String)
+  TooBig(limit~ : Int, got~ : Int64)
+} derive(Eq, @debug.Debug)
+pub fn Refused::code(Self) -> Int
+pub fn Refused::equal(Self, Self) -> Bool
+pub fn Refused::not_equal(Self, Self) -> Bool
+pub fn Refused::output(Self, &Logger) -> Unit
+pub fn Refused::to_repr(Self) -> @debug.Repr
+pub fn Refused::to_string(Self) -> String
+pub impl Show for Refused
+
+// Types and methods
+pub(all) struct Frame {
+  fin : Bool
+  opcode : Opcode
+  payload : Bytes
+} derive(Eq, @debug.Debug)
+pub fn Frame::equal(Self, Self) -> Bool
+pub fn Frame::not_equal(Self, Self) -> Bool
+pub fn Frame::to_repr(Self) -> @debug.Repr
+
+pub(all) enum Message {
+  Text(String)
+  Binary(Bytes)
+  Close(code~ : Int, reason~ : Bytes)
+} derive(Eq, @debug.Debug)
+pub fn Message::equal(Self, Self) -> Bool
+pub fn Message::not_equal(Self, Self) -> Bool
+pub fn Message::to_repr(Self) -> @debug.Repr
+
+pub(all) enum Opcode {
+  Continuation
+  Text
+  Binary
+  Close
+  Ping
+  Pong
+} derive(Eq, @debug.Debug)
+pub fn Opcode::code(Self) -> Int
+pub fn Opcode::control(Self) -> Bool
+pub fn Opcode::equal(Self, Self) -> Bool
+pub fn Opcode::not_equal(Self, Self) -> Bool
+pub fn Opcode::of(Int) -> Self?
+pub fn Opcode::to_repr(Self) -> @debug.Repr
+
+pub struct Reader {
+  payload : @buffer.Buffer
+  mut kind : Opcode?
+  limit : Int
+}
+pub fn Reader::feed(Self, Frame) -> Step raise Refused
+pub fn Reader::new(limit? : Int) -> Self
+pub fn Reader::pending(Self) -> Int
+
+pub(all) struct Step {
+  message : Message?
+  reply : Frame?
+} derive(Eq, @debug.Debug)
+pub fn Step::equal(Self, Self) -> Bool
+pub fn Step::not_equal(Self, Self) -> Bool
+pub fn Step::to_repr(Self) -> @debug.Repr
+
+// Type aliases
+
+// Traits
