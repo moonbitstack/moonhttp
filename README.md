@@ -36,6 +36,7 @@ moon run examples/07-qpack-field    moon run examples/11-http3-conn
 | `sse` | Server-Sent Events, both directions | WHATWG HTML, the event-stream format |
 | `mime` | `multipart/form-data` and `application/x-www-form-urlencoded`, and percent-encoding both ways | RFC 7578, WHATWG URL §5.1, RFC 3986 |
 | `media` | What a response says its body is, and under what name to save it | RFC 9110 §8.3, RFC 6266 |
+| `range` | Asking for part of a representation: the four fields, the arithmetic that resolves a range against a length, and the multi-range body | RFC 9110 §14, §13.1.5 |
 | `cookie` | `Cookie` and `Set-Cookie`, each read and written | RFC 6265, and its revision for `SameSite` |
 | `ws` | WebSocket framing: opcodes, masking, fragment reassembly, close statuses | RFC 6455 §5, §7.4.1 |
 | `upgrade` | The WebSocket opening handshake, both sides | RFC 6455 §4 |

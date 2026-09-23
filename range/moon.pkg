@@ -1,0 +1,14 @@
+// Range requests, RFC 9110 §14 and §13.1.5:
+// https://www.rfc-editor.org/rfc/rfc9110#section-14
+//
+// Asking for part of something instead of all of it. This is what a download
+// resumes with, what a player seeks with, and what a segment of a media stream
+// is fetched with — one field asking, one field answering, and the arithmetic
+// in between that turns "the last 500 bytes" into two offsets.
+//
+// Offsets are 64-bit. A representation larger than two gigabytes is ordinary
+// for the thing range requests exist to serve, and a 32-bit offset would fail
+// on exactly the files people seek within.
+import {
+  "moonbitstack/moonhttp/range",
+} for "test"

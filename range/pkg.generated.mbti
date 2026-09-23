@@ -1,0 +1,69 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitstack/moonhttp/range"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn accept(ranges? : Bool, unit? : String) -> String
+
+pub fn decode(StringView, unit? : String) -> Array[Spec]?
+
+pub fn encode(ArrayView[Spec], unit? : String) -> String
+
+pub let limit : Int
+
+pub fn measure(ArrayView[Spec], length~ : Int64, merge? : Bool, limit? : Int) -> Array[Part]?
+
+pub fn multipart(StringView) -> String
+
+pub fn parts(ArrayView[(Part, Bytes)], boundary~ : String, kind~ : String, complete? : Int64, unit? : String) -> Bytes
+
+pub fn unchanged(StringView, etag? : String, modified? : String) -> Bool
+
+pub let unit : String
+
+pub fn unsatisfied(Int64, unit? : String) -> Content
+
+// Errors
+
+// Types and methods
+pub(all) struct Content {
+  unit : String
+  part : Part?
+  complete : Int64?
+} derive(Eq, @debug.Debug)
+pub fn Content::decode(StringView) -> Self?
+pub fn Content::encode(Self) -> String
+pub fn Content::equal(Self, Self) -> Bool
+pub fn Content::new(Part, complete? : Int64, unit? : String) -> Self
+pub fn Content::not_equal(Self, Self) -> Bool
+pub fn Content::to_repr(Self) -> @debug.Repr
+
+pub(all) struct Part {
+  at : Int64
+  last : Int64
+} derive(Compare, Eq, @debug.Debug)
+pub fn Part::compare(Self, Self) -> Int
+pub fn Part::equal(Self, Self) -> Bool
+pub fn Part::length(Self) -> Int64
+pub fn Part::not_equal(Self, Self) -> Bool
+pub fn Part::op_ge(Self, Self) -> Bool
+pub fn Part::op_gt(Self, Self) -> Bool
+pub fn Part::op_le(Self, Self) -> Bool
+pub fn Part::op_lt(Self, Self) -> Bool
+pub fn Part::to_repr(Self) -> @debug.Repr
+
+pub(all) enum Spec {
+  Between(Int64, Int64)
+  From(Int64)
+  Last(Int64)
+} derive(Eq, @debug.Debug)
+pub fn Spec::equal(Self, Self) -> Bool
+pub fn Spec::not_equal(Self, Self) -> Bool
+pub fn Spec::to_repr(Self) -> @debug.Repr
+
+// Type aliases
+
+// Traits
