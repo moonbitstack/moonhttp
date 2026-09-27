@@ -35,6 +35,9 @@ moon run examples/08-qpack-dynamic      moon run examples/14-dataurl
 moon run examples/09-http3-frames       moon run examples/15-conditional
 ```
 
+The API reference is generated from the sources' doc comments:
+[moonbitstack.github.io/moonhttp](https://moonbitstack.github.io/moonhttp).
+
 ## Packages
 
 | Package | What | Specification |
