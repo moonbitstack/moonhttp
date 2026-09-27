@@ -352,73 +352,6 @@ pub fn boundary(content_type : StringView) -> String? {
   param(content_type, "boundary")
 }
 
-///|
-/// Percent-encode text, keeping the unreserved characters and whatever `safe`
-/// names besides (RFC 3986 §2.3).
-///
-/// The counterpart of [`percent_decode`], which was here first: a form body
-/// arrives encoded and a URL or a header parameter goes out encoded, and having
-/// only one of the pair is how a caller ends up hand-rolling the other.
-///
-/// `safe` is what to leave alone beyond the unreserved set. A path passes `/`,
-/// a `Location` header passes the sub-delimiters, and a filename passes nothing.
-pub fn percent_encode(text : StringView, safe? : StringView = ""[:]) -> String {
-  let digits = "0123456789ABCDEF"
-  let raw = @utf8.encode(text)
-  let out = StringBuilder()
-  for i = 0; i < raw.length(); i = i + 1 {
-    let b = raw[i].to_int()
-    let unreserved = (b >= 0x41 && b <= 0x5A) ||
-      (b >= 0x61 && b <= 0x7A) ||
-      (b >= 0x30 && b <= 0x39) ||
-      b == 0x2D ||
-      b == 0x2E ||
-      b == 0x5F ||
-      b == 0x7E
-    let mut spared = false
-    if !unreserved && b < 0x80 {
-      for c in safe {
-        if c.to_int() == b {
-          spared = true
-          break
-        }
-      }
-    }
-    if unreserved || spared {
-      out.write_char(b.unsafe_to_char())
-    } else {
-      out.write_char('%')
-      out.write_char(digits[b / 16].unsafe_to_char())
-      out.write_char(digits[b % 16].unsafe_to_char())
-    }
-  }
-  out.to_string()
-}
-
-///|
-/// Undo percent-encoding, leaving `+` alone.
-///
-/// A `%` that is not followed by two hexadecimal digits stands for itself,
-/// which is what browsers do with the malformed URLs they are handed.
-pub fn percent_decode(raw : BytesView) -> Bytes {
-  let out : Array[Byte] = []
-  let mut i = 0
-  while i < raw.length() {
-    if raw[i] == b'%' && i + 2 < raw.length() {
-      let hi = nibble(raw[i + 1])
-      let lo = nibble(raw[i + 2])
-      if hi >= 0 && lo >= 0 {
-        out.push(((hi << 4) | lo).to_byte())
-        i += 3
-        continue
-      }
-    }
-    out.push(raw[i])
-    i += 1
-  }
-  Bytes::from_array(out)
-}
-
 // ----------------------------------------------------------------- the pieces
 
 ///|
@@ -429,7 +362,7 @@ fn component(raw : BytesView) -> String {
   for b in raw {
     spaced.push(if b == b'+' { b' ' } else { b })
   }
-  text(percent_decode(Bytes::from_array(spaced)[:])[:])
+  text(@url.unescape(Bytes::from_array(spaced)[:])[:])
 }
 
 ///|
@@ -567,18 +500,4 @@ fn trim(s : StringView) -> String {
 ///|
 fn is_space(c : Int) -> Bool {
   c == 0x20 || c == 0x09 || c == 0x0D || c == 0x0A
-}
-
-///|
-fn nibble(b : Byte) -> Int {
-  let c = b.to_int()
-  if c >= 0x30 && c <= 0x39 {
-    c - 0x30
-  } else if c >= 0x61 && c <= 0x66 {
-    c - 0x61 + 10
-  } else if c >= 0x41 && c <= 0x46 {
-    c - 0x41 + 10
-  } else {
-    -1
-  }
 }

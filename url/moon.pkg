@@ -1,0 +1,24 @@
+// URI references, RFC 3986:
+// https://www.rfc-editor.org/rfc/rfc3986
+//
+// Taking one apart, putting one back together, resolving a relative one against
+// a base, and the percent coding that lets any octet travel inside one. This is
+// the addressing syntax every other package here spells out in full and nobody
+// owns — a form body, a request target, a `Location` header and a data URL all
+// obey it.
+//
+// Percent coding takes the component as a parameter rather than a hand-written
+// list of spared characters: which octets may stand for themselves is decided by
+// RFC 3986's grammar, and three callers writing that list out by hand is three
+// chances to get it wrong.
+//
+// Not here: internationalised host names (RFC 3492), and the parts of the WHATWG
+// URL Standard that are specific to it rather than to RFC 3986 — special
+// schemes, default ports, Windows drive letters.
+import {
+  "moonbitlang/core/encoding/utf8",
+}
+
+import {
+  "moonbitstack/moonhttp/url",
+} for "test"

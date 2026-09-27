@@ -20,8 +20,6 @@ pub fn multipart(StringView) -> String
 
 pub fn parts(ArrayView[(Part, Bytes)], boundary~ : String, kind~ : String, complete? : Int64, unit? : String) -> Bytes
 
-pub fn unchanged(StringView, etag? : String, modified? : String) -> Bool
-
 pub let unit : String
 
 pub fn unsatisfied(Int64, unit? : String) -> Content

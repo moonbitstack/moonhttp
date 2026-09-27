@@ -4,6 +4,11 @@
 //
 // Both encodings a browser posts a form in, read into the same shape. Every
 // body here arrived from whoever sent it, so both are bounded.
+//
+// The percent coding is `url`'s: it is RFC 3986's, and a form body is only one
+// of the places it turns up. What is this package's own is the `+` that means a
+// space in a form body and nowhere else.
 import {
   "moonbitlang/core/encoding/utf8",
+  "moonbitstack/moonhttp/url",
 }

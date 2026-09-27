@@ -75,22 +75,3 @@ test "a filename is named in the form that can carry it" {
     "attachment; filename=\"a/b.txt\"",
   )
 }
-
-///|
-/// The encoder and the decoder are a pair, which is why they are in one package.
-test "percent encoding round-trips" {
-  for
-    text in ["hello", "a b", "résumé", "100%", "a/b", "?x=1&y=2", "", "~-._"] {
-    let encoded = @mime.percent_encode(text[:])
-    assert_eq(
-      @mime.percent_decode(@utf8.encode(encoded[:])[:]),
-      @utf8.encode(text[:]),
-    )
-  }
-  // The unreserved set is never touched (RFC 3986 §2.3).
-  assert_eq(@mime.percent_encode("aZ09-._~"[:]), "aZ09-._~")
-  // And `safe` spares what the caller names, and nothing else.
-  assert_eq(@mime.percent_encode("a/b"[:]), "a%2Fb")
-  assert_eq(@mime.percent_encode("a/b"[:], safe="/"[:]), "a/b")
-  assert_eq(@mime.percent_encode("a b/c"[:], safe="/"[:]), "a%20b/c")
-}

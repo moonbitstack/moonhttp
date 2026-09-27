@@ -1,0 +1,9 @@
+// A second request for something unchanged: `moon run examples/15-conditional`.
+pkgtype(kind: "executable")
+
+import {
+  "moonbitstack/moonhttp/conditional",
+  "moonbitstack/moonhttp/range",
+  "moonbitstack/moondate",
+  "moonbitstack/mooncrypt/hash/sha2",
+}

@@ -1,0 +1,27 @@
+// Conditional requests, RFC 9110 §8.8 and §13:
+// https://www.rfc-editor.org/rfc/rfc9110#section-13
+//
+// The entity-tag a server puts on a representation, the five fields a client
+// sends it back in, and the order §13.2.2 says to weigh them in. This is what
+// turns a second request for something unchanged into a 304, and what tells a
+// resumed download that it is still resuming the same file.
+//
+// Generating a tag and comparing one live together on purpose. Unlike framing
+// and the handshake that proves it, there is no reader here that only ever does
+// one of the two: a client echoes a tag it was given, and a server that
+// compares had to write one first.
+//
+// The digest a content-derived tag is made with is a parameter, so this package
+// depends on the contract and not on any algorithm.
+import {
+  "moonbitstack/moondate",
+  "moonbitstack/mooncrypt/spec",
+  "moonbitstack/moonbase",
+  "moonbitstack/moonbase/base16",
+}
+
+import {
+  "moonbitstack/moonhttp/conditional",
+  "moonbitstack/moondate",
+  "moonbitstack/mooncrypt/hash/sha2",
+} for "test"

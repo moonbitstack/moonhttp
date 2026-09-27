@@ -474,43 +474,6 @@ pub fn accept(ranges? : Bool = true, unit? : String = unit) -> String {
 
 // ---------------------------------------------------------------- conditional
 
-///|
-/// Whether an `If-Range` allows the range to be served (RFC 9110 §13.1.5).
-///
-/// `given` is what the client sent — an entity tag or an HTTP-date. It matches
-/// on a *strong* comparison against `etag`, or on an exact match against
-/// `modified`; anything else means the representation may have changed since
-/// the client last saw it, and §13.1.5 says to send the whole thing rather than
-/// a part of a different document.
-///
-/// A weak entity tag never matches, on either side. A weak tag says two
-/// representations are equivalent, not identical, and stitching a range from
-/// one onto a copy of the other produces a file that never existed.
-pub fn unchanged(
-  given : StringView,
-  etag? : String,
-  modified? : String,
-) -> Bool {
-  let given = trim(given)
-  if given.length() == 0 {
-    return false
-  }
-  if given.length() >= 2 && given[0] == 'W' && given[1] == '/' {
-    return false
-  }
-  if given[0] == '"' {
-    return match etag {
-      Some(etag) =>
-        etag.length() > 0 && etag[0] == '"' && etag == given.to_owned()
-      None => false
-    }
-  }
-  match modified {
-    Some(modified) => modified == given.to_owned()
-    None => false
-  }
-}
-
 // ----------------------------------------------------------------- multipart
 
 ///|

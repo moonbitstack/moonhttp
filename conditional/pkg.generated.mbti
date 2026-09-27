@@ -1,0 +1,79 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitstack/moonhttp/conditional"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitstack/mooncrypt/spec",
+  "moonbitstack/moondate",
+}
+
+// Values
+pub let ask : Ask
+
+pub fn hash(BytesView, digest~ : &@spec.Hash, weak? : Bool) -> Tag
+
+pub fn stamp(length~ : Int64, modified~ : @moondate.Moment, weak? : Bool) -> Tag
+
+// Errors
+
+// Types and methods
+pub(all) struct Ask {
+  matching : Tags?
+  none_matching : Tags?
+  modified_since : @moondate.Moment?
+  unmodified_since : @moondate.Moment?
+  ranging : Validator?
+} derive(Eq, @debug.Debug)
+pub fn Ask::equal(Self, Self) -> Bool
+pub fn Ask::evaluate(Self, verb~ : String, etag? : Tag, modified? : @moondate.Moment, present? : Bool) -> Verdict
+pub fn Ask::new(matching? : Tags, none_matching? : Tags, modified_since? : @moondate.Moment, unmodified_since? : @moondate.Moment, ranging? : Validator) -> Self
+pub fn Ask::not_equal(Self, Self) -> Bool
+pub fn Ask::read(ArrayView[(String, String)]) -> Self
+pub fn Ask::to_repr(Self) -> @debug.Repr
+pub fn Ask::unchanged(Self, etag? : Tag, modified? : @moondate.Moment) -> Bool
+
+pub(all) struct Tag {
+  text : String
+  weak : Bool
+} derive(Eq, @debug.Debug)
+pub fn Tag::alike(Self, Self) -> Bool
+pub fn Tag::decode(StringView) -> Self?
+pub fn Tag::encode(Self) -> String
+pub fn Tag::equal(Self, Self) -> Bool
+pub fn Tag::new(String, weak? : Bool) -> Self
+pub fn Tag::not_equal(Self, Self) -> Bool
+pub fn Tag::same(Self, Self) -> Bool
+pub fn Tag::to_repr(Self) -> @debug.Repr
+
+pub(all) enum Tags {
+  Any
+  These(Array[Tag])
+} derive(Eq, @debug.Debug)
+pub fn Tags::decode(StringView) -> Self?
+pub fn Tags::encode(Self) -> String
+pub fn Tags::equal(Self, Self) -> Bool
+pub fn Tags::not_equal(Self, Self) -> Bool
+pub fn Tags::to_repr(Self) -> @debug.Repr
+
+pub(all) enum Validator {
+  Marked(Tag)
+  Dated(@moondate.Moment)
+} derive(Eq, @debug.Debug)
+pub fn Validator::decode(StringView) -> Self?
+pub fn Validator::encode(Self) -> String raise @moondate.Refused
+pub fn Validator::equal(Self, Self) -> Bool
+pub fn Validator::not_equal(Self, Self) -> Bool
+pub fn Validator::to_repr(Self) -> @debug.Repr
+
+pub(all) enum Verdict {
+  Go
+  Fresh
+  Failed
+} derive(Eq, @debug.Debug)
+pub fn Verdict::equal(Self, Self) -> Bool
+pub fn Verdict::not_equal(Self, Self) -> Bool
+pub fn Verdict::to_repr(Self) -> @debug.Repr
+
+// Type aliases
+
+// Traits

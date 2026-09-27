@@ -332,30 +332,6 @@ test "Accept-Ranges says bytes or says none" {
 }
 
 ///|
-/// RFC 9110 §13.1.5: the range is served only on a strong entity-tag match or
-/// an exact date match. A weak tag never matches, because stitching a range
-/// from an equivalent representation onto a copy of another produces a file
-/// that never existed.
-test "If-Range serves the range only when nothing has changed" {
-  assert_true(@range.unchanged("\"abc\"", etag="\"abc\""))
-  assert_false(@range.unchanged("\"abc\"", etag="\"xyz\""))
-  assert_false(@range.unchanged("\"abc\""))
-  // Weak on either side.
-  assert_false(@range.unchanged("W/\"abc\"", etag="\"abc\""))
-  assert_false(@range.unchanged("\"abc\"", etag="W/\"abc\""))
-  assert_false(@range.unchanged("W/\"abc\"", etag="W/\"abc\""))
-  // A date matches exactly or not at all.
-  let when = "Wed, 21 Oct 2015 07:28:00 GMT"
-  assert_true(@range.unchanged(when, modified=when))
-  assert_false(@range.unchanged(when, modified="Thu, 22 Oct 2015 07:28:00 GMT"))
-  assert_false(@range.unchanged(when))
-  assert_false(@range.unchanged(""))
-  // An entity tag is never compared against a date, or the other way round.
-  assert_false(@range.unchanged("\"abc\"", modified=when))
-  assert_false(@range.unchanged(when, etag="\"abc\""))
-}
-
-///|
 /// RFC 9110 §14.6: each part carries the representation's own media type and
 /// its own Content-Range, and the last boundary is the one with two trailing
 /// hyphens.

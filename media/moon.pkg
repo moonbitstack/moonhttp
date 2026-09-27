@@ -5,11 +5,14 @@
 // Naming a download is a question about a format, not about a framework: the
 // answer is the same whether the bytes came from a file, a database or a
 // generator.
+//
+// The filename is escaped as a path segment by `url`, not by a hand-written
+// list of spared characters: which octets a URI may carry is RFC 3986's
+// question and it has one answer.
 import {
-  "moonbitstack/moonhttp/mime",
+  "moonbitstack/moonhttp/url",
 }
 
 import {
   "moonbitstack/moonhttp/media",
-  "moonbitlang/core/encoding/utf8",
 } for "test"

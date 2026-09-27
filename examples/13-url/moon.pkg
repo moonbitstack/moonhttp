@@ -1,0 +1,7 @@
+// Taking a reference apart, resolving a relative one, escaping a component:
+// `moon run examples/13-url`.
+pkgtype(kind: "executable")
+
+import {
+  "moonbitstack/moonhttp/url",
+}

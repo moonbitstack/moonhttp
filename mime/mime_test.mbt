@@ -189,19 +189,6 @@ test "a malformed multipart body" {
 }
 
 ///|
-/// Percent decoding on its own, since a URL path needs it too and `+` is a
-/// space only in a form body.
-test "percent decoding" {
-  assert_eq(@mime.percent_decode(b"a%20b"[:]), b"a b")
-  assert_eq(@mime.percent_decode(b"a+b"[:]), b"a+b")
-  assert_eq(@mime.percent_decode(b"%E9%AA%87"[:]), b"\xE9\xAA\x87")
-  assert_eq(@mime.percent_decode(b"100%"[:]), b"100%")
-  assert_eq(@mime.percent_decode(b"%"[:]), b"%")
-  assert_eq(@mime.percent_decode(b"%zz"[:]), b"%zz")
-  assert_eq(@mime.percent_decode(b""[:]), b"")
-}
-
-///|
 /// The two ways of naming a bound are the same bound.
 ///
 /// There is no third way here: a bound belongs to an endpoint rather than to a

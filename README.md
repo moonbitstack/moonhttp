@@ -17,16 +17,22 @@ in, with nothing about sockets in them.
 let form = @mime.parse(body[:], content_type[:])
 form.field("name")
 form.file("avatar")
+
+// A second request for something that has not changed.
+let etag = @conditional.hash(body[:], digest=@sha2.Hasher::new())
+@conditional.Ask::read(headers[:]).evaluate(verb="GET", etag~)  // Go | Fresh | Failed
 ```
 
-Run `moon run examples/tour` for the whole surface in one go. The eleven worked
-examples run a package each:
+Run `moon run examples/tour` for the whole surface in one go. The fourteen
+worked examples run a package each:
 
 ```
-moon run examples/04-ws-handshake   moon run examples/08-qpack-dynamic
-moon run examples/05-ws-frame       moon run examples/09-http3-frames
-moon run examples/06-qpack-primitives   moon run examples/10-http3-message
-moon run examples/07-qpack-field    moon run examples/11-http3-conn
+moon run examples/04-ws-handshake       moon run examples/10-http3-message
+moon run examples/05-ws-frame           moon run examples/11-http3-conn
+moon run examples/06-qpack-primitives   moon run examples/12-range
+moon run examples/07-qpack-field        moon run examples/13-url
+moon run examples/08-qpack-dynamic      moon run examples/14-dataurl
+moon run examples/09-http3-frames       moon run examples/15-conditional
 ```
 
 ## Packages
@@ -34,9 +40,12 @@ moon run examples/07-qpack-field    moon run examples/11-http3-conn
 | Package | What | Specification |
 |:--:|:--|:--|
 | `sse` | Server-Sent Events, both directions | WHATWG HTML, the event-stream format |
-| `mime` | `multipart/form-data` and `application/x-www-form-urlencoded`, and percent-encoding both ways | RFC 7578, WHATWG URL §5.1, RFC 3986 |
+| `mime` | `multipart/form-data` and `application/x-www-form-urlencoded` | RFC 7578, WHATWG URL §5.1 |
+| `url` | A URI reference: taking one apart, putting it back, resolving a relative one, and percent coding by component | RFC 3986 |
+| `dataurl` | A representation written inside the reference to it | RFC 2397 |
 | `media` | What a response says its body is, and under what name to save it | RFC 9110 §8.3, RFC 6266 |
-| `range` | Asking for part of a representation: the four fields, the arithmetic that resolves a range against a length, and the multi-range body | RFC 9110 §14, §13.1.5 |
+| `range` | Asking for part of a representation: the fields, the arithmetic that resolves a range against a length, and the multi-range body | RFC 9110 §14 |
+| `conditional` | Entity-tags, the five precondition fields, and the order they are weighed in | RFC 9110 §8.8, §13 |
 | `cookie` | `Cookie` and `Set-Cookie`, each read and written | RFC 6265, and its revision for `SameSite` |
 | `ws` | WebSocket framing: opcodes, masking, fragment reassembly, close statuses | RFC 6455 §5, §7.4.1 |
 | `upgrade` | The WebSocket opening handshake, both sides | RFC 6455 §4 |
@@ -146,9 +155,25 @@ is checked by a test that turns red when the rule is removed.
 
 `mime` is measured against a `multipart/form-data` body written the way a
 browser writes one — repeated names, a file with its own headers, the trailing
-CRLF that belongs to the delimiter and not the content — and against the
-percent-encoding edges, including a stray `%` that is not an escape and the `+`
+CRLF that belongs to the delimiter and not the content — and against the `+`
 that is a space in a form body and nowhere else.
+
+`url` is measured against the test set RFC 3986 prints for itself: all
+forty-two references of §5.4 resolved against one base, the abnormal half
+included, since a resolver that passes the normal examples and fails the
+abnormal ones is the usual kind of broken. Beside them, the components that are
+absent rather than empty, the colon that does not make a scheme, and the
+percent-coding edges, a stray `%` among them.
+
+`dataurl` is measured against the four examples of RFC 2397 §4, the second of
+which is deliberately malformed, and against the two things `strict` refuses
+that a browser does not.
+
+`conditional` follows §13, which states rules rather than printing vectors: the
+comparison table of §8.8.3.2 entry for entry, then each of §13.2.2's steps on
+its own, then the steps against each other, because the order they are weighed
+in is the part an implementation gets wrong. The content-derived tag is pinned
+to SHA-256's own vector for `hello`.
 
 `hpack` is measured against all twelve worked examples of RFC 7541 Appendix C, in
 both directions: the encoder reproduces the published blocks octet for octet and

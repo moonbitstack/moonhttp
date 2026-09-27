@@ -61,16 +61,4 @@ fn main {
     }
   }
   println(shown.to_string())
-
-  // §13.1.5: the range is served only if the representation has not changed.
-  let tag = "\"v1\""
-  println(
-    "If-Range \{tag} against \{tag} -> \{@range.unchanged(tag, etag=tag)}",
-  )
-  println(
-    "If-Range \{tag} against \"v2\" -> \{@range.unchanged(tag, etag="\"v2\"")}",
-  )
-  println(
-    "If-Range W/\{tag} against \{tag} -> \{@range.unchanged("W/" + tag, etag=tag)}",
-  )
 }

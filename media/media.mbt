@@ -69,7 +69,7 @@ pub fn type_of(filename : StringView) -> String {
 /// is what a PDF or an image served for viewing wants.
 pub fn disposition(filename : StringView, inline? : Bool = false) -> String {
   let kind = if inline { "inline" } else { "attachment" }
-  let quoted = @mime.percent_encode(filename, safe="/")
+  let quoted = @url.escape_text(filename, kind=Path)
   if quoted == filename.to_owned() {
     kind + "; filename=\"" + filename.to_owned() + "\""
   } else {
