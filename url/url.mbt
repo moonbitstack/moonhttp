@@ -90,12 +90,20 @@ pub extend Refused with Debug::{to_repr}
 ///
 /// Octets, not text: what travels inside a URI is whatever the caller encoded it
 /// as. [`escape_text`] is the one that assumes UTF-8.
-pub fn escape(raw : BytesView, kind? : Kind = kind) -> String {
+///
+/// `spare` is for percent coding that is not going into a URI at all — gRPC's
+/// `grpc-message` keeps all of printable ASCII but `%`, which is no component of
+/// RFC 3986's. A URI component names its `kind` and leaves `spare` alone.
+pub fn escape(
+  raw : BytesView,
+  kind? : Kind = kind,
+  spare? : StringView = ""[:],
+) -> String {
   let digits = "0123456789ABCDEF"
   let out = StringBuilder()
   for i = 0; i < raw.length(); i = i + 1 {
     let b = raw[i].to_int()
-    if allowed(kind, b) {
+    if allowed(kind, b) || spared(spare, b) {
       out.write_char(b.unsafe_to_char())
     } else {
       out.write_char('%')
@@ -108,8 +116,12 @@ pub fn escape(raw : BytesView, kind? : Kind = kind) -> String {
 
 ///|
 /// Percent-encode text as UTF-8 (RFC 3986 §2.5).
-pub fn escape_text(text : StringView, kind? : Kind = kind) -> String {
-  escape(@utf8.encode(text)[:], kind~)
+pub fn escape_text(
+  text : StringView,
+  kind? : Kind = kind,
+  spare? : StringView = ""[:],
+) -> String {
+  escape(@utf8.encode(text)[:], kind~, spare~)
 }
 
 ///|
@@ -146,7 +158,11 @@ pub fn unescape_text(text : StringView) -> String {
 ///|
 /// Whether every `%` is a complete escape and nothing outside `kind`'s set is
 /// there unescaped — the check [`unescape`] does not make.
-pub fn escaped(text : StringView, kind? : Kind = kind) -> Bool {
+pub fn escaped(
+  text : StringView,
+  kind? : Kind = kind,
+  spare? : StringView = ""[:],
+) -> Bool {
   let raw = @utf8.encode(text)
   let mut i = 0
   while i < raw.length() {
@@ -159,7 +175,7 @@ pub fn escaped(text : StringView, kind? : Kind = kind) -> Bool {
       }
       i += 3
     } else {
-      if !allowed(kind, b) {
+      if !allowed(kind, b) && !spared(spare, b) {
         return false
       }
       i += 1
@@ -580,6 +596,19 @@ fn allowed(kind : Kind, b : Int) -> Bool {
       sub_delim(b) || b == 0x3A || b == 0x40 || b == 0x2F || b == 0x3F
     Whole => sub_delim(b) || gen_delim(b) || b == 0x25
   }
+}
+
+///|
+fn spared(spare : StringView, b : Int) -> Bool {
+  if b >= 0x80 {
+    return false
+  }
+  for c in spare {
+    if c.to_int() == b {
+      return true
+    }
+  }
+  false
 }
 
 ///|

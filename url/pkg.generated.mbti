@@ -6,11 +6,11 @@ import {
 }
 
 // Values
-pub fn escape(BytesView, kind? : Kind) -> String
+pub fn escape(BytesView, kind? : Kind, spare? : StringView) -> String
 
-pub fn escape_text(StringView, kind? : Kind) -> String
+pub fn escape_text(StringView, kind? : Kind, spare? : StringView) -> String
 
-pub fn escaped(StringView, kind? : Kind) -> Bool
+pub fn escaped(StringView, kind? : Kind, spare? : StringView) -> Bool
 
 pub let kind : Kind
 

@@ -183,6 +183,15 @@ test "which octets stand for themselves depends on the component" {
   )
   assert_eq(@url.escape_text("a b", kind=Whole), "a%20b")
   assert_eq(@url.escape_text("100%", kind=Whole), "100%")
+  // `spare` is for percent coding outside a URI: gRPC's `grpc-message` keeps
+  // printable ASCII but `%`, which is nobody's component.
+  assert_eq(
+    @url.escape_text("not found: /a b?c", spare=" !/:?"),
+    "not found: /a b?c",
+  )
+  assert_eq(@url.escape_text("100%", spare=" !/:?"), "100%25")
+  assert_true(@url.escaped("not found: /a b?c", spare=" !/:?"))
+  assert_false(@url.escaped("not found: /a b?c"))
   // Text goes out as UTF-8 (§2.5).
   assert_eq(@url.escape_text("中"), "%E4%B8%AD")
 }
