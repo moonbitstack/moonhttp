@@ -159,21 +159,18 @@ CRLF that belongs to the delimiter and not the content — and against the `+`
 that is a space in a form body and nowhere else.
 
 `url` is measured against the test set RFC 3986 prints for itself: all
-forty-two references of §5.4 resolved against one base, the abnormal half
-included, since a resolver that passes the normal examples and fails the
-abnormal ones is the usual kind of broken. Beside them, the components that are
-absent rather than empty, the colon that does not make a scheme, and the
-percent-coding edges, a stray `%` among them.
+forty-two references of §5.4, the abnormal half included — a resolver that
+passes the normal examples and fails those is the usual kind of broken. Beside
+them, the components that are absent rather than empty, the colon that does not
+make a scheme, and the percent-coding edges.
 
 `dataurl` is measured against the four examples of RFC 2397 §4, the second of
-which is deliberately malformed, and against the two things `strict` refuses
-that a browser does not.
+which is deliberately malformed, and against the two things `strict` refuses.
 
 `conditional` follows §13, which states rules rather than printing vectors: the
-comparison table of §8.8.3.2 entry for entry, then each of §13.2.2's steps on
-its own, then the steps against each other, because the order they are weighed
-in is the part an implementation gets wrong. The content-derived tag is pinned
-to SHA-256's own vector for `hello`.
+comparison table of §8.8.3.2 entry for entry, then §13.2.2's steps one at a
+time, then against each other — the order is the part that gets got wrong. The
+content tag is pinned to SHA-256's vector for `hello`.
 
 `hpack` is measured against all twelve worked examples of RFC 7541 Appendix C, in
 both directions: the encoder reproduces the published blocks octet for octet and

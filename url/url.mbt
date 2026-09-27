@@ -5,9 +5,8 @@
 /// Which component an octet is going into, and so which octets may stand for
 /// themselves (RFC 3986 §2.2, §3).
 ///
-/// The grammar answers this, not the caller: `&` is ordinary inside a path and
-/// a separator inside a query, and a caller spelling out a list of spared
-/// characters is re-deriving the grammar by hand.
+/// `&` is ordinary inside a path and a separator inside a query. The grammar
+/// answers that, not the caller.
 pub(all) enum Kind {
   /// Unreserved only — everything else is escaped. This is what one piece of a
   /// query goes out as, since `&` and `=` inside a value must not read as the
@@ -38,22 +37,19 @@ pub extend Kind with Eq::{equal, not_equal}
 pub extend Kind with Debug::{to_repr}
 
 ///|
-/// Which component to escape for when nothing says.
-///
-/// The strictest one: escaping an octet that did not need it changes nothing,
-/// while leaving one that did changes where the component ends.
+/// The strictest component, for when nothing says. Escaping an octet that did
+/// not need it changes nothing; leaving one that did changes where the
+/// component ends.
 pub let kind : Kind = Bare
 
 ///|
 /// A URI reference taken apart (RFC 3986 §3).
 ///
-/// `scheme` absent is what makes it a relative reference (§4.2); `host` absent
-/// is what makes it authority-less, which is not the same as an empty host —
-/// `file:///tmp` has one and `mailto:x@y` has none.
+/// No `scheme` makes it relative (§4.2). No `host` means no authority, which is
+/// not an empty host — `file:///tmp` has one, `mailto:x@y` has none.
 ///
-/// Every field holds the component still percent-encoded, as the grammar
-/// defines it: decoding on the way in would lose the difference between a `/`
-/// that separates two segments and a `%2F` that is part of one.
+/// Fields stay percent-encoded. Decoding on the way in would lose the difference
+/// between a `/` that separates two segments and a `%2F` inside one.
 pub(all) struct Url {
   scheme : String?
   userinfo : String?
@@ -71,11 +67,9 @@ pub extend Url with Eq::{equal, not_equal}
 pub extend Url with Debug::{to_repr}
 
 ///|
-/// Why a string is not a URI reference.
-///
-/// Only two things can fail. §B's grammar splits any string at all into the
-/// five top-level components, so the failures are both inside the authority,
-/// which §B does not split.
+/// Why a string is not a URI reference. Only the authority can fail: §B splits
+/// any string at all into the five top-level components, and does not split
+/// that one.
 pub(all) suberror Refused {
   /// A port that is not digits, at this offset.
   Port(at~ : Int)
@@ -94,9 +88,8 @@ pub extend Refused with Debug::{to_repr}
 ///|
 /// Percent-encode octets for `kind` (RFC 3986 §2.1).
 ///
-/// Octets, not text: a URI is a sequence of characters over US-ASCII, and what
-/// travels inside it is whatever the caller encoded it as. [`escape_text`] is
-/// the one that assumes UTF-8, because that is the assumption the web made.
+/// Octets, not text: what travels inside a URI is whatever the caller encoded it
+/// as. [`escape_text`] is the one that assumes UTF-8.
 pub fn escape(raw : BytesView, kind? : Kind = kind) -> String {
   let digits = "0123456789ABCDEF"
   let out = StringBuilder()
@@ -122,10 +115,9 @@ pub fn escape_text(text : StringView, kind? : Kind = kind) -> String {
 ///|
 /// Undo percent-encoding (RFC 3986 §2.1).
 ///
-/// A `%` that is not followed by two hex digits stands for itself rather than
-/// failing: this runs on request targets and form bodies, and refusing the
-/// whole message over one stray `%` is not what a server wants to do. A caller
-/// who would rather be told checks with [`escaped`] first.
+/// A `%` without two hex digits after it stands for itself. This runs on request
+/// targets and form bodies, where refusing the whole message over one stray `%`
+/// helps nobody; [`escaped`] is for the caller who would rather be told.
 pub fn unescape(raw : BytesView) -> Bytes {
   let out : Array[Byte] = []
   let mut i = 0
@@ -152,11 +144,8 @@ pub fn unescape_text(text : StringView) -> String {
 }
 
 ///|
-/// Whether every `%` in the text is a complete escape, and nothing outside the
-/// grammar's set for `kind` is there unescaped.
-///
-/// The check [`unescape`] deliberately does not make, for the caller who wants
-/// to reject rather than tolerate.
+/// Whether every `%` is a complete escape and nothing outside `kind`'s set is
+/// there unescaped — the check [`unescape`] does not make.
 pub fn escaped(text : StringView, kind? : Kind = kind) -> Bool {
   let raw = @utf8.encode(text)
   let mut i = 0
@@ -215,9 +204,8 @@ pub fn normalize_escapes(text : StringView) -> String {
 ///|
 /// Take a URI reference apart (RFC 3986 §3, by the split §B states).
 ///
-/// Any string at all splits into the five top-level components, so what is read
-/// back is a reference even when it is one nobody would write. Only the
-/// authority can be malformed, which is what [`Refused`] names.
+/// Any string splits, so what comes back is a reference even when it is one
+/// nobody would write. Only the authority can be malformed.
 pub fn Url::decode(text : StringView) -> Url raise Refused {
   let n = text.length()
   let mut i = 0
@@ -264,10 +252,9 @@ pub fn Url::decode(text : StringView) -> Url raise Refused {
 ///|
 /// The scheme, if the reference has one (§3.1).
 ///
-/// A colon alone does not make one: `2026:a` has no scheme because a scheme
-/// starts with a letter, and `a/b:c` has none because the colon is inside the
-/// path. Getting this wrong is how a relative reference turns into an absolute
-/// one with a made-up scheme.
+/// A colon alone does not make one: `2026:a` has none because a scheme starts
+/// with a letter, `a/b:c` because the colon is inside the path. Get this wrong
+/// and a relative reference becomes an absolute one with a made-up scheme.
 fn scheme_of(text : StringView) -> String? {
   let n = text.length()
   if n == 0 || !alpha(text[0].to_int()) {
@@ -289,13 +276,11 @@ fn scheme_of(text : StringView) -> String? {
 ///|
 /// Split an authority into userinfo, host and port (§3.2).
 ///
-/// The last `@` divides, not the first: `@` is not allowed unescaped in a
-/// userinfo, so a second one is in the host and the split still has to land
-/// after it rather than before.
+/// The last `@` divides, not the first: a userinfo may not hold an unescaped
+/// one, so a second `@` is in the host.
 ///
-/// The host is kept without its brackets. They belong to the IP-literal syntax
-/// rather than to the address, and [`Url::encode`] puts them back by looking
-/// for the colons that made them necessary.
+/// The host is kept without its brackets — those are IP-literal syntax, not
+/// address — and [`Url::encode`] puts them back when it sees a colon.
 fn authority(
   text : StringView,
   at : Int,
@@ -446,9 +431,9 @@ pub fn Url::is_absolute(self : Url) -> Bool {
 ///|
 /// Resolve `reference` against this base (RFC 3986 §5.2.2, strict).
 ///
-/// Strict means a reference that repeats the base's scheme is still absolute —
-/// the non-strict reading in §5.2.2 exists for pre-1998 parsers and turns
-/// `http:g` into something else than it says.
+/// Strict: a reference that repeats the base's scheme stays absolute. The
+/// non-strict reading is for pre-1998 parsers and turns `http:g` into something
+/// it does not say.
 pub fn Url::resolve(self : Url, reference : Url) -> Url {
   if reference.scheme is Some(_) {
     return { ..reference, path: remove_dots(reference.path), }
@@ -506,9 +491,9 @@ fn merge(base : Url, path : String) -> String {
 ///|
 /// Take out the `.` and `..` segments (RFC 3986 §5.2.4).
 ///
-/// Written as the section's loop rather than as a split-and-rejoin, because the
-/// difference between the two shows up exactly at the inputs that matter: a
-/// trailing `..`, a path that climbs above its own root, and `/..//`.
+/// The section's loop rather than a split-and-rejoin: the two differ at exactly
+/// the inputs that matter — a trailing `..`, a path that climbs above its own
+/// root, `/..//`.
 pub fn remove_dots(path : String) -> String {
   let out : Array[String] = []
   let mut rest = path[:]
@@ -546,11 +531,10 @@ pub fn remove_dots(path : String) -> String {
 }
 
 ///|
-/// Syntax-based normalisation (RFC 3986 §6.2.2): scheme and host folded to
-/// lower case, escapes normalised, dot segments taken out.
+/// Syntax-based normalisation (RFC 3986 §6.2.2): scheme and host to lower case,
+/// escapes normalised, dot segments out.
 ///
-/// Scheme-based normalisation (§6.2.3) is not here: dropping `:80` or turning
-/// an empty path into `/` is true of `http` and false in general, and this
+/// Not §6.2.3: dropping `:80` is true of `http` and false in general, and this
 /// package holds no register of schemes.
 pub fn Url::normalize(self : Url) -> Url {
   {
@@ -677,8 +661,7 @@ fn starts(text : StringView, prefix : String) -> Bool {
 }
 
 ///|
-/// A host with a colon in it can only be an IP-literal, since `reg-name` has no
-/// colon in its grammar.
+/// A colon in a host can only be an IP-literal; `reg-name` has none.
 fn literal(host : String) -> Bool {
   for i = 0; i < host.length(); i = i + 1 {
     if host[i].to_int() == 0x3A {

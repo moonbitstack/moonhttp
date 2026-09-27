@@ -3,18 +3,13 @@
 
 ///|
 /// What a data URL means when it names no media type (RFC 2397 §2).
-///
-/// A preset rather than a constant: a caller building a URL almost always has
-/// something else in mind, and the one place this string is the answer is the
-/// one place nobody writes it down.
 pub let kind : String = "text/plain;charset=US-ASCII"
 
 ///|
 /// A data URL taken apart: what the octets are, and the octets (RFC 2397 §3).
 ///
-/// `data` is already decoded — whichever of the two spellings the URL used is a
-/// property of the text, not of the representation, and a caller that had to
-/// undo base64 itself would be reading the format twice.
+/// `data` is already decoded. Which of the two spellings the URL used is a
+/// property of the text, not of what it carries.
 pub(all) struct Url {
   /// The media type with its parameters, as the URL spells it.
   kind : String
@@ -35,8 +30,7 @@ pub(all) suberror Refused {
   Scheme
   /// Nothing separates the header from the payload (§3 requires a comma).
   Comma
-  /// A `%` with fewer than two hex digits after it, at this offset into the
-  /// payload. Only raised under `strict`; otherwise the `%` stands for itself.
+  /// A `%` with fewer than two hex digits after it. Only under `strict`.
   Escape(at~ : Int)
   /// The payload is not base64, at this offset into it.
   Base64(at~ : Int)
@@ -71,13 +65,12 @@ pub fn Url::charset(self : Url) -> String {
 ///|
 /// Write the URL out.
 ///
-/// `base64` is what webpack's asset modules default to
-/// (`generator.dataUrl.encoding`), and it is the only spelling that stays the
-/// same length for octets that are not text. Turn it off for SVG and other
-/// payloads a human may want to read in the URL.
+/// `base64` defaults on, as webpack's asset modules do
+/// (`generator.dataUrl.encoding`). Turn it off for SVG and anything else a human
+/// may want to read in the URL.
 ///
-/// A media type equal to [`kind`] is left out, because reading one back puts it
-/// there again: the shorter form and the longer one decode to the same value.
+/// A media type equal to [`kind`] is left out; reading one back puts it there
+/// again.
 pub fn Url::encode(self : Url, base64? : Bool = true) -> String {
   let out = StringBuilder()
   out.write_string("data:")
@@ -100,9 +93,8 @@ pub fn Url::encode(self : Url, base64? : Bool = true) -> String {
 /// Read a data URL.
 ///
 /// `strict` turns the two things browsers let pass into errors: base64 with
-/// whitespace in it or the wrong amount of padding, and a `%` that is not an
-/// escape. Left off, a lone `%` stands for itself and the whitespace is
-/// dropped, which is what a document full of hand-written URLs needs.
+/// whitespace or the wrong padding, and a `%` that is not an escape. Left off, a
+/// lone `%` stands for itself and whitespace is dropped.
 pub fn Url::decode(
   text : StringView,
   strict? : Bool = false,
@@ -126,9 +118,8 @@ pub fn Url::decode(
 ///|
 /// The media type and whether `;base64` was there (§3).
 ///
-/// A header of nothing but parameters — `data:;charset=utf-8,…` — is a
-/// `text/plain` with those parameters, which is §2's default type wearing the
-/// caller's charset rather than the caller's type going missing.
+/// Nothing but parameters — `data:;charset=utf-8,…` — is `text/plain` wearing
+/// them.
 fn header(head : StringView) -> (String, Bool) {
   let head = trim(head)
   let base64 = ends(head, ";base64")
@@ -145,9 +136,9 @@ fn header(head : StringView) -> (String, Bool) {
 ///|
 /// Undo the base64 payload.
 ///
-/// Under `strict` the text goes to the decoder as it stands, padding and all.
-/// Otherwise the whitespace a wrapped URL picked up is dropped first — the
-/// decoder itself already treats trailing `=` as optional.
+/// Under `strict` the text goes to the decoder as it stands. Otherwise the
+/// whitespace a wrapped URL picked up is dropped first; the decoder already
+/// treats trailing `=` as optional.
 fn unpack(body : StringView, strict : Bool) -> Bytes raise Refused {
   let text = if strict {
     guard body.length() % 4 == 0 else {
@@ -174,9 +165,8 @@ fn unpack(body : StringView, strict : Bool) -> Bytes raise Refused {
 ///|
 /// Undo the percent coding.
 ///
-/// Under `strict` a `%` without two hex digits after it is an error; otherwise
-/// it is an octet like any other, which is what [`@url.unescape`] does
-/// and what a browser does with a URL somebody typed.
+/// Under `strict` a `%` without two hex digits is an error; otherwise it is an
+/// octet like any other, as [`@url.unescape`] and a browser both have it.
 fn unescape(body : StringView, strict : Bool) -> Bytes raise Refused {
   let raw = @utf8.encode(body)
   if strict {
@@ -224,8 +214,8 @@ fn trim(text : StringView) -> StringView {
 }
 
 ///|
-/// ASCII case-insensitive, because a URL scheme is (RFC 3986 §3.1) and because
-/// `;BASE64` is written by more than one generator.
+/// ASCII case-insensitive: a scheme is (RFC 3986 §3.1), and `;BASE64` is
+/// written by more than one generator.
 fn fold(c : Int) -> Int {
   if c >= 0x41 && c <= 0x5A {
     c + 32

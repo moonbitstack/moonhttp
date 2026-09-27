@@ -1,13 +1,12 @@
 // Data URLs, RFC 2397:
 // https://www.rfc-editor.org/rfc/rfc2397
 //
-// A whole representation written inside the reference to it: the media type, a
-// flag saying how the octets are spelled, and the octets. An inline image, a
-// generated download, a favicon that costs no second request — all one string.
+// A whole representation written inside the reference to it: the media type,
+// how the octets are spelled, and the octets. An inline image, a generated
+// download, a favicon that costs no second request.
 //
-// The percent coding is `mime`'s, not a second copy: the payload of a data URL
-// obeys the same rule a form field does, and two spellings of one rule is how
-// they drift apart.
+// The percent coding is `url`'s. A data URL's payload obeys the same rule a
+// request target does, and two spellings of one rule drift apart.
 import {
   "moonbitstack/moonhttp/mime",
   "moonbitstack/moonhttp/url",

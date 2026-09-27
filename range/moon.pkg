@@ -6,9 +6,8 @@
 // is fetched with — one field asking, one field answering, and the arithmetic
 // in between that turns "the last 500 bytes" into two offsets.
 //
-// `If-Range` is not here but in `conditional`: deciding whether a validator
-// still holds is the same question the other four precondition fields ask, and
-// one rule with two spellings is one rule that will drift.
+// `If-Range` is in `conditional`: whether a validator still holds is the same
+// question the other four precondition fields ask.
 //
 // Offsets are 64-bit. A representation larger than two gigabytes is ordinary
 // for the thing range requests exist to serve, and a 32-bit offset would fail

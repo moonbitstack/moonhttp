@@ -4,13 +4,12 @@
 ///|
 /// An entity-tag (RFC 9110 §8.8.3).
 ///
-/// `text` is what is inside the quotes. Keeping the quotes would put a piece of
-/// the field's syntax inside the value, and then every comparison would have to
-/// remember whether this particular tag had been stripped yet.
+/// `text` is what is inside the quotes; keeping them would put the field's
+/// syntax inside the value.
 ///
-/// `weak` is the `W/` in front: the representations two weak tags mark are
-/// equivalent, not identical. A weak tag is enough to answer "has this changed
-/// at all" and not enough to answer "may I splice these two byte ranges".
+/// `weak` is the `W/` in front. Two weak tags mark representations that are
+/// equivalent, not identical — enough for "has this changed", not enough for
+/// "may I splice these two ranges".
 pub(all) struct Tag {
   text : String
   weak : Bool
@@ -26,9 +25,8 @@ pub extend Tag with Debug::{to_repr}
 /// What a precondition field names (§13.1.1): every representation, or these
 /// tags.
 ///
-/// `*` is not a tag that matches everything — §13.1.1 and §13.1.2 read it as a
-/// question about whether a representation exists at all, and they answer it in
-/// opposite directions.
+/// `*` is not a tag that matches everything. §13.1.1 and §13.1.2 both read it as
+/// "does a representation exist", and answer in opposite directions.
 pub(all) enum Tags {
   Any
   These(Array[Tag])
@@ -41,10 +39,8 @@ pub extend Tags with Eq::{equal, not_equal}
 pub extend Tags with Debug::{to_repr}
 
 ///|
-/// Either kind of validator (§8.8).
-///
-/// `If-Range` takes one or the other (§13.1.5), which is the reason they need a
-/// common type; the other four fields each take only one kind.
+/// Either kind of validator (§8.8). `If-Range` takes one or the other
+/// (§13.1.5); the other four fields each take one kind.
 pub(all) enum Validator {
   Marked(Tag)
   Dated(@moondate.Moment)
@@ -82,21 +78,18 @@ pub fn Tag::new(text : String, weak? : Bool = false) -> Tag {
 // ----------------------------------------------------------------- comparing
 
 ///|
-/// Strong comparison (§8.8.3.2): neither tag is weak, and the texts match
-/// character by character.
+/// Strong comparison (§8.8.3.2): neither is weak and the texts match.
 ///
-/// This is the one `If-Match` and `If-Range` use, because both of them are
-/// about splicing or replacing octets and a weak tag does not promise the
-/// octets are the same.
+/// `If-Match` and `If-Range` use this one — both are about replacing or splicing
+/// octets, which a weak tag does not promise.
 pub fn Tag::same(self : Tag, other : Tag) -> Bool {
   !self.weak && !other.weak && self.text == other.text
 }
 
 ///|
-/// Weak comparison (§8.8.3.2): the texts match, whether or not either is weak.
+/// Weak comparison (§8.8.3.2): the texts match, weakness ignored.
 ///
-/// This is the one `If-None-Match` uses, because "has it changed at all" is a
-/// question a weak tag can answer.
+/// `If-None-Match` uses this one — a weak tag can answer "has it changed".
 pub fn Tag::alike(self : Tag, other : Tag) -> Bool {
   self.text == other.text
 }
@@ -104,21 +97,16 @@ pub fn Tag::alike(self : Tag, other : Tag) -> Bool {
 // ---------------------------------------------------------------- generating
 
 ///|
-/// The hexadecimal the two generators write their numbers in.
+/// The hexadecimal both generators write their numbers in.
 let hex : @moonbase.Alphabet = @moonbase.Alphabet::of("0123456789abcdef")
 
 ///|
-/// An entity-tag derived from the octets themselves: their count and their
-/// digest, both in hexadecimal.
+/// An entity-tag from the octets themselves: their count and their digest, both
+/// in hexadecimal. Strong, which is the point of hashing the content.
 ///
-/// Strong by default, which is the whole point of hashing the content — two
-/// representations with this tag are identical octet for octet.
-///
-/// `digest` is a parameter rather than a choice made here. Which hash a server
-/// spends on every response is that server's trade, and a package that picked
-/// one would be making it for everybody. The shape follows the `etag` package
-/// Express serves static files with, `"<length>-<digest>"`, except that the
-/// digest is hexadecimal rather than base64, the spelling nginx and Apache use.
+/// `digest` is a parameter — which hash to spend on every response is the
+/// server's trade. The shape is the `etag` package Express serves static files
+/// with, `"<length>-<digest>"`, in nginx and Apache's hexadecimal.
 pub fn hash(
   raw : BytesView,
   digest~ : &@spec.Hash,
@@ -133,13 +121,11 @@ pub fn hash(
 }
 
 ///|
-/// An entity-tag derived from what a file system knows without opening the
-/// file: when it last changed and how long it is.
+/// An entity-tag from what a file system knows without opening the file: when
+/// it last changed and how long it is. nginx's `"<mtime>-<length>"`, one stat.
 ///
-/// This is nginx's `"<mtime>-<length>"`, and its point is that it costs one
-/// stat. Weak by default, as a timestamp with one-second resolution has to be:
-/// two writes inside the same second leave the length and the mtime unchanged,
-/// so the tag cannot promise the octets are the same.
+/// Weak, as a one-second timestamp must be: two writes inside the same second
+/// leave both numbers unchanged.
 pub fn stamp(
   length~ : Int64,
   modified~ : @moondate.Moment,
@@ -171,8 +157,8 @@ pub fn Tag::encode(self : Tag) -> String {
 }
 
 ///|
-/// Read one entity-tag. `None` when it is not one — an unquoted value is the
-/// usual way this happens, and §8.8.3 has no room for it.
+/// Read one entity-tag. `None` when it is not one — usually an unquoted value,
+/// which §8.8.3 has no room for.
 pub fn Tag::decode(text : StringView) -> Tag? {
   let text = trim(text)
   let (text, weak) = if text.length() >= 2 &&
@@ -211,10 +197,9 @@ pub fn Tags::encode(self : Tags) -> String {
 ///|
 /// Read a whole field value.
 ///
-/// The commas are found outside the quotes, because `,` is in the `etagc` set
-/// (§8.8.3) and a tag is allowed to contain one. `None` when any member is not
-/// an entity-tag: §13.1.1 has no reading for a half-valid list, and taking the
-/// members that did parse would answer a question nobody asked.
+/// Commas are found outside the quotes: `,` is in the `etagc` set (§8.8.3), so a
+/// tag may contain one. `None` when any member is not an entity-tag — §13.1.1
+/// has no reading for half a list.
 pub fn Tags::decode(text : StringView) -> Tags? {
   let text = trim(text)
   if text.length() == 0 {
@@ -244,9 +229,8 @@ pub fn Tags::decode(text : StringView) -> Tags? {
 ///|
 /// Read an `If-Range` value (§13.1.5).
 ///
-/// A tag and a date are told apart by the first two characters, which is what
-/// §13.1.5 says to do: only an entity-tag can start with a quote, and only a
-/// weak one can start with `W/`.
+/// The first two characters tell them apart, as §13.1.5 says: only an
+/// entity-tag starts with a quote, only a weak one with `W/`.
 pub fn Validator::decode(text : StringView) -> Validator? {
   let text = trim(text)
   if text.length() == 0 {
@@ -265,11 +249,8 @@ pub fn Validator::decode(text : StringView) -> Validator? {
 }
 
 ///|
-/// Write an `If-Range` value.
-///
-/// Raises for a moment with no zone: an HTTP-date is GMT by definition
-/// (§5.6.7), and there is no honest way to write one from a moment that never
-/// said where it was.
+/// Write an `If-Range` value. Raises for a moment with no zone — an HTTP-date
+/// is GMT by definition (§5.6.7).
 pub fn Validator::encode(self : Validator) -> String raise @moondate.Refused {
   match self {
     Marked(tag) => tag.encode()
@@ -325,13 +306,11 @@ pub fn Ask::new(
 ///|
 /// Pull the five fields out of a request's headers.
 ///
-/// Field names are matched without regard to case (§5.1). Two lines of the same
-/// list-valued field are one list (§5.3), which is why the tag fields are joined
-/// before they are read; the date fields are not lists, so a repeat is ignored
-/// rather than combined into something the grammar has no reading for.
+/// Names match without regard to case (§5.1). Two lines of one list-valued field
+/// are one list (§5.3), so the tag fields are joined before reading; the date
+/// fields are not lists, so a repeat is ignored.
 ///
-/// A field that is present but unreadable comes back absent, which is what
-/// §13.1.3 and §13.1.4 tell a recipient to do with one.
+/// A field present but unreadable comes back absent, per §13.1.3 and §13.1.4.
 pub fn Ask::read(headers : ArrayView[(String, String)]) -> Ask {
   let matching = StringBuilder()
   let none_matching = StringBuilder()
@@ -383,15 +362,12 @@ fn date(value : String) -> @moondate.Moment? {
 ///|
 /// Weigh the preconditions in the order §13.2.2 sets out.
 ///
-/// `verb` is the request method — the word `method` is reserved. It decides what
-/// a failed `If-None-Match` means: a 304 for a `GET` or a
-/// `HEAD`, a 412 for anything else. It has no default because there is no
-/// answer that is right when nobody said — defaulting to `GET` would turn a
-/// `PUT` whose precondition failed into "your copy is current", which is the
-/// opposite of what happened.
+/// `verb` is the request method (`method` is reserved). It decides what a failed
+/// `If-None-Match` means: 304 for a `GET` or `HEAD`, 412 otherwise. No default —
+/// guessing `GET` would tell a `PUT` its copy is current.
 ///
-/// `etag` and `modified` are what the server holds right now; `present` is
-/// whether it holds anything at all, which is the whole of what `*` asks about.
+/// `etag` and `modified` are what the server holds; `present` is whether it
+/// holds anything at all, which is all `*` asks.
 pub fn Ask::evaluate(
   self : Ask,
   verb~ : String,
@@ -426,15 +402,10 @@ pub fn Ask::evaluate(
 
 ///|
 /// Whether `If-Range` still holds, and so whether a `Range` may be honoured
-/// (§13.1.5).
+/// (§13.1.5). Absent holds: no condition, nothing in the way.
 ///
-/// An absent `If-Range` holds: a client that stated no condition put nothing in
-/// the way of the range it asked for.
-///
-/// Both kinds compare strongly. A weak tag is refused outright rather than
-/// compared, because the question `If-Range` asks — may these octets be spliced
-/// onto the ones you already have — is exactly the one a weak tag may not
-/// answer.
+/// Both kinds compare strongly, and a weak tag is refused rather than compared —
+/// "may these octets be spliced onto yours" is what a weak tag may not answer.
 pub fn Ask::unchanged(
   self : Ask,
   etag? : Tag,
@@ -456,8 +427,8 @@ pub fn Ask::unchanged(
 }
 
 ///|
-/// `If-Match` (§13.1.1): `*` asks whether anything is there; a list asks whether
-/// one of its members is the strong equal of what is there.
+/// `If-Match` (§13.1.1): `*` asks whether anything is there, a list whether one
+/// member strongly equals what is.
 fn matches(tags : Tags, etag : Tag?, present : Bool) -> Bool {
   match (tags, etag) {
     (Any, _) => present
@@ -474,8 +445,8 @@ fn matches(tags : Tags, etag : Tag?, present : Bool) -> Bool {
 }
 
 ///|
-/// `If-None-Match` (§13.1.2), answered the way round the field is named: true
-/// here means one of them matched, which is what makes the condition fail.
+/// `If-None-Match` (§13.1.2), answered the way the field is named: true means
+/// one matched, which fails the condition.
 fn matches_weakly(tags : Tags, etag : Tag?, present : Bool) -> Bool {
   match (tags, etag) {
     (Any, _) => present
@@ -494,10 +465,8 @@ fn matches_weakly(tags : Tags, etag : Tag?, present : Bool) -> Bool {
 ///|
 /// Whether the representation changed after `since` (§13.1.3, §13.1.4).
 ///
-/// Unknown counts as changed: without a last-modified date neither field can be
-/// made false, and the request goes through as if it had not been asked. Both
-/// sections are written that way round — they say when the condition is false,
-/// and say nothing about a representation that has no date.
+/// Unknown counts as changed. Both sections say only when the condition is
+/// false, and say nothing about a representation with no date.
 fn changed(modified : @moondate.Moment?, since : @moondate.Moment) -> Bool {
   match (modified.bind(fn(m) { m.epoch() }), since.epoch()) {
     (Some(ours), Some(theirs)) => ours > theirs
