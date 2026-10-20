@@ -8,8 +8,8 @@
 /// no longer agree about the dynamic table and nothing further can be read.
 pub(all) suberror Refused {
   Malformed(String)
-  Index(got~ : Int)
-  Exceeded(limit~ : Int, got~ : Int)
+  Index(got~ : Int32)
+  Exceeded(limit~ : Int32, got~ : Int32)
 } derive(Eq, Debug)
 
 ///|
@@ -39,7 +39,7 @@ pub extend Refused with Eq::{not_equal, equal}
 
 ///|
 /// A prefix integer from the front of `input`, or `None` while it is still arriving.
-fn partial(input : BytesView, prefix : Int) -> (Int, Int)? raise Refused {
+fn partial(input : BytesView, prefix : Int32) -> (Int32, Int32)? raise Refused {
   try @prefix.decode(input, prefix~) catch {
     @prefix.Truncated(_) => None
     e => raise Malformed("a prefix integer: \{e}")
@@ -51,7 +51,11 @@ fn partial(input : BytesView, prefix : Int) -> (Int, Int)? raise Refused {
 ///|
 /// A prefix integer at `off`, where there is nothing more to wait for and truncation is
 /// itself the fault.
-fn reach(view : BytesView, off : Int, prefix : Int) -> (Int, Int) raise Refused {
+fn reach(
+  view : BytesView,
+  off : Int32,
+  prefix : Int32,
+) -> (Int32, Int32) raise Refused {
   @prefix.decode(view, at=off, prefix~) catch {
     e => raise Malformed("a prefix integer: \{e}")
   }
@@ -182,7 +186,7 @@ pub let static_table : Array[@header.Header] = {
 
 ///|
 /// The entry at `index`, or `None` when the index names nothing.
-pub fn entry(index : Int) -> @header.Header? {
+pub fn entry(index : Int32) -> @header.Header? {
   if index < 0 || index >= static_table.length() {
     None
   } else {
@@ -193,7 +197,7 @@ pub fn entry(index : Int) -> @header.Header? {
 ///|
 /// The index of the first entry whose name and value both match, for an indexed field
 /// line; `None` if no entry matches exactly.
-pub fn find(name : Bytes, value : Bytes) -> Int? {
+pub fn find(name : Bytes, value : Bytes) -> Int32? {
   for i = 0; i < static_table.length(); i = i + 1 {
     let e = static_table[i]
     if e.name == name && e.value == value {
@@ -206,7 +210,7 @@ pub fn find(name : Bytes, value : Bytes) -> Int? {
 ///|
 /// The index of the first entry whose name matches (regardless of value), for a
 /// literal field line with a name reference; `None` if no entry has the name.
-pub fn find_name(name : Bytes) -> Int? {
+pub fn find_name(name : Bytes) -> Int32? {
   for i = 0; i < static_table.length(); i = i + 1 {
     if static_table[i].name == name {
       return Some(i)
@@ -227,7 +231,7 @@ pub fn find_name(name : Bytes) -> Int? {
 ///|
 /// The number of entries that fit in a table of `capacity` bytes at the 32-byte minimum
 /// entry size — `MaxEntries` in RFC 9204 §4.5.1.1.
-pub fn max_entries(capacity : Int) -> Int {
+pub fn max_entries(capacity : Int32) -> Int32 {
   capacity / 32
 }
 
@@ -235,7 +239,11 @@ pub fn max_entries(capacity : Int) -> Int {
 /// Encode a field-section prefix (RFC 9204 §4.5.1): the Required Insert Count transmitted
 /// modulo `2*max_entries`, then the Base as a sign bit (0 when `base >= req_insert_count`)
 /// plus the delta.
-pub fn prefix(req_insert_count : Int, base : Int, max_entries : Int) -> Bytes {
+pub fn prefix(
+  req_insert_count : Int32,
+  base : Int32,
+  max_entries : Int32,
+) -> Bytes {
   let enc_ric = if req_insert_count == 0 {
     0
   } else {
@@ -257,10 +265,10 @@ pub fn prefix(req_insert_count : Int, base : Int, max_entries : Int) -> Bytes {
 /// Reconstruct the absolute Required Insert Count from its encoded form, `max_entries`, and
 /// the number of inserts the decoder has processed (RFC 9204 §4.5.1.1).
 pub fn insert_count(
-  encoded : Int,
-  max_entries : Int,
-  total_inserts : Int,
-) -> Int raise Refused {
+  encoded : Int32,
+  max_entries : Int32,
+  total_inserts : Int32,
+) -> Int32 raise Refused {
   if encoded == 0 {
     return 0
   }
@@ -289,9 +297,9 @@ pub fn insert_count(
 /// partial read.
 pub fn read_prefix(
   input : BytesView,
-  max_entries : Int,
-  total_inserts : Int,
-) -> (Int, Int, Int)? raise Refused {
+  max_entries : Int32,
+  total_inserts : Int32,
+) -> (Int32, Int32, Int32)? raise Refused {
   let (enc_ric, ric_len) = match partial(input, 8) {
     Some(v) => v
     None => return None
@@ -327,29 +335,29 @@ pub fn read_prefix(
 /// of entries ever inserted (the next absolute index), and how many have been evicted.
 pub(all) struct Table {
   entries : Array[(Bytes, Bytes)]
-  mut used : Int
-  mut capacity : Int
-  mut insert_count : Int
-  mut dropped : Int
+  mut used : Int32
+  mut capacity : Int32
+  mut insert_count : Int32
+  mut dropped : Int32
 }
 
 ///|
 /// A fresh, empty dynamic table with the given capacity in bytes.
-pub fn Table::new(capacity : Int) -> Table {
+pub fn Table::new(capacity : Int32) -> Table {
   { entries: [], used: 0, capacity, insert_count: 0, dropped: 0, }
 }
 
 ///|
 /// The size an entry occupies in the table: its name and value octets plus 32 (RFC 9204
 /// §3.2.1).
-pub fn cost(name : Bytes, value : Bytes) -> Int {
+pub fn cost(name : Bytes, value : Bytes) -> Int32 {
   name.length() + value.length() + 32
 }
 
 ///|
 /// Evict oldest entries until `incoming` more bytes would fit under the capacity, or the
 /// table is empty (RFC 9204 §3.2.2).
-fn Table::evict_to_fit(self : Table, incoming : Int) -> Unit {
+fn Table::evict_to_fit(self : Table, incoming : Int32) -> Unit {
   while self.used + incoming > self.capacity && self.entries.length() > 0 {
     let (n, v) = self.entries[0]
     self.used = self.used - cost(n, v)
@@ -360,7 +368,7 @@ fn Table::evict_to_fit(self : Table, incoming : Int) -> Unit {
 
 ///|
 /// Set the table capacity, evicting whatever no longer fits (RFC 9204 §3.2.3).
-pub fn Table::resize(self : Table, capacity : Int) -> Unit {
+pub fn Table::resize(self : Table, capacity : Int32) -> Unit {
   self.capacity = capacity
   self.evict_to_fit(0)
 }
@@ -383,7 +391,7 @@ pub fn Table::insert(self : Table, name : Bytes, value : Bytes) -> Bool {
 ///|
 /// The entry at absolute index `abs_index`, or `None` if it has been evicted or never
 /// existed (RFC 9204 §3.2.4).
-pub fn Table::get(self : Table, abs_index : Int) -> (Bytes, Bytes)? {
+pub fn Table::get(self : Table, abs_index : Int32) -> (Bytes, Bytes)? {
   let pos = abs_index - self.dropped
   if pos < 0 || pos >= self.entries.length() {
     None
@@ -395,7 +403,7 @@ pub fn Table::get(self : Table, abs_index : Int) -> (Bytes, Bytes)? {
 ///|
 /// The entry at encoder-stream relative index `rel` (0 = most recently inserted, RFC 9204
 /// §3.2.5).
-pub fn Table::relative(self : Table, rel : Int) -> (Bytes, Bytes)? {
+pub fn Table::relative(self : Table, rel : Int32) -> (Bytes, Bytes)? {
   self.get(self.insert_count - 1 - rel)
 }
 
@@ -457,8 +465,8 @@ pub fn Table::apply(self : Table, inst : Change) -> Bool raise Refused {
 /// `prefix`-prefix integer, then the (raw or Huffman) octets.
 pub fn string(
   data : Bytes,
-  prefix : Int,
-  pattern : Int,
+  prefix : Int32,
+  pattern : Int32,
   huffman : Bool,
 ) -> Bytes {
   let payload = if huffman { @huffman.encode(data) } else { data }
@@ -477,8 +485,8 @@ pub fn string(
 /// `None` when the string has not fully arrived.
 pub fn read_string(
   input : BytesView,
-  prefix : Int,
-) -> (Bytes, Int)? raise Refused {
+  prefix : Int32,
+) -> (Bytes, Int32)? raise Refused {
   if input.length() == 0 {
     return None
   }
@@ -507,7 +515,7 @@ pub fn read_string(
 /// static entry for an exact match, a static name reference plus a literal value when
 /// the name is known, or a fully literal name and value otherwise. `huffman` chooses
 /// whether literal strings are Huffman-coded.
-pub fn encode(headers : Array[@header.Header], huffman? : Bool = true) -> Bytes {
+pub fn encode(headers : Array[@header.Header], huffman~ : Bool = true) -> Bytes {
   let buf = Buffer()
   // Encoded Field Section Prefix (RFC 9204 §4.5.1): Required Insert Count = 0 (no
   // dynamic entries), then S = 0 with Delta Base = 0.
@@ -599,7 +607,7 @@ pub fn decode(input : Bytes) -> Array[@header.Header] raise Refused {
 
 ///|
 /// The static-table entry at `index`, or raise if the index is out of range.
-fn static_entry(index : Int) -> @header.Header raise Refused {
+fn static_entry(index : Int32) -> @header.Header raise Refused {
   match entry(index) {
     Some(entry) => entry
     None => raise Malformed("static index out of range: " + index.to_string())
@@ -610,9 +618,9 @@ fn static_entry(index : Int) -> @header.Header raise Refused {
 /// Decode a string starting at `off` in `view`, raising on truncation.
 fn read_string_at(
   view : BytesView,
-  off : Int,
-  prefix : Int,
-) -> (Bytes, Int) raise Refused {
+  off : Int32,
+  prefix : Int32,
+) -> (Bytes, Int32) raise Refused {
   match read_string(view[off:], prefix) {
     Some(v) => v
     None => raise Malformed("truncated field-line string")
@@ -634,8 +642,8 @@ fn read_string_at(
 /// (RFC 9204 §3.2.6), decoded to strings.
 fn relative_of(
   table : Table,
-  base : Int,
-  rel : Int,
+  base : Int32,
+  rel : Int32,
 ) -> @header.Header raise Refused {
   match table.get(base - 1 - rel) {
     Some((n, v)) => { name: n, value: v, }
@@ -651,8 +659,8 @@ fn relative_of(
 /// §3.2.6), decoded to strings.
 fn postbase(
   table : Table,
-  base : Int,
-  post : Int,
+  base : Int32,
+  post : Int32,
 ) -> @header.Header raise Refused {
   match table.get(base + post) {
     Some((n, v)) => { name: n, value: v, }
@@ -669,7 +677,7 @@ fn postbase(
 pub fn decode_with(
   input : Bytes,
   table : Table,
-  max_entries : Int,
+  max_entries : Int32,
 ) -> Array[@header.Header] raise Refused {
   let view = input[:]
   let (_ric, base, prefix_len) = match
@@ -746,8 +754,8 @@ pub fn decode_with(
 ///|
 /// How a single header is rendered in the field section.
 priv enum Ref {
-  RefStatic(Int)
-  RefDynamic(Int) // absolute index in the dynamic table
+  RefStatic(Int32)
+  RefDynamic(Int32) // absolute index in the dynamic table
   RefLiteral(Bytes, Bytes)
 }
 
@@ -758,8 +766,8 @@ priv enum Ref {
 pub fn encode_with(
   headers : Array[@header.Header],
   table : Table,
-  max_entries : Int,
-  huffman? : Bool = true,
+  max_entries : Int32,
+  huffman~ : Bool = true,
 ) -> (Bytes, Bytes) {
   let instr = Buffer()
   let refs : Array[Ref] = []
@@ -821,32 +829,32 @@ pub fn encode_with(
 /// An encoder-stream instruction (RFC 9204 §4.3).
 pub(all) enum Change {
   /// Set Dynamic Table Capacity (§4.3.1): `001` + capacity (5-bit prefix).
-  SetCapacity(Int)
+  SetCapacity(Int32)
   /// Insert With Name Reference (§4.3.2): `1` + T (static/dynamic) + name index (6-bit
   /// prefix), then the value string.
-  Insert(is_static~ : Bool, index~ : Int, value~ : Bytes)
+  Insert(is_static~ : Bool, index~ : Int32, value~ : Bytes)
   /// Insert With Literal Name (§4.3.3): `01` + H + name length (5-bit prefix) + name,
   /// then the value string.
   InsertLiteral(name~ : Bytes, value~ : Bytes)
   /// Duplicate (§4.3.4): `000` + index (5-bit prefix).
-  Duplicate(index~ : Int)
+  Duplicate(index~ : Int32)
 } derive(Eq, Debug)
 
 ///|
 /// A decoder-stream instruction (RFC 9204 §4.4).
 pub(all) enum Ack {
   /// Section Acknowledgement (§4.4.1): `1` + stream id (7-bit prefix).
-  Section(stream_id~ : Int)
+  Section(stream_id~ : Int32)
   /// Stream Cancellation (§4.4.2): `01` + stream id (6-bit prefix).
-  Cancel(stream_id~ : Int)
+  Cancel(stream_id~ : Int32)
   /// Insert Count Increment (§4.4.3): `00` + increment (6-bit prefix).
-  Increment(increment~ : Int)
+  Increment(increment~ : Int32)
 } derive(Eq, Debug)
 
 ///|
 /// Encode an encoder-stream instruction (RFC 9204 §4.3). `huffman` chooses whether the
 /// literal strings of the insert instructions are Huffman-coded.
-pub fn Change::encode(inst : Change, huffman? : Bool = true) -> Bytes {
+pub fn Change::encode(inst : Change, huffman~ : Bool = true) -> Bytes {
   match inst {
     SetCapacity(capacity) => @prefix.encode(capacity, prefix=5, flags=0x20)
     Insert(is_static~, index~, value~) => {
@@ -875,7 +883,7 @@ pub fn Change::encode(inst : Change, huffman? : Bool = true) -> Bytes {
 /// Decode one encoder-stream instruction from the front of `input` (RFC 9204 §4.3),
 /// dispatching on the pattern in the first byte's high bits. Returns `(instruction,
 /// bytes-consumed)`, or `None` when the instruction has not fully arrived.
-pub fn Change::decode(input : BytesView) -> (Change, Int)? raise Refused {
+pub fn Change::decode(input : BytesView) -> (Change, Int32)? raise Refused {
   if input.length() == 0 {
     return None
   }
@@ -925,7 +933,7 @@ pub fn Ack::encode(inst : Ack) -> Bytes {
 ///|
 /// Decode one decoder-stream instruction from the front of `input` (RFC 9204 §4.4).
 /// Returns `(instruction, bytes-consumed)`, or `None` on a partial read.
-pub fn Ack::decode(input : BytesView) -> (Ack, Int)? raise Refused {
+pub fn Ack::decode(input : BytesView) -> (Ack, Int32)? raise Refused {
   if input.length() == 0 {
     return None
   }

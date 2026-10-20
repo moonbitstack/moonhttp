@@ -7,15 +7,15 @@ import {
 }
 
 // Values
-pub fn entry(Int) -> @header.Header?
+pub fn entry(Int32) -> @header.Header?
 
-pub let limit : Int
+pub let limit : Int32
 
-pub fn read_literal(BytesView, Int) -> (Bytes, Int) raise Refused
+pub fn read_literal(BytesView, Int32) -> (Bytes, Int32) raise Refused
 
-pub fn read_string(BytesView, Int) -> (Bytes, Int) raise Refused
+pub fn read_string(BytesView, Int32) -> (Bytes, Int32) raise Refused
 
-pub fn size_update(Int) -> Bytes
+pub fn size_update(Int32) -> Bytes
 
 pub let static_table : Array[@header.Header]
 
@@ -24,8 +24,8 @@ pub fn string(BytesView, huffman? : Bool) -> Bytes
 // Errors
 pub(all) suberror Refused {
   Malformed(String)
-  Index(got~ : Int)
-  Exceeded(limit~ : Int, got~ : Int)
+  Index(got~ : Int32)
+  Exceeded(limit~ : Int32, got~ : Int32)
 } derive(Eq, @debug.Debug)
 pub fn Refused::equal(Self, Self) -> Bool
 pub fn Refused::not_equal(Self, Self) -> Bool
@@ -37,30 +37,30 @@ pub impl Show for Refused
 // Types and methods
 pub(all) struct Decoder {
   table : Table
-  limit : Int
+  limit : Int32
 }
 pub fn Decoder::decode(Self, BytesView) -> Array[@header.Header] raise Refused
-pub fn Decoder::new(limit? : Int) -> Self
+pub fn Decoder::new(limit? : Int32) -> Self
 
 pub(all) struct Encoder {
   table : Table
   mut huffman : Bool
 }
 pub fn Encoder::encode(Self, ArrayView[@header.Header]) -> Bytes
-pub fn Encoder::new(limit? : Int, huffman? : Bool) -> Self
+pub fn Encoder::new(limit? : Int32, huffman? : Bool) -> Self
 
 pub(all) struct Table {
   mut entries : Array[(Bytes, Bytes)]
-  mut size : Int
-  mut limit : Int
+  mut size : Int32
+  mut limit : Int32
 }
 pub fn Table::add(Self, Bytes, Bytes) -> Unit
-pub fn Table::count(Self) -> Int
-pub fn Table::get(Self, Int) -> @header.Header?
-pub fn Table::limit(Self) -> Int
-pub fn Table::new(limit? : Int) -> Self
-pub fn Table::resize(Self, Int) -> Unit
-pub fn Table::size(Self) -> Int
+pub fn Table::count(Self) -> Int32
+pub fn Table::get(Self, Int32) -> @header.Header?
+pub fn Table::limit(Self) -> Int32
+pub fn Table::new(limit? : Int32) -> Self
+pub fn Table::resize(Self, Int32) -> Unit
+pub fn Table::size(Self) -> Int32
 
 // Type aliases
 

@@ -37,7 +37,7 @@ pub fn Header::ascii(self : Header) -> (String, String) {
 /// How many octets the field costs a compressor's table: its two parts and a fixed
 /// overhead for the entry itself (RFC 7541 §4.1, and RFC 9204 §3.2.1 with the same
 /// arithmetic).
-pub fn Header::cost(self : Header, overhead? : Int = 32) -> Int {
+pub fn Header::cost(self : Header, overhead~ : Int32 = 32) -> Int32 {
   self.name.length() + self.value.length() + overhead
 }
 

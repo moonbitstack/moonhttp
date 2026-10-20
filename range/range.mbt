@@ -16,7 +16,7 @@ pub let unit : String = "bytes"
 /// A request may name any number of ranges, and a server that honours all of
 /// them does a great deal of seeking for one client — the shape of the 2011
 /// Apache range attack. 200 is Apache's own `MaxRanges` default.
-pub let limit : Int = 200
+pub let limit : Int32 = 200
 
 ///|
 /// One range as a client asked for it, before it is measured against a length
@@ -161,7 +161,7 @@ fn spec(text : StringView) -> Spec? {
 ///
 /// An empty range-set is not a range request either — `bytes=` names no range,
 /// and serving everything is the right reading of it.
-pub fn decode(value : StringView, unit? : String = unit) -> Array[Spec]? {
+pub fn decode(value : StringView, unit~ : String = unit) -> Array[Spec]? {
   let value = trim(value)
   let mut eq = -1
   for i = 0; i < value.length(); i = i + 1 {
@@ -198,7 +198,7 @@ pub fn decode(value : StringView, unit? : String = unit) -> Array[Spec]? {
 
 ///|
 /// Write a `Range` field value (RFC 9110 §14.2).
-pub fn encode(specs : ArrayView[Spec], unit? : String = unit) -> String {
+pub fn encode(specs : ArrayView[Spec], unit~ : String = unit) -> String {
   let out = StringBuilder()
   out.write_string(unit)
   out.write_char('=')
@@ -244,8 +244,8 @@ pub fn encode(specs : ArrayView[Spec], unit? : String = unit) -> String {
 pub fn measure(
   specs : ArrayView[Spec],
   length~ : Int64,
-  merge? : Bool = true,
-  limit? : Int = limit,
+  merge~ : Bool = true,
+  limit~ : Int32 = limit,
 ) -> Array[Part]? {
   if length < 0L {
     return None
@@ -356,7 +356,7 @@ pub extend Content with Debug::{to_repr}
 pub fn Content::new(
   part : Part,
   complete? : Int64,
-  unit? : String = unit,
+  unit~ : String = unit,
 ) -> Content {
   { unit, part: Some(part), complete, }
 }
@@ -366,7 +366,7 @@ pub fn Content::new(
 ///
 /// It names no part because there is none to name; the number is what the
 /// client needs in order to ask again for something that exists.
-pub fn unsatisfied(complete : Int64, unit? : String = unit) -> Content {
+pub fn unsatisfied(complete : Int64, unit~ : String = unit) -> Content {
   { unit, part: None, complete: Some(complete), }
 }
 
@@ -464,7 +464,7 @@ pub fn Content::decode(value : StringView) -> Content? {
 ///
 /// `none` is not the absence of the field: it says outright that range requests
 /// will not be honoured, which stops a client from trying and failing.
-pub fn accept(ranges? : Bool = true, unit? : String = unit) -> String {
+pub fn accept(ranges~ : Bool = true, unit~ : String = unit) -> String {
   if ranges {
     unit
   } else {
@@ -493,7 +493,7 @@ pub fn parts(
   boundary~ : String,
   kind~ : String,
   complete? : Int64,
-  unit? : String = unit,
+  unit~ : String = unit,
 ) -> Bytes {
   let out = Buffer()
   for one in parts {

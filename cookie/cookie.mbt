@@ -56,7 +56,7 @@ pub(all) struct Cookie {
   expires : @moondate.Moment?
   /// How long it lives, in seconds. A browser that understands it prefers it to
   /// `Expires`, which is why a deletion writes both.
-  max_age : Int?
+  max_age : Int32?
   domain : String?
   path : String?
   secure : Bool
@@ -81,12 +81,12 @@ pub fn Cookie::new(
   name : String,
   value : String,
   expires? : @moondate.Moment,
-  max_age? : Int,
+  max_age? : Int32,
   domain? : String,
-  path? : String? = Some("/"),
-  secure? : Bool = false,
-  http_only? : Bool = false,
-  same_site? : SameSite? = Some(Lax),
+  path~ : String? = Some("/"),
+  secure~ : Bool = false,
+  http_only~ : Bool = false,
+  same_site~ : SameSite? = Some(Lax),
 ) -> Cookie {
   { name, value, expires, max_age, domain, path, secure, http_only, same_site, }
 }
@@ -173,7 +173,7 @@ pub fn Cookie::decode(raw : StringView) -> Cookie? {
     None => return None
   }
   let mut expires : @moondate.Moment? = None
-  let mut max_age : Int? = None
+  let mut max_age : Int32? = None
   let mut domain : String? = None
   let mut path : String? = None
   let mut secure = false

@@ -79,11 +79,11 @@ test "qpack static: name-only lookup returns the first matching index" {
 /// Encode a prefix and decode it back, given the decoder's total inserts (defaulting to the
 /// Required Insert Count, the usual case).
 fn roundtrip_prefix(
-  req : Int,
-  base : Int,
-  max_entries : Int,
-  total? : Int = -1,
-) -> (Int, Int) raise {
+  req : Int32,
+  base : Int32,
+  max_entries : Int32,
+  total~ : Int32 = -1,
+) -> (Int32, Int32) raise {
   let total = if total == -1 { req } else { total }
   let wire = prefix(req, base, max_entries)
   match read_prefix(wire[:], max_entries, total) {

@@ -10,7 +10,7 @@
 pub(all) suberror Refused {
   Partial
   Malformed(String)
-  Exceeded(limit~ : Int, got~ : Int)
+  Exceeded(limit~ : Int32, got~ : Int32)
   Smuggled(String)
 } derive(Eq, Debug)
 
@@ -40,7 +40,7 @@ pub extend Refused with Eq::{not_equal, equal}
 /// A message too large is 431 when it is the head (RFC 6585 §5) and 413 when it is
 /// the body; this is about the head, which is what this package bounds. A framing
 /// fault is 400.
-pub fn Refused::status(self : Refused) -> Int {
+pub fn Refused::status(self : Refused) -> Int32 {
   match self {
     Exceeded(..) => 431
     _ => 400
@@ -55,7 +55,7 @@ pub fn Refused::status(self : Refused) -> Int {
 /// carried rather than re-derived.
 pub(all) enum Body {
   Empty
-  Sized(Int)
+  Sized(Int32)
   Chunked
   // Until the connection closes, which only a response may use (§6.3).
   Closed
@@ -73,8 +73,8 @@ pub extend Body with Eq::{not_equal, equal}
 /// The preset is [`limits`]. Build another with [`Limits::new`], or update one in
 /// place with `{ ..limits, head: 8192 }`.
 pub(all) struct Limits {
-  head : Int
-  fields : Int
+  head : Int32
+  fields : Int32
 } derive(Eq, Debug)
 
 ///|
@@ -95,8 +95,8 @@ pub let limits : Limits = { head: 16 * 1024, fields: 100, }
 ///|
 /// Limits by name, every knob with the preset's value.
 pub fn Limits::new(
-  head? : Int = limits.head,
-  fields? : Int = limits.fields,
+  head~ : Int32 = limits.head,
+  fields~ : Int32 = limits.fields,
 ) -> Limits {
   { head, fields, }
 }
@@ -125,7 +125,7 @@ pub extend Request with Eq::{not_equal, equal}
 /// A response's head: the status line and the fields under it.
 pub(all) struct Response {
   version : String
-  status : Int
+  status : Int32
   reason : String
   fields : Array[@header.Header]
   body : Body

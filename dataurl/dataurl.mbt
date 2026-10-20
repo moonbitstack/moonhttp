@@ -31,9 +31,9 @@ pub(all) suberror Refused {
   /// Nothing separates the header from the payload (§3 requires a comma).
   Comma
   /// A `%` with fewer than two hex digits after it. Only under `strict`.
-  Escape(at~ : Int)
+  Escape(at~ : Int32)
   /// The payload is not base64, at this offset into it.
-  Base64(at~ : Int)
+  Base64(at~ : Int32)
 } derive(Eq, Debug)
 
 ///|
@@ -44,7 +44,7 @@ pub extend Refused with Debug::{to_repr}
 
 ///|
 /// A data URL carrying these octets.
-pub fn Url::new(data : Bytes, kind? : String = kind) -> Url {
+pub fn Url::new(data : Bytes, kind~ : String = kind) -> Url {
   { kind, data, }
 }
 
@@ -71,7 +71,7 @@ pub fn Url::charset(self : Url) -> String {
 ///
 /// A media type equal to [`kind`] is left out; reading one back puts it there
 /// again.
-pub fn Url::encode(self : Url, base64? : Bool = true) -> String {
+pub fn Url::encode(self : Url, base64~ : Bool = true) -> String {
   let out = StringBuilder()
   out.write_string("data:")
   if self.kind != kind {
@@ -97,7 +97,7 @@ pub fn Url::encode(self : Url, base64? : Bool = true) -> String {
 /// lone `%` stands for itself and whitespace is dropped.
 pub fn Url::decode(
   text : StringView,
-  strict? : Bool = false,
+  strict~ : Bool = false,
 ) -> Url raise Refused {
   guard starts(text, "data:") else { raise Scheme }
   let rest = text[5:]
@@ -196,7 +196,7 @@ fn hex(b : Byte) -> Bool {
 }
 
 ///|
-fn space(c : Int) -> Bool {
+fn space(c : Int32) -> Bool {
   c == 0x20 || c == 0x09 || c == 0x0D || c == 0x0A
 }
 
@@ -216,7 +216,7 @@ fn trim(text : StringView) -> StringView {
 ///|
 /// ASCII case-insensitive: a scheme is (RFC 3986 §3.1), and `;BASE64` is
 /// written by more than one generator.
-fn fold(c : Int) -> Int {
+fn fold(c : Int32) -> Int32 {
   if c >= 0x41 && c <= 0x5A {
     c + 32
   } else {

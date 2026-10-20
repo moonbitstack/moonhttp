@@ -24,8 +24,8 @@ pub fn unescape_text(StringView) -> String
 
 // Errors
 pub(all) suberror Refused {
-  Port(at~ : Int)
-  Host(at~ : Int)
+  Port(at~ : Int32)
+  Host(at~ : Int32)
 } derive(Eq, @debug.Debug)
 pub fn Refused::equal(Self, Self) -> Bool
 pub fn Refused::not_equal(Self, Self) -> Bool
@@ -50,7 +50,7 @@ pub(all) struct Url {
   scheme : String?
   userinfo : String?
   host : String?
-  port : Int?
+  port : Int32?
   path : String
   query : String?
   fragment : String?
@@ -60,7 +60,7 @@ pub fn Url::decode(StringView) -> Self raise Refused
 pub fn Url::encode(Self) -> String
 pub fn Url::equal(Self, Self) -> Bool
 pub fn Url::is_absolute(Self) -> Bool
-pub fn Url::new(scheme? : String, userinfo? : String, host? : String, port? : Int, path? : String, query? : String, fragment? : String) -> Self
+pub fn Url::new(scheme? : String, userinfo? : String, host? : String, port? : Int32, path? : String, query? : String, fragment? : String) -> Self
 pub fn Url::normalize(Self) -> Self
 pub fn Url::not_equal(Self, Self) -> Bool
 pub fn Url::resolve(Self, Self) -> Self

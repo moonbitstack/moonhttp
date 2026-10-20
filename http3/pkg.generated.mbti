@@ -15,9 +15,9 @@ pub fn check(Frame, On) -> Unit raise Refused
 
 pub fn control(Array[(UInt64, UInt64)]) -> Bytes
 
-pub fn decode(BytesView) -> (Frame, Int)? raise Refused
+pub fn decode(BytesView) -> (Frame, Int32)? raise Refused
 
-pub fn decode_all(Bytes) -> (Array[Frame], Int) raise Refused
+pub fn decode_all(Bytes) -> (Array[Frame], Int32) raise Refused
 
 pub let max_field_section : UInt64
 
@@ -144,7 +144,7 @@ pub(all) enum Stream {
   DecoderKind
   ReservedKind(UInt64)
 } derive(Eq, @debug.Debug)
-pub fn Stream::decode(BytesView) -> (Self, Int)?
+pub fn Stream::decode(BytesView) -> (Self, Int32)?
 pub fn Stream::encode(Self) -> Bytes
 pub fn Stream::equal(Self, Self) -> Bool
 pub fn Stream::not_equal(Self, Self) -> Bool

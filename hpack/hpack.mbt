@@ -9,8 +9,8 @@
 /// ends' dynamic tables have gone out of step and nothing after this point can be read.
 pub(all) suberror Refused {
   Malformed(String)
-  Index(got~ : Int)
-  Exceeded(limit~ : Int, got~ : Int)
+  Index(got~ : Int32)
+  Exceeded(limit~ : Int32, got~ : Int32)
 } derive(Eq, Debug)
 
 ///|
@@ -38,7 +38,7 @@ pub extend Refused with Eq::{not_equal, equal}
 ///
 /// Four kibibytes is the value HTTP/2 gives `SETTINGS_HEADER_TABLE_SIZE` before either
 /// end has said otherwise (RFC 9113 §6.5.2), so it is what both tables start at.
-pub let limit : Int = 4096
+pub let limit : Int32 = 4096
 
 ///|
 /// The 61-entry HPACK static header table (RFC 7541, Appendix A). Entry `i`
@@ -111,7 +111,7 @@ let ascii_table : Array[(String, String)] = [
 ///|
 /// Look up an HPACK static-table entry by its 1-based RFC index (`1..=61`),
 /// returning `(name, value)` or `None` when the index is out of range.
-pub fn entry(index : Int) -> @header.Header? {
+pub fn entry(index : Int32) -> @header.Header? {
   if index < 1 || index > static_table.length() {
     None
   } else {
@@ -128,7 +128,7 @@ pub fn entry(index : Int) -> @header.Header? {
 ///
 /// A tie goes to the coded form, which is what RFC 7541's own examples do: it costs
 /// nothing and leaves less of the value legible to anything reading the connection.
-pub fn string(octets : BytesView, huffman? : Bool = true) -> Bytes {
+pub fn string(octets : BytesView, huffman~ : Bool = true) -> Bytes {
   let plain = octets.to_owned()
   if huffman && @huffman.size(octets) <= octets.length() {
     let coded = @huffman.encode(octets)
@@ -151,8 +151,8 @@ pub fn string(octets : BytesView, huffman? : Bool = true) -> Bytes {
 /// applied here, so ask `@prefix.flagged` first if the literal may be coded.
 pub fn read_literal(
   data : BytesView,
-  offset : Int,
-) -> (Bytes, Int) raise Refused {
+  offset : Int32,
+) -> (Bytes, Int32) raise Refused {
   let (len, int_len) = reach(data, offset, 7)
   let start = offset + int_len
   // Bound the literal against the buffer without recomputing `start + len` (which
@@ -198,8 +198,8 @@ pub let static_table : Array[@header.Header] = {
 /// `read_literal`, this applies Huffman decoding. Raises on bad Huffman.
 pub fn read_string(
   data : BytesView,
-  offset : Int,
-) -> (Bytes, Int) raise Refused {
+  offset : Int32,
+) -> (Bytes, Int32) raise Refused {
   let huff = @prefix.flagged(data, at=offset)
   let (raw, consumed) = read_literal(data, offset)
   if huff {
@@ -224,19 +224,19 @@ pub fn read_string(
 /// table and is not stored (§4.4).
 pub(all) struct Table {
   mut entries : Array[(Bytes, Bytes)]
-  mut size : Int
-  mut limit : Int
+  mut size : Int32
+  mut limit : Int32
 }
 
 ///|
 /// A new empty dynamic table bounded by `limit` octets (default 4096, the
 /// HTTP/2 initial `SETTINGS_HEADER_TABLE_SIZE`).
-pub fn Table::new(limit? : Int = limit) -> Table {
+pub fn Table::new(limit~ : Int32 = limit) -> Table {
   { entries: [], size: 0, limit, }
 }
 
 ///|
-fn cost(name : Bytes, value : Bytes) -> Int {
+fn cost(name : Bytes, value : Bytes) -> Int32 {
   name.length() + value.length() + 32
 }
 
@@ -251,7 +251,7 @@ fn Table::evict(self : Table) -> Unit {
 
 ///|
 /// Resize the table (a dynamic table size update, RFC 7541 §4.2), evicting to fit.
-pub fn Table::resize(self : Table, limit : Int) -> Unit {
+pub fn Table::resize(self : Table, limit : Int32) -> Unit {
   self.limit = limit
   self.evict()
 }
@@ -275,25 +275,25 @@ pub fn Table::add(self : Table, name : Bytes, value : Bytes) -> Unit {
 /// The field an HPACK index names, across the static and dynamic tables together
 /// (RFC 7541 §2.3.3): one through sixty-one are the static table, and everything above
 /// is this table, newest first. `None` when the index names nothing.
-pub fn Table::get(self : Table, index : Int) -> @header.Header? {
+pub fn Table::get(self : Table, index : Int32) -> @header.Header? {
   lookup(self, index)
 }
 
 ///|
 /// The ceiling this table evicts to keep under, in octets.
-pub fn Table::limit(self : Table) -> Int {
+pub fn Table::limit(self : Table) -> Int32 {
   self.limit
 }
 
 ///|
 /// The number of entries currently in the dynamic table.
-pub fn Table::count(self : Table) -> Int {
+pub fn Table::count(self : Table) -> Int32 {
   self.entries.length()
 }
 
 ///|
 /// The current total size of the dynamic table in octets (§4.1 accounting).
-pub fn Table::size(self : Table) -> Int {
+pub fn Table::size(self : Table) -> Int32 {
   self.size
 }
 
@@ -301,7 +301,7 @@ pub fn Table::size(self : Table) -> Int {
 /// Resolve an HPACK index against the combined static + dynamic address space
 /// (RFC 7541 §2.3.3): `1..=61` index the static table; `62..` index the dynamic
 /// table newest-first. Returns `None` when out of range.
-fn lookup(dt : Table, index : Int) -> @header.Header? {
+fn lookup(dt : Table, index : Int32) -> @header.Header? {
   let fixed = static_table.length()
   if index >= 1 && index <= fixed {
     Some(static_table[index - 1])
@@ -318,7 +318,7 @@ fn lookup(dt : Table, index : Int) -> @header.Header? {
 ///|
 /// Encode a dynamic table size update (RFC 7541 §6.3): `001` prefix with the new
 /// maximum size as a 5-bit-prefix integer.
-pub fn size_update(limit : Int) -> Bytes {
+pub fn size_update(limit : Int32) -> Bytes {
   let e = @prefix.encode(limit, prefix=5)
   let buf = Buffer()
   buf.write_byte((e[0].to_int() | 0x20).to_byte())
@@ -334,13 +334,13 @@ pub fn size_update(limit : Int) -> Bytes {
 /// (`SETTINGS_HEADER_TABLE_SIZE`) a size update may not exceed.
 pub(all) struct Decoder {
   table : Table
-  limit : Int
+  limit : Int32
 }
 
 ///|
 /// A new decoder whose dynamic table is bounded by `limit` octets (also the
 /// hard cap enforced on dynamic table size updates).
-pub fn Decoder::new(limit? : Int = limit) -> Decoder {
+pub fn Decoder::new(limit~ : Int32 = limit) -> Decoder {
   { table: Table::new(limit~), limit, }
 }
 
@@ -350,9 +350,9 @@ pub fn Decoder::new(limit? : Int = limit) -> Decoder {
 fn Decoder::read_name(
   self : Decoder,
   block : BytesView,
-  index : Int,
-  off : Int,
-) -> (Bytes, Int) raise Refused {
+  index : Int32,
+  off : Int32,
+) -> (Bytes, Int32) raise Refused {
   if index == 0 {
     read_string(block, off)
   } else {
@@ -433,14 +433,14 @@ pub(all) struct Encoder {
 ///|
 /// A new encoder bounded by `limit` octets; `huffman` (default `true`) enables
 /// the shorter-of-two string-literal heuristic.
-pub fn Encoder::new(limit? : Int = limit, huffman? : Bool = true) -> Encoder {
+pub fn Encoder::new(limit~ : Int32 = limit, huffman~ : Bool = true) -> Encoder {
   { table: Table::new(limit~), huffman, }
 }
 
 ///|
 /// Find the best index for `(name, value)`: an exact `(idx, true)` match, else a
 /// name-only `(idx, false)` match, else `(0, false)` for no match at all.
-fn Encoder::find(self : Encoder, name : Bytes, value : Bytes) -> (Int, Bool) {
+fn Encoder::find(self : Encoder, name : Bytes, value : Bytes) -> (Int32, Bool) {
   let fixed = static_table.length()
   let mut name_idx = 0
   for i = 0; i < fixed; i = i + 1 {
@@ -507,7 +507,11 @@ pub fn Encoder::encode(
 ///|
 /// A prefix integer, with `moonvar`'s refusal folded into this package's: a header block
 /// that does not parse is one fault however far in the number went wrong.
-fn reach(b : BytesView, at : Int, prefix : Int) -> (Int, Int) raise Refused {
+fn reach(
+  b : BytesView,
+  at : Int32,
+  prefix : Int32,
+) -> (Int32, Int32) raise Refused {
   @prefix.decode(b, at~, prefix~) catch {
     e => raise Malformed("a prefix integer: \{e}")
   }

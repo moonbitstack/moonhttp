@@ -7,41 +7,41 @@ import {
 }
 
 // Values
-pub fn cost(Bytes, Bytes) -> Int
+pub fn cost(Bytes, Bytes) -> Int32
 
 pub fn decode(Bytes) -> Array[@header.Header] raise Refused
 
-pub fn decode_with(Bytes, Table, Int) -> Array[@header.Header] raise Refused
+pub fn decode_with(Bytes, Table, Int32) -> Array[@header.Header] raise Refused
 
 pub fn encode(Array[@header.Header], huffman? : Bool) -> Bytes
 
-pub fn encode_with(Array[@header.Header], Table, Int, huffman? : Bool) -> (Bytes, Bytes)
+pub fn encode_with(Array[@header.Header], Table, Int32, huffman? : Bool) -> (Bytes, Bytes)
 
-pub fn entry(Int) -> @header.Header?
+pub fn entry(Int32) -> @header.Header?
 
-pub fn find(Bytes, Bytes) -> Int?
+pub fn find(Bytes, Bytes) -> Int32?
 
-pub fn find_name(Bytes) -> Int?
+pub fn find_name(Bytes) -> Int32?
 
-pub fn insert_count(Int, Int, Int) -> Int raise Refused
+pub fn insert_count(Int32, Int32, Int32) -> Int32 raise Refused
 
-pub fn max_entries(Int) -> Int
+pub fn max_entries(Int32) -> Int32
 
-pub fn prefix(Int, Int, Int) -> Bytes
+pub fn prefix(Int32, Int32, Int32) -> Bytes
 
-pub fn read_prefix(BytesView, Int, Int) -> (Int, Int, Int)? raise Refused
+pub fn read_prefix(BytesView, Int32, Int32) -> (Int32, Int32, Int32)? raise Refused
 
-pub fn read_string(BytesView, Int) -> (Bytes, Int)? raise Refused
+pub fn read_string(BytesView, Int32) -> (Bytes, Int32)? raise Refused
 
 pub let static_table : Array[@header.Header]
 
-pub fn string(Bytes, Int, Int, Bool) -> Bytes
+pub fn string(Bytes, Int32, Int32, Bool) -> Bytes
 
 // Errors
 pub(all) suberror Refused {
   Malformed(String)
-  Index(got~ : Int)
-  Exceeded(limit~ : Int, got~ : Int)
+  Index(got~ : Int32)
+  Exceeded(limit~ : Int32, got~ : Int32)
 } derive(Eq, @debug.Debug)
 pub fn Refused::equal(Self, Self) -> Bool
 pub fn Refused::not_equal(Self, Self) -> Bool
@@ -52,23 +52,23 @@ pub impl Show for Refused
 
 // Types and methods
 pub(all) enum Ack {
-  Section(stream_id~ : Int)
-  Cancel(stream_id~ : Int)
-  Increment(increment~ : Int)
+  Section(stream_id~ : Int32)
+  Cancel(stream_id~ : Int32)
+  Increment(increment~ : Int32)
 } derive(Eq, @debug.Debug)
-pub fn Ack::decode(BytesView) -> (Self, Int)? raise Refused
+pub fn Ack::decode(BytesView) -> (Self, Int32)? raise Refused
 pub fn Ack::encode(Self) -> Bytes
 pub fn Ack::equal(Self, Self) -> Bool
 pub fn Ack::not_equal(Self, Self) -> Bool
 pub fn Ack::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Change {
-  SetCapacity(Int)
-  Insert(is_static~ : Bool, index~ : Int, value~ : Bytes)
+  SetCapacity(Int32)
+  Insert(is_static~ : Bool, index~ : Int32, value~ : Bytes)
   InsertLiteral(name~ : Bytes, value~ : Bytes)
-  Duplicate(index~ : Int)
+  Duplicate(index~ : Int32)
 } derive(Eq, @debug.Debug)
-pub fn Change::decode(BytesView) -> (Self, Int)? raise Refused
+pub fn Change::decode(BytesView) -> (Self, Int32)? raise Refused
 pub fn Change::encode(Self, huffman? : Bool) -> Bytes
 pub fn Change::equal(Self, Self) -> Bool
 pub fn Change::not_equal(Self, Self) -> Bool
@@ -76,17 +76,17 @@ pub fn Change::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Table {
   entries : Array[(Bytes, Bytes)]
-  mut used : Int
-  mut capacity : Int
-  mut insert_count : Int
-  mut dropped : Int
+  mut used : Int32
+  mut capacity : Int32
+  mut insert_count : Int32
+  mut dropped : Int32
 }
 pub fn Table::apply(Self, Change) -> Bool raise Refused
-pub fn Table::get(Self, Int) -> (Bytes, Bytes)?
+pub fn Table::get(Self, Int32) -> (Bytes, Bytes)?
 pub fn Table::insert(Self, Bytes, Bytes) -> Bool
-pub fn Table::new(Int) -> Self
-pub fn Table::relative(Self, Int) -> (Bytes, Bytes)?
-pub fn Table::resize(Self, Int) -> Unit
+pub fn Table::new(Int32) -> Self
+pub fn Table::relative(Self, Int32) -> (Bytes, Bytes)?
+pub fn Table::resize(Self, Int32) -> Unit
 
 // Type aliases
 

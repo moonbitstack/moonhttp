@@ -14,7 +14,7 @@ pub(all) struct Event {
   /// Sets the client's `lastEventId`, which it sends back on reconnection.
   id : String?
   /// How long the client should wait before reconnecting, in milliseconds.
-  retry : Int?
+  retry : Int32?
   /// A `:`-prefixed line. It dispatches nothing and exists to keep a connection
   /// warm through a proxy that would otherwise close it.
   comment : String?
@@ -35,10 +35,10 @@ pub fn Event::of(data : String) -> Event {
 ///|
 /// An event with whichever fields are wanted.
 pub fn Event::new(
-  data? : String = "",
+  data~ : String = "",
   kind? : String,
   id? : String,
-  retry? : Int,
+  retry? : Int32,
   comment? : String,
 ) -> Event {
   { data, kind, id, retry, comment, }
@@ -46,7 +46,7 @@ pub fn Event::new(
 
 ///|
 /// A comment-only frame: nothing is dispatched and the connection stays warm.
-pub fn Event::ping(comment? : String = "") -> Event {
+pub fn Event::ping(comment~ : String = "") -> Event {
   { data: "", kind: None, id: None, retry: None, comment: Some(comment), }
 }
 
@@ -56,7 +56,7 @@ pub fn Event::ping(comment? : String = "") -> Event {
 /// `space` writes the one optional space after each colon, which every stream in
 /// the wild carries and which a reader strips again. Turning it off saves a byte
 /// per field on a stream where that matters, and changes nothing a client sees.
-pub fn Event::encode(self : Event, space? : Bool = true) -> String {
+pub fn Event::encode(self : Event, space~ : Bool = true) -> String {
   let gap = if space { " " } else { "" }
   let out = StringBuilder()
   match self.comment {
@@ -108,7 +108,7 @@ pub fn decode(input : StringView) -> Array[Event] {
   let comment = StringBuilder()
   let mut kind : String? = None
   let mut id : String? = None
-  let mut retry : Int? = None
+  let mut retry : Int32? = None
   let mut started = false
   for line in lines(input) {
     if line == "" {
@@ -183,7 +183,7 @@ pub fn events(input : StringView) -> Array[Event] {
   let data = StringBuilder()
   let mut kind = ""
   let mut id : String? = None
-  let mut retry : Int? = None
+  let mut retry : Int32? = None
   let mut some = false
   for line in lines(input) {
     if line == "" {
@@ -284,7 +284,7 @@ fn lines(s : StringView) -> Array[String] {
 }
 
 ///|
-fn find(s : String, c : Char) -> Int {
+fn find(s : String, c : Char) -> Int32 {
   for i in 0..<s.length() {
     if s.at(i).to_int() == c.to_int() {
       return i

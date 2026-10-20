@@ -44,11 +44,11 @@ pub fn Response::encode(self : Response) -> Bytes {
 pub fn Request::of(
   verb : String,
   target : String,
-  fields? : Array[@header.Header] = [],
-  version? : String = "HTTP/1.1",
-  body? : Body = Empty,
-  host? : String = "",
-  keep_alive? : Bool = true,
+  fields~ : Array[@header.Header] = [],
+  version~ : String = "HTTP/1.1",
+  body~ : Body = Empty,
+  host~ : String = "",
+  keep_alive~ : Bool = true,
 ) -> Request {
   let all : Array[@header.Header] = []
   if host != "" {
@@ -71,12 +71,12 @@ pub fn Request::of(
 ///|
 /// A response by name, with the framing worked out the same way.
 pub fn Response::of(
-  status : Int,
-  fields? : Array[@header.Header] = [],
-  reason? : String = "",
-  version? : String = "HTTP/1.1",
-  body? : Body = Empty,
-  keep_alive? : Bool = true,
+  status : Int32,
+  fields~ : Array[@header.Header] = [],
+  reason~ : String = "",
+  version~ : String = "HTTP/1.1",
+  body~ : Body = Empty,
+  keep_alive~ : Bool = true,
 ) -> Response {
   let all : Array[@header.Header] = []
   for f in fields {
@@ -113,7 +113,7 @@ pub fn Response::of(
 /// The reason phrase a status is usually written with (RFC 9110 §15).
 ///
 /// A client must not act on it (§4), so this is for the human reading a capture.
-pub fn phrase(status : Int) -> String {
+pub fn phrase(status : Int32) -> String {
   match status {
     100 => "Continue"
     101 => "Switching Protocols"
@@ -178,7 +178,7 @@ pub fn chunk(data : BytesView) -> Bytes {
 
 ///|
 /// The zero-size chunk that ends a body, with optional trailer fields after it.
-pub fn last_chunk(trailers? : Array[@header.Header] = []) -> Bytes {
+pub fn last_chunk(trailers~ : Array[@header.Header] = []) -> Bytes {
   let buf = Buffer()
   put(buf, "0")
   crlf(buf)
@@ -191,9 +191,9 @@ pub fn last_chunk(trailers? : Array[@header.Header] = []) -> Bytes {
 /// What a chunked body reader found at the front of `data`.
 pub(all) enum Chunk {
   // Octets of the body, and how many octets of `data` they took.
-  Piece(Bytes, Int)
+  Piece(Bytes, Int32)
   // The body ended; its trailer fields, and how many octets that took.
-  Done(Array[@header.Header], Int)
+  Done(Array[@header.Header], Int32)
 } derive(Eq)
 
 ///|
@@ -251,7 +251,7 @@ pub fn chunked(data : BytesView) -> Chunk raise Refused {
 
 ///|
 /// The trailer fields after the last chunk, and how many octets they took.
-fn trailer(data : BytesView) -> (Array[@header.Header], Int) raise Refused {
+fn trailer(data : BytesView) -> (Array[@header.Header], Int32) raise Refused {
   let out : Array[@header.Header] = []
   let mut pos = 0
   for ;; {
@@ -296,7 +296,7 @@ fn put(buf : Buffer, s : String) -> Unit {
 
 ///|
 /// A hexadecimal digit's value, or `-1`.
-fn nibble(c : Int) -> Int {
+fn nibble(c : Int32) -> Int32 {
   if c >= 0x30 && c <= 0x39 {
     c - 0x30
   } else if c >= 0x61 && c <= 0x66 {

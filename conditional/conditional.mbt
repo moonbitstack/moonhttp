@@ -71,7 +71,7 @@ pub extend Verdict with Debug::{to_repr}
 
 ///|
 /// A tag with this text.
-pub fn Tag::new(text : String, weak? : Bool = false) -> Tag {
+pub fn Tag::new(text : String, weak~ : Bool = false) -> Tag {
   { text, weak, }
 }
 
@@ -110,7 +110,7 @@ let hex : @moonbase.Alphabet = @moonbase.Alphabet::of("0123456789abcdef")
 pub fn hash(
   raw : BytesView,
   digest~ : &@spec.Hash,
-  weak? : Bool = false,
+  weak~ : Bool = false,
 ) -> Tag {
   digest.reset()
   digest.write(raw)
@@ -129,7 +129,7 @@ pub fn hash(
 pub fn stamp(
   length~ : Int64,
   modified~ : @moondate.Moment,
-  weak? : Bool = true,
+  weak~ : Bool = true,
 ) -> Tag {
   let seconds = match modified.epoch() {
     Some(epoch) => epoch
@@ -373,7 +373,7 @@ pub fn Ask::evaluate(
   verb~ : String,
   etag? : Tag,
   modified? : @moondate.Moment,
-  present? : Bool = true,
+  present~ : Bool = true,
 ) -> Verdict {
   let reading = verb == "GET" || verb == "HEAD"
   match self.matching {
@@ -490,7 +490,7 @@ fn trim(text : StringView) -> StringView {
 }
 
 ///|
-fn space(c : Int) -> Bool {
+fn space(c : Int32) -> Bool {
   c == 0x20 || c == 0x09
 }
 

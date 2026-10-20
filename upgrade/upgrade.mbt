@@ -51,10 +51,10 @@ pub fn subprotocol(
 pub fn request(
   host~ : String,
   key~ : String,
-  path? : String = "/",
-  protocols? : ArrayView[String] = [][:],
+  path~ : String = "/",
+  protocols~ : ArrayView[String] = [][:],
   origin? : String,
-  extra? : ArrayView[(String, String)] = [][:],
+  extra~ : ArrayView[(String, String)] = [][:],
 ) -> Bytes {
   let buf = StringBuilder()
   buf.write_string("GET " + path + " HTTP/1.1\r\n")
@@ -83,7 +83,7 @@ pub fn request(
 pub fn response(
   key : String,
   protocol? : String,
-  extra? : ArrayView[(String, String)] = [][:],
+  extra~ : ArrayView[(String, String)] = [][:],
 ) -> Bytes {
   let buf = StringBuilder()
   buf.write_string("HTTP/1.1 101 Switching Protocols\r\n")

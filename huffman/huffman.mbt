@@ -37,7 +37,7 @@ pub extend Refused with Eq::{not_equal, equal}
 /// The RFC 7541 Appendix B Huffman code table as `(code, bit_length)` indexed by
 /// symbol `0..=256`; index 256 is the EOS marker. `code` is right-aligned in an
 /// `Int` (every code is at most 30 bits, so it stays non-negative).
-let table : Array[(Int, Int)] = [
+let table : Array[(Int32, Int32)] = [
   (0x1ff8, 13),
   (0x7fffd8, 23),
   (0xfffffe2, 28),
@@ -299,15 +299,15 @@ let table : Array[(Int, Int)] = [
 
 ///|
 /// The EOS symbol index in the Huffman table (RFC 7541 §5.2).
-let eos : Int = 256
+let eos : Int32 = 256
 
 ///|
 /// A node of the Huffman decoding trie: children reached by consuming a `0` or
 /// `1` bit (`-1` when absent), and the terminal symbol (`-1` for internal nodes).
 priv struct Node {
-  mut zero : Int
-  mut one : Int
-  mut sym : Int
+  mut zero : Int32
+  mut one : Int32
+  mut sym : Int32
 }
 
 ///|
@@ -370,7 +370,7 @@ pub fn encode(input : BytesView) -> Bytes {
 ///|
 /// The number of octets `input` occupies when Huffman-encoded, without building
 /// the output — used to choose the shorter of raw vs. Huffman string literals.
-pub fn size(input : BytesView) -> Int {
+pub fn size(input : BytesView) -> Int32 {
   let mut bits = 0
   for i = 0; i < input.length(); i = i + 1 {
     bits = bits + table[input[i].to_int()].1

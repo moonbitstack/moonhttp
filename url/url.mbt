@@ -54,7 +54,7 @@ pub(all) struct Url {
   scheme : String?
   userinfo : String?
   host : String?
-  port : Int?
+  port : Int32?
   path : String
   query : String?
   fragment : String?
@@ -72,9 +72,9 @@ pub extend Url with Debug::{to_repr}
 /// that one.
 pub(all) suberror Refused {
   /// A port that is not digits, at this offset.
-  Port(at~ : Int)
+  Port(at~ : Int32)
   /// An IP-literal with no closing bracket, at the opening one's offset.
-  Host(at~ : Int)
+  Host(at~ : Int32)
 } derive(Eq, Debug)
 
 ///|
@@ -96,8 +96,8 @@ pub extend Refused with Debug::{to_repr}
 /// RFC 3986's. A URI component names its `kind` and leaves `spare` alone.
 pub fn escape(
   raw : BytesView,
-  kind? : Kind = kind,
-  spare? : StringView = ""[:],
+  kind~ : Kind = kind,
+  spare~ : StringView = ""[:],
 ) -> String {
   let digits = "0123456789ABCDEF"
   let out = StringBuilder()
@@ -118,8 +118,8 @@ pub fn escape(
 /// Percent-encode text as UTF-8 (RFC 3986 §2.5).
 pub fn escape_text(
   text : StringView,
-  kind? : Kind = kind,
-  spare? : StringView = ""[:],
+  kind~ : Kind = kind,
+  spare~ : StringView = ""[:],
 ) -> String {
   escape(@utf8.encode(text)[:], kind~, spare~)
 }
@@ -160,8 +160,8 @@ pub fn unescape_text(text : StringView) -> String {
 /// there unescaped — the check [`unescape`] does not make.
 pub fn escaped(
   text : StringView,
-  kind? : Kind = kind,
-  spare? : StringView = ""[:],
+  kind~ : Kind = kind,
+  spare~ : StringView = ""[:],
 ) -> Bool {
   let raw = @utf8.encode(text)
   let mut i = 0
@@ -299,8 +299,8 @@ fn scheme_of(text : StringView) -> String? {
 /// address — and [`Url::encode`] puts them back when it sees a colon.
 fn authority(
   text : StringView,
-  at : Int,
-) -> (String?, String, Int?) raise Refused {
+  at : Int32,
+) -> (String?, String, Int32?) raise Refused {
   let n = text.length()
   let mut cut = -1
   for i = 0; i < n; i = i + 1 {
@@ -358,8 +358,8 @@ pub fn Url::new(
   scheme? : String,
   userinfo? : String,
   host? : String,
-  port? : Int,
-  path? : String = "",
+  port? : Int32,
+  path~ : String = "",
   query? : String,
   fragment? : String,
 ) -> Url {
@@ -582,7 +582,7 @@ pub fn Url::normalize(self : Url) -> Url {
 // ------------------------------------------------------------------ plumbing
 
 ///|
-fn allowed(kind : Kind, b : Int) -> Bool {
+fn allowed(kind : Kind, b : Int32) -> Bool {
   if unreserved(b) {
     return true
   }
@@ -599,7 +599,7 @@ fn allowed(kind : Kind, b : Int) -> Bool {
 }
 
 ///|
-fn spared(spare : StringView, b : Int) -> Bool {
+fn spared(spare : StringView, b : Int32) -> Bool {
   if b >= 0x80 {
     return false
   }
@@ -612,22 +612,22 @@ fn spared(spare : StringView, b : Int) -> Bool {
 }
 
 ///|
-fn alpha(b : Int) -> Bool {
+fn alpha(b : Int32) -> Bool {
   (b >= 0x41 && b <= 0x5A) || (b >= 0x61 && b <= 0x7A)
 }
 
 ///|
-fn digit(b : Int) -> Bool {
+fn digit(b : Int32) -> Bool {
   b >= 0x30 && b <= 0x39
 }
 
 ///|
-fn unreserved(b : Int) -> Bool {
+fn unreserved(b : Int32) -> Bool {
   alpha(b) || digit(b) || b == 0x2D || b == 0x2E || b == 0x5F || b == 0x7E
 }
 
 ///|
-fn sub_delim(b : Int) -> Bool {
+fn sub_delim(b : Int32) -> Bool {
   b == 0x21 ||
   b == 0x24 ||
   b == 0x26 ||
@@ -642,7 +642,7 @@ fn sub_delim(b : Int) -> Bool {
 }
 
 ///|
-fn gen_delim(b : Int) -> Bool {
+fn gen_delim(b : Int32) -> Bool {
   b == 0x3A ||
   b == 0x2F ||
   b == 0x3F ||
@@ -653,7 +653,7 @@ fn gen_delim(b : Int) -> Bool {
 }
 
 ///|
-fn nibble(b : Byte) -> Int {
+fn nibble(b : Byte) -> Int32 {
   let c = b.to_int()
   if c >= 0x30 && c <= 0x39 {
     c - 0x30
@@ -667,7 +667,7 @@ fn nibble(b : Byte) -> Int {
 }
 
 ///|
-fn not_in(b : Int, set : Array[Int]) -> Bool {
+fn not_in(b : Int32, set : Array[Int32]) -> Bool {
   for c in set {
     if b == c {
       return false

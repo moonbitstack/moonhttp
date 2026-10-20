@@ -130,7 +130,7 @@ pub fn settings(pairs : Array[(UInt64, UInt64)]) -> Bytes {
 /// on a complete frame, `None` when more bytes are needed (a partial frame — the type,
 /// the length, or the payload has not fully arrived), and raises on a malformed frame
 /// (a truncated SETTINGS pair or a required varint field that is absent).
-pub fn decode(input : BytesView) -> (Frame, Int)? raise Refused {
+pub fn decode(input : BytesView) -> (Frame, Int32)? raise Refused {
   let (frame_type, type_len) = match @quic.decode(input) {
     Some(v) => v
     None => return None
@@ -209,7 +209,7 @@ fn one(payload : Bytes, name : String) -> UInt64 raise Refused {
 
 ///|
 /// The leading varint of a payload plus the octets it consumed.
-fn lead(payload : Bytes, name : String) -> (UInt64, Int) raise Refused {
+fn lead(payload : Bytes, name : String) -> (UInt64, Int32) raise Refused {
   match @quic.decode(payload[:]) {
     Some(v) => v
     None => raise Malformed(name + " frame missing its varint field")
@@ -220,7 +220,7 @@ fn lead(payload : Bytes, name : String) -> (UInt64, Int) raise Refused {
 /// Decode every complete frame at the front of `input`, returning the frames and the
 /// number of octets consumed (the tail, a partial frame, is left for the next read). A
 /// stream reader feeds accumulated bytes and keeps the unconsumed remainder.
-pub fn decode_all(input : Bytes) -> (Array[Frame], Int) raise Refused {
+pub fn decode_all(input : Bytes) -> (Array[Frame], Int32) raise Refused {
   let frames : Array[Frame] = []
   let mut off = 0
   let view = input[:]
@@ -422,7 +422,7 @@ pub fn Stream::encode(stream : Stream) -> Bytes {
 ///|
 /// Decode a unidirectional stream's opening bytes: the type varint (and a push id for a push
 /// stream). Returns the stream kind and bytes consumed, or `None` on a partial read.
-pub fn Stream::decode(input : BytesView) -> (Stream, Int)? {
+pub fn Stream::decode(input : BytesView) -> (Stream, Int32)? {
   let (stream_type, type_len) = match @quic.decode(input) {
     Some(v) => v
     None => return None
@@ -690,7 +690,7 @@ pub(all) struct Request {
 /// because a reader that only wants the request need not care what else arrived.
 pub fn read_request(
   bytes : Bytes,
-  strict? : Bool = false,
+  strict~ : Bool = false,
 ) -> Request? raise Refused {
   if strict {
     // §7.2: a frame the protocol does not allow on a request stream is an

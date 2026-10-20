@@ -31,144 +31,144 @@ pub fn has_preface(data : Bytes) -> Bool {
 
 ///|
 /// HTTP/2 frame type codes (RFC 9113 §6).
-pub let frame_data : Int = 0x0
+pub let frame_data : Int32 = 0x0
 
 ///|
 /// HEADERS: opens a stream and carries its HPACK header block.
-pub let frame_headers : Int = 0x1
+pub let frame_headers : Int32 = 0x1
 
 ///|
 /// PRIORITY: the deprecated stream-dependency hint; accepted and ignored.
-pub let frame_priority : Int = 0x2
+pub let frame_priority : Int32 = 0x2
 
 ///|
 /// RST_STREAM: abort one stream without touching the connection.
-pub let frame_rst_stream : Int = 0x3
+pub let frame_rst_stream : Int32 = 0x3
 
 ///|
 /// SETTINGS: the connection parameters each peer announces, and their ack.
-pub let frame_settings : Int = 0x4
+pub let frame_settings : Int32 = 0x4
 
 ///|
 /// PUSH_PROMISE: server push, which gRPC never uses.
-pub let frame_push_promise : Int = 0x5
+pub let frame_push_promise : Int32 = 0x5
 
 ///|
 /// PING: the round-trip probe keepalive is built on.
-pub let frame_ping : Int = 0x6
+pub let frame_ping : Int32 = 0x6
 
 ///|
 /// GOAWAY: stop opening streams, and here is the last id I accepted.
-pub let frame_goaway : Int = 0x7
+pub let frame_goaway : Int32 = 0x7
 
 ///|
 /// WINDOW_UPDATE: hand the peer more flow-control credit.
-pub let frame_window_update : Int = 0x8
+pub let frame_window_update : Int32 = 0x8
 
 ///|
 /// CONTINUATION: the rest of a header block too large for one frame.
-pub let frame_continuation : Int = 0x9
+pub let frame_continuation : Int32 = 0x9
 
 ///|
 /// HTTP/2 frame flags (RFC 9113 §6). Flags are type-specific; the same bit
 /// carries different meaning per frame type, hence the shared numeric values.
-pub let flag_end_stream : Int = 0x1
+pub let flag_end_stream : Int32 = 0x1
 
 ///|
 /// `ACK` on SETTINGS and PING shares bit 0x1 with `END_STREAM`.
-pub let flag_ack : Int = 0x1
+pub let flag_ack : Int32 = 0x1
 
 ///|
 /// END_HEADERS: no CONTINUATION follows this header block.
-pub let flag_end_headers : Int = 0x4
+pub let flag_end_headers : Int32 = 0x4
 
 ///|
 /// PADDED: a length byte and that many padding bytes wrap the payload.
-pub let flag_padded : Int = 0x8
+pub let flag_padded : Int32 = 0x8
 
 ///|
 /// PRIORITY: this HEADERS frame carries a stream-dependency block.
-pub let flag_priority : Int = 0x20
+pub let flag_priority : Int32 = 0x20
 
 ///|
 /// SETTINGS parameter identifiers (RFC 9113 §6.5.2).
-pub let settings_header_table_size : Int = 0x1
+pub let settings_header_table_size : Int32 = 0x1
 
 ///|
 /// SETTINGS_ENABLE_PUSH: whether the peer may send PUSH_PROMISE.
-pub let settings_enable_push : Int = 0x2
+pub let settings_enable_push : Int32 = 0x2
 
 ///|
 /// SETTINGS_MAX_CONCURRENT_STREAMS: how many streams may be open at once.
-pub let settings_max_concurrent_streams : Int = 0x3
+pub let settings_max_concurrent_streams : Int32 = 0x3
 
 ///|
 /// SETTINGS_INITIAL_WINDOW_SIZE: the flow-control credit a new stream starts with.
-pub let settings_initial_window_size : Int = 0x4
+pub let settings_initial_window_size : Int32 = 0x4
 
 ///|
 /// SETTINGS_MAX_FRAME_SIZE: the largest payload the peer will accept in one frame.
-pub let settings_max_frame_size : Int = 0x5
+pub let settings_max_frame_size : Int32 = 0x5
 
 ///|
 /// SETTINGS_MAX_HEADER_LIST_SIZE: the advisory ceiling on a decoded header list.
-pub let settings_max_header_list_size : Int = 0x6
+pub let settings_max_header_list_size : Int32 = 0x6
 
 ///|
 /// HTTP/2 error codes (RFC 9113 §7), carried by RST_STREAM and GOAWAY.
-pub let error_no_error : Int = 0x0
+pub let error_no_error : Int32 = 0x0
 
 ///|
 /// PROTOCOL_ERROR: the peer broke the protocol in a way not covered below.
-pub let error_protocol_error : Int = 0x1
+pub let error_protocol_error : Int32 = 0x1
 
 ///|
 /// INTERNAL_ERROR: the endpoint failed for reasons of its own.
-pub let error_internal_error : Int = 0x2
+pub let error_internal_error : Int32 = 0x2
 
 ///|
 /// FLOW_CONTROL_ERROR: the peer sent more than its credit allowed.
-pub let error_flow_control_error : Int = 0x3
+pub let error_flow_control_error : Int32 = 0x3
 
 ///|
 /// SETTINGS_TIMEOUT: a SETTINGS frame went unacknowledged too long.
-pub let error_settings_timeout : Int = 0x4
+pub let error_settings_timeout : Int32 = 0x4
 
 ///|
 /// STREAM_CLOSED: a frame arrived for a stream that was already finished.
-pub let error_stream_closed : Int = 0x5
+pub let error_stream_closed : Int32 = 0x5
 
 ///|
 /// FRAME_SIZE_ERROR: the frame's length is invalid for its type.
-pub let error_frame_size_error : Int = 0x6
+pub let error_frame_size_error : Int32 = 0x6
 
 ///|
 /// REFUSED_STREAM: the stream was declined before any processing, so it is safe to retry.
-pub let error_refused_stream : Int = 0x7
+pub let error_refused_stream : Int32 = 0x7
 
 ///|
 /// CANCEL: the stream is no longer wanted.
-pub let error_cancel : Int = 0x8
+pub let error_cancel : Int32 = 0x8
 
 ///|
 /// COMPRESSION_ERROR: the HPACK context is corrupt, which kills the connection.
-pub let error_compression_error : Int = 0x9
+pub let error_compression_error : Int32 = 0x9
 
 ///|
 /// CONNECT_ERROR: the TCP connection behind a CONNECT stream failed.
-pub let error_connect_error : Int = 0xA
+pub let error_connect_error : Int32 = 0xA
 
 ///|
 /// ENHANCE_YOUR_CALM: the peer is generating too much load.
-pub let error_enhance_your_calm : Int = 0xB
+pub let error_enhance_your_calm : Int32 = 0xB
 
 ///|
 /// INADEQUATE_SECURITY: the transport does not meet the minimum this endpoint requires.
-pub let error_inadequate_security : Int = 0xC
+pub let error_inadequate_security : Int32 = 0xC
 
 ///|
 /// HTTP_1_1_REQUIRED: the request cannot be served over HTTP/2.
-pub let error_http_1_1_required : Int = 0xD
+pub let error_http_1_1_required : Int32 = 0xD
 
 ///|
 /// The stream-priority block shared by PRIORITY frames and the optional priority
@@ -176,8 +176,8 @@ pub let error_http_1_1_required : Int = 0xD
 /// the effective priority weight is `weight + 1` (§6.3).
 pub(all) struct Priority {
   exclusive : Bool
-  stream_dependency : Int
-  weight : Int
+  stream_dependency : Int32
+  weight : Int32
 } derive(Eq)
 
 ///|
@@ -206,30 +206,30 @@ pub impl Show for Refused with fn output(self, logger) {
 /// bytes to (re)emit. `Unknown` preserves extension/unrecognised frames verbatim
 /// so a reader can forward or ignore them (RFC 9113 §4.1).
 pub(all) enum Frame {
-  Data(stream_id~ : Int, data~ : Bytes, end_stream~ : Bool, padding~ : Int)
+  Data(stream_id~ : Int32, data~ : Bytes, end_stream~ : Bool, padding~ : Int32)
   Headers(
-    stream_id~ : Int,
+    stream_id~ : Int32,
     fragment~ : Bytes,
     end_stream~ : Bool,
     end_headers~ : Bool,
     priority~ : Priority?,
-    padding~ : Int
+    padding~ : Int32
   )
-  Priority(stream_id~ : Int, priority~ : Priority)
-  RstStream(stream_id~ : Int, error_code~ : Int)
-  Settings(params~ : Array[(Int, Int)], ack~ : Bool)
+  Priority(stream_id~ : Int32, priority~ : Priority)
+  RstStream(stream_id~ : Int32, error_code~ : Int32)
+  Settings(params~ : Array[(Int32, Int32)], ack~ : Bool)
   PushPromise(
-    stream_id~ : Int,
-    promised_id~ : Int,
+    stream_id~ : Int32,
+    promised_id~ : Int32,
     fragment~ : Bytes,
     end_headers~ : Bool,
-    padding~ : Int
+    padding~ : Int32
   )
   Ping(payload~ : Bytes, ack~ : Bool)
-  GoAway(last_stream_id~ : Int, error_code~ : Int, debug~ : Bytes)
-  WindowUpdate(stream_id~ : Int, increment~ : Int)
-  Continuation(stream_id~ : Int, fragment~ : Bytes, end_headers~ : Bool)
-  Unknown(ftype~ : Int, flags~ : Int, stream_id~ : Int, payload~ : Bytes)
+  GoAway(last_stream_id~ : Int32, error_code~ : Int32, debug~ : Bytes)
+  WindowUpdate(stream_id~ : Int32, increment~ : Int32)
+  Continuation(stream_id~ : Int32, fragment~ : Bytes, end_headers~ : Bool)
+  Unknown(ftype~ : Int32, flags~ : Int32, stream_id~ : Int32, payload~ : Bytes)
 } derive(Eq)
 
 // -- big-endian primitives --------------------------------------------------
@@ -239,39 +239,39 @@ pub(all) enum Frame {
 // a value rather than an `Option` the caller would have to unwrap at eighty sites.
 
 ///|
-fn be_write_u16(buf : Buffer, n : Int) -> Unit {
+fn be_write_u16(buf : Buffer, n : Int32) -> Unit {
   @fixed.write_u16(buf, n)
 }
 
 ///|
-fn be_write_u24(buf : Buffer, n : Int) -> Unit {
+fn be_write_u24(buf : Buffer, n : Int32) -> Unit {
   @fixed.write_u24(buf, n)
 }
 
 ///|
-fn be_write_u32(buf : Buffer, n : Int) -> Unit {
+fn be_write_u32(buf : Buffer, n : Int32) -> Unit {
   @fixed.write_u32(buf, n.reinterpret_as_uint())
 }
 
 ///|
-fn be_read_u16(data : Bytes, off : Int) -> Int {
+fn be_read_u16(data : Bytes, off : Int32) -> Int32 {
   @fixed.read_u16(data[:], at=off).unwrap()
 }
 
 ///|
-fn be_read_u24(data : Bytes, off : Int) -> Int {
+fn be_read_u24(data : Bytes, off : Int32) -> Int32 {
   @fixed.read_u24(data[:], at=off).unwrap()
 }
 
 ///|
-fn be_read_u32(data : Bytes, off : Int) -> Int {
+fn be_read_u32(data : Bytes, off : Int32) -> Int32 {
   @fixed.read_u32(data[:], at=off).unwrap().reinterpret_as_int()
 }
 
 ///|
 /// Write a 31-bit stream identifier with the reserved top bit optionally set (the
 /// `E` exclusive bit in a priority block; always clear elsewhere per §4.1).
-fn be_write_stream_id(buf : Buffer, id : Int, top_bit : Bool) -> Unit {
+fn be_write_stream_id(buf : Buffer, id : Int32, top_bit : Bool) -> Unit {
   let top = if top_bit { 0x8000_0000U } else { 0U }
   @fixed.write_u32(buf, (id.reinterpret_as_uint() & 0x7FFF_FFFFU) | top)
 }
@@ -283,7 +283,7 @@ fn be_write_priority(buf : Buffer, p : Priority) -> Unit {
 }
 
 ///|
-fn parse_priority(payload : Bytes, off : Int) -> Priority {
+fn parse_priority(payload : Bytes, off : Int32) -> Priority {
   let raw = be_read_u32(payload, off)
   {
     exclusive: (payload[off].to_int() & 0x80) != 0,
@@ -298,10 +298,10 @@ fn parse_priority(payload : Bytes, off : Int) -> Priority {
 /// The fixed 9-octet frame header (RFC 9113 §4.1): a 24-bit payload length, an
 /// 8-bit type, 8-bit flags, a reserved bit, and a 31-bit stream identifier.
 pub(all) struct FrameHeader {
-  length : Int
-  ftype : Int
-  flags : Int
-  stream_id : Int
+  length : Int32
+  ftype : Int32
+  flags : Int32
+  stream_id : Int32
 } derive(Eq)
 
 ///|
@@ -320,7 +320,7 @@ pub fn FrameHeader::encode(self : FrameHeader) -> Bytes {
 /// than 9 octets are available. The reserved bit is masked off the stream id.
 pub fn FrameHeader::decode(
   data : Bytes,
-  offset? : Int = 0,
+  offset~ : Int32 = 0,
 ) -> FrameHeader raise Refused {
   if offset + 9 > data.length() {
     raise Incomplete
@@ -337,7 +337,7 @@ pub fn FrameHeader::decode(
 
 ///|
 /// The numeric frame-type code of this frame (RFC 9113 §6).
-pub fn Frame::code(self : Frame) -> Int {
+pub fn Frame::code(self : Frame) -> Int32 {
   match self {
     Data(..) => frame_data
     Headers(..) => frame_headers
@@ -355,7 +355,12 @@ pub fn Frame::code(self : Frame) -> Int {
 
 ///|
 /// Assemble a full frame from its header fields and an already-built payload.
-fn emit(ftype : Int, flags : Int, stream_id : Int, payload : Bytes) -> Bytes {
+fn emit(
+  ftype : Int32,
+  flags : Int32,
+  stream_id : Int32,
+  payload : Bytes,
+) -> Bytes {
   let buf = Buffer()
   be_write_u24(buf, payload.length())
   buf.write_byte(ftype.to_byte())
@@ -367,7 +372,7 @@ fn emit(ftype : Int, flags : Int, stream_id : Int, payload : Bytes) -> Bytes {
 
 ///|
 /// Write `n` zero padding octets.
-fn write_padding(buf : Buffer, n : Int) -> Unit {
+fn write_padding(buf : Buffer, n : Int32) -> Unit {
   for i = 0; i < n; i = i + 1 {
     buf.write_byte(b'\x00')
   }
@@ -493,7 +498,7 @@ pub fn Frame::encode(self : Frame) -> Bytes {
 ///|
 /// Strip the padding of a PADDED frame body, returning `(content, pad_len)` where
 /// `content` excludes the leading pad-length octet and the trailing pad octets.
-fn strip_padding(payload : Bytes) -> (Bytes, Int) raise Refused {
+fn strip_padding(payload : Bytes) -> (Bytes, Int32) raise Refused {
   if payload.length() < 1 {
     raise ProtocolError("padded frame missing pad-length octet")
   }
@@ -509,7 +514,10 @@ fn strip_padding(payload : Bytes) -> (Bytes, Int) raise Refused {
 /// where `bytes_consumed` is `9 + payload_length`. Raises `Incomplete` when the
 /// buffer does not yet hold the whole frame, or a protocol error when the payload
 /// is malformed for its type. The inverse of `Frame::encode`.
-pub fn decode(data : Bytes, offset? : Int = 0) -> (Frame, Int) raise Refused {
+pub fn decode(
+  data : Bytes,
+  offset~ : Int32 = 0,
+) -> (Frame, Int32) raise Refused {
   let hdr = FrameHeader::decode(data, offset~)
   let start = offset + 9
   if start + hdr.length > data.length() {

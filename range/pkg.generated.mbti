@@ -12,9 +12,9 @@ pub fn decode(StringView, unit? : String) -> Array[Spec]?
 
 pub fn encode(ArrayView[Spec], unit? : String) -> String
 
-pub let limit : Int
+pub let limit : Int32
 
-pub fn measure(ArrayView[Spec], length~ : Int64, merge? : Bool, limit? : Int) -> Array[Part]?
+pub fn measure(ArrayView[Spec], length~ : Int64, merge? : Bool, limit? : Int32) -> Array[Part]?
 
 pub fn multipart(StringView) -> String
 
@@ -43,7 +43,7 @@ pub(all) struct Part {
   at : Int64
   last : Int64
 } derive(Compare, Eq, @debug.Debug)
-pub fn Part::compare(Self, Self) -> Int
+pub fn Part::compare(Self, Self) -> Int32
 pub fn Part::equal(Self, Self) -> Bool
 pub fn Part::length(Self) -> Int64
 pub fn Part::not_equal(Self, Self) -> Bool

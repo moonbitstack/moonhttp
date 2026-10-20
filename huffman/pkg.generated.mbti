@@ -10,7 +10,7 @@ pub fn decode(BytesView) -> Bytes raise Refused
 
 pub fn encode(BytesView) -> Bytes
 
-pub fn size(BytesView) -> Int
+pub fn size(BytesView) -> Int32
 
 // Errors
 pub(all) suberror Refused {

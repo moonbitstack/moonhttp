@@ -152,7 +152,7 @@ test "the framing rules §5.2 and §5.5 lay down are enforced" {
 ///
 /// `abort` rather than `fail` for the case that does not raise, because a `fail` inside
 /// the try would widen what is caught to `Error` and lose the code.
-fn refused(wire : Bytes, client? : Bool = true) -> Refused {
+fn refused(wire : Bytes, client~ : Bool = true) -> Refused {
   let mut out : Refused? = None
   try {
     let _ = decode(wire[:], client~)

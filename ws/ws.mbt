@@ -17,13 +17,13 @@ pub(all) suberror Refused {
   /// §7.4.1 does not allow on the wire.
   Payload(String)
   /// The peer announced or sent more than this endpoint accepts.
-  Exceeded(limit~ : Int, got~ : Int64)
+  Exceeded(limit~ : Int32, got~ : Int64)
 } derive(Eq, Debug)
 
 ///|
 /// The §7.4.1 status a violation is closed with: `1002` for framing, `1007` for payload,
 /// `1009` for size.
-pub fn Refused::status(self : Refused) -> Int {
+pub fn Refused::status(self : Refused) -> Int32 {
   match self {
     Protocol(_) => 1002
     Payload(_) => 1007
@@ -58,7 +58,7 @@ pub extend Refused with Eq::{not_equal, equal}
 /// Sixteen mebibytes is uvicorn's `--ws-max-size`. The ceiling has to bound the
 /// reassembled message and not only each fragment, because a message split into enough
 /// small frames would otherwise pass every per-frame check and still exhaust memory.
-pub let limit : Int = 16 * 1024 * 1024
+pub let limit : Int32 = 16 * 1024 * 1024
 
 ///|
 /// A frame opcode (RFC 6455 §5.2): the three data opcodes and the three control ones.
@@ -73,7 +73,7 @@ pub(all) enum Opcode {
 
 ///|
 /// The four-bit value on the wire.
-pub fn Opcode::code(self : Opcode) -> Int {
+pub fn Opcode::code(self : Opcode) -> Int32 {
   match self {
     Continuation => 0x0
     Text => 0x1
@@ -86,7 +86,7 @@ pub fn Opcode::code(self : Opcode) -> Int {
 
 ///|
 /// The opcode a wire value names, or `None` when §5.2 reserves it.
-pub fn Opcode::of(code : Int) -> Opcode? {
+pub fn Opcode::of(code : Int32) -> Opcode? {
   match code {
     0x0 => Some(Continuation)
     0x1 => Some(Text)
@@ -125,7 +125,7 @@ pub(all) struct Frame {
 ///
 /// The length takes the shortest of the three forms — seven bits up to 125, sixteen bits
 /// under `126`, sixty-four under `127`.
-pub fn Frame::encode(self : Frame, mask? : Bytes = b"") -> Bytes {
+pub fn Frame::encode(self : Frame, mask~ : Bytes = b"") -> Bytes {
   let buf = Buffer()
   let first = (if self.fin { 0x80 } else { 0 }) | self.opcode.code()
   buf.write_byte(first.to_byte())
@@ -164,11 +164,11 @@ pub fn Frame::encode(self : Frame, mask? : Bytes = b"") -> Bytes {
 /// bit length from being truncated into a short allocation, and keeps an honest but
 /// enormous one from being allocated at all — the sign bit included, which §5.2 reserves.
 pub fn check(
-  b0 : Int,
-  b1 : Int,
+  b0 : Int32,
+  b1 : Int32,
   len : Int64,
   client~ : Bool,
-  limit? : Int = limit,
+  limit~ : Int32 = limit,
 ) -> Opcode raise Refused {
   if (b0 & 0x70) != 0 {
     raise Protocol("an RSV bit is set with no extension negotiated")
@@ -201,9 +201,9 @@ pub fn check(
 /// violation is never mistaken for a short buffer.
 pub fn decode(
   b : BytesView,
-  client? : Bool = true,
-  limit? : Int = limit,
-) -> (Frame, Int)? raise Refused {
+  client~ : Bool = true,
+  limit~ : Int32 = limit,
+) -> (Frame, Int32)? raise Refused {
   if b.length() < 2 {
     return None
   }
@@ -265,12 +265,12 @@ pub fn decode(
 pub(all) enum Message {
   Text(String)
   Binary(Bytes)
-  Close(status~ : Int, reason~ : Bytes)
+  Close(status~ : Int32, reason~ : Bytes)
 } derive(Eq, Debug)
 
 ///|
 /// A close frame's payload (RFC 6455 §5.5.1): the status big-endian, then the reason.
-pub fn close(status : Int, reason? : String = "") -> Bytes {
+pub fn close(status : Int32, reason~ : String = "") -> Bytes {
   let buf = Buffer()
   @fixed.write_u16(buf, status)
   buf.write_bytes(@utf8.encode(reason))
@@ -282,7 +282,7 @@ pub fn close(status : Int, reason? : String = "") -> Bytes {
 ///
 /// `1005` is a local sentinel and must never be sent: a close that came with no status is
 /// echoed with no status, not with this number.
-pub fn status(payload : BytesView) -> Int {
+pub fn status(payload : BytesView) -> Int32 {
   @fixed.read_u16(payload).unwrap_or(1005)
 }
 
@@ -303,7 +303,7 @@ pub fn reason(payload : BytesView) -> Bytes {
 /// locally — a peer that sends one has broken the protocol. `1012` through `1014` were
 /// registered after RFC 6455 and are allowed here, because refusing a registered status
 /// would break a real deployment for the sake of a closed reading of §7.4.1.
-pub fn allowed(status : Int) -> Bool {
+pub fn allowed(status : Int32) -> Bool {
   (status >= 1000 && status <= 1003) ||
   (status >= 1007 && status <= 1014) ||
   (status >= 3000 && status <= 4999)
@@ -326,18 +326,18 @@ pub(all) struct Step {
 pub struct Reader {
   payload : Buffer
   mut kind : Opcode?
-  limit : Int
+  limit : Int32
 }
 
 ///|
 /// A reader with nothing assembled.
-pub fn Reader::new(limit? : Int = limit) -> Reader {
+pub fn Reader::new(limit~ : Int32 = limit) -> Reader {
   { payload: Buffer(), kind: None, limit, }
 }
 
 ///|
 /// How many bytes of the message in progress have been assembled.
-pub fn Reader::pending(self : Reader) -> Int {
+pub fn Reader::pending(self : Reader) -> Int32 {
   self.payload.length()
 }
 

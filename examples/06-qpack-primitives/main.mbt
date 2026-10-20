@@ -45,7 +45,7 @@ fn field(o : @header.Header?) -> String {
 }
 
 ///|
-fn opt_i(o : Int?) -> String {
+fn opt_i(o : Int32?) -> String {
   match o {
     Some(n) => n.to_string()
     None => "(none)"

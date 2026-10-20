@@ -10,8 +10,8 @@
 /// than anything worth holding in one buffer.
 pub fn request(
   data : BytesView,
-  limits? : Limits = limits,
-) -> (Request, Int) raise Refused {
+  limits~ : Limits = limits,
+) -> (Request, Int32) raise Refused {
   let (line, fields, used) = head(data, limits)
   let (verb, target, version) = request_line(line)
   let body = framing(fields, true)
@@ -36,9 +36,9 @@ pub fn request(
 /// response to HEAD has no body however its fields read (RFC 9112 §6.3).
 pub fn response(
   data : BytesView,
-  verb? : String = "GET",
-  limits? : Limits = limits,
-) -> (Response, Int) raise Refused {
+  verb~ : String = "GET",
+  limits~ : Limits = limits,
+) -> (Response, Int32) raise Refused {
   let (line, fields, used) = head(data, limits)
   let (version, status, reason) = status_line(line)
   let body = if verb.to_upper() == "HEAD" ||
@@ -77,7 +77,7 @@ pub fn response(
 fn head(
   data : BytesView,
   limits : Limits,
-) -> (BytesView, Array[@header.Header], Int) raise Refused {
+) -> (BytesView, Array[@header.Header], Int32) raise Refused {
   let end = blank_line(data)
   if end < 0 {
     // Not all here yet — unless it is already past what will ever be read.
@@ -184,7 +184,7 @@ fn request_line(line : BytesView) -> (String, String, String) raise Refused {
 
 ///|
 /// `HTTP/x.y SP status SP reason` (RFC 9112 §4).
-fn status_line(line : BytesView) -> (String, Int, String) raise Refused {
+fn status_line(line : BytesView) -> (String, Int32, String) raise Refused {
   let first = space(line, 0)
   if first < 0 {
     raise Malformed("a status line with no code")
@@ -282,7 +282,7 @@ fn framing(
 ///
 /// A leading sign, a space or a second number are all refused: a `Content-Length`
 /// of `+5` or `5, 5` is how two parsers are made to disagree.
-fn digits(v : Bytes) -> Int {
+fn digits(v : Bytes) -> Int32 {
   if v.length() == 0 {
     return -1
   }
@@ -338,7 +338,7 @@ fn token(fields : Array[@header.Header], name : String, want : String) -> Bool {
 ///
 /// Both `\r\n\r\n` and the bare `\n\n` a hand-written client sends are accepted;
 /// §2.2 says a recipient may.
-fn blank_line(data : BytesView) -> Int {
+fn blank_line(data : BytesView) -> Int32 {
   for i = 0; i < data.length(); i = i + 1 {
     if data[i] == b'\n' {
       if i + 1 < data.length() && data[i + 1] == b'\n' {
@@ -354,7 +354,7 @@ fn blank_line(data : BytesView) -> Int {
 
 ///|
 /// Where the line starting at `from` ends, not counting its terminator, or `-1`.
-fn line_end(data : BytesView, from : Int) -> Int {
+fn line_end(data : BytesView, from : Int32) -> Int32 {
   for i = from; i < data.length(); i = i + 1 {
     if data[i] == b'\n' {
       return if i > from && data[i - 1] == b'\r' { i - 1 } else { i }
@@ -365,7 +365,7 @@ fn line_end(data : BytesView, from : Int) -> Int {
 
 ///|
 /// The offset just past the terminator of the line ending at `at`.
-fn past(data : BytesView, at : Int) -> Int {
+fn past(data : BytesView, at : Int32) -> Int32 {
   let mut i = at
   if i < data.length() && data[i] == b'\r' {
     i = i + 1
@@ -378,7 +378,7 @@ fn past(data : BytesView, at : Int) -> Int {
 
 ///|
 /// The offset of the space at or after `from`, or `-1`.
-fn space(data : BytesView, from : Int) -> Int {
+fn space(data : BytesView, from : Int32) -> Int32 {
   for i = from; i < data.length(); i = i + 1 {
     if data[i] == b' ' {
       return i
@@ -400,7 +400,7 @@ fn text(v : BytesView) -> String {
 ///|
 /// Whether an octet may appear in a token — a verb, or a field name (RFC 9110
 /// §5.6.2).
-fn is_token(c : Int) -> Bool {
+fn is_token(c : Int32) -> Bool {
   (c >= 0x30 && c <= 0x39) ||
   (c >= 0x41 && c <= 0x5a) ||
   (c >= 0x61 && c <= 0x7a) ||

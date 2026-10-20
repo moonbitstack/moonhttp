@@ -67,7 +67,7 @@ pub fn type_of(filename : StringView) -> String {
 ///
 /// `inline` asks the browser to display the content rather than save it, which
 /// is what a PDF or an image served for viewing wants.
-pub fn disposition(filename : StringView, inline? : Bool = false) -> String {
+pub fn disposition(filename : StringView, inline~ : Bool = false) -> String {
   let kind = if inline { "inline" } else { "attachment" }
   let quoted = @url.escape_text(filename, kind=Path)
   if quoted == filename.to_owned() {

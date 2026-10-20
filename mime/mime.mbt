@@ -35,7 +35,7 @@ pub extend Upload with Debug::{to_repr}
 
 ///|
 /// The size of the uploaded content in bytes.
-pub fn Upload::size(self : Upload) -> Int {
+pub fn Upload::size(self : Upload) -> Int32 {
   self.content.length()
 }
 
@@ -117,8 +117,8 @@ pub fn Form::is_empty(self : Form) -> Bool {
 /// empty parts and one enormous part are different ways of asking a server to
 /// allocate more than it has.
 pub(all) struct Limits {
-  parts : Int
-  part_size : Int
+  parts : Int32
+  part_size : Int32
 } derive(Eq, Debug)
 
 ///|
@@ -145,8 +145,8 @@ pub let limits : Limits = { parts: 1000, part_size: 1 << 20, }
 /// endpoints, each with its own — so the record is the only place it comes from,
 /// and there is nothing to arbitrate.
 pub fn Limits::new(
-  parts? : Int = limits.parts,
-  part_size? : Int = limits.part_size,
+  parts~ : Int32 = limits.parts,
+  part_size~ : Int32 = limits.part_size,
 ) -> Limits {
   { parts, part_size, }
 }
@@ -159,12 +159,12 @@ pub fn Limits::new(
 /// nobody sent.
 pub(all) suberror Refused {
   /// More parts than allowed.
-  Parts(limit~ : Int)
+  Parts(limit~ : Int32)
   /// One part longer than allowed.
-  Part(limit~ : Int, got~ : Int)
+  Part(limit~ : Int32, got~ : Int32)
   /// A multipart body that stops making sense at this offset. Only raised under
   /// `strict`; otherwise the parts read so far are returned.
-  Malformed(at~ : Int)
+  Malformed(at~ : Int32)
   /// A content type that is neither form encoding. Only raised under `strict`;
   /// otherwise the answer is an empty form.
   NotAForm(content_type~ : String)
@@ -186,8 +186,8 @@ pub extend Refused with Debug::{to_repr}
 pub fn parse(
   body : BytesView,
   content_type : StringView,
-  limits? : Limits = limits,
-  strict? : Bool = false,
+  limits~ : Limits = limits,
+  strict~ : Bool = false,
 ) -> Form raise Refused {
   if starts_with(content_type, "multipart/form-data") {
     match boundary(content_type) {
@@ -216,7 +216,7 @@ pub fn parse(
 /// this encoding everybody gets wrong.
 pub fn urlencoded(
   body : BytesView,
-  limits? : Limits = limits,
+  limits~ : Limits = limits,
 ) -> Form raise Refused {
   let fields : Array[Field] = []
   let n = body.length()
@@ -261,8 +261,8 @@ pub fn urlencoded(
 pub fn multipart(
   body : BytesView,
   boundary : StringView,
-  limits? : Limits = limits,
-  strict? : Bool = false,
+  limits~ : Limits = limits,
+  strict~ : Bool = false,
 ) -> Form raise Refused {
   let fields : Array[Field] = []
   let files : Array[Upload] = []
@@ -427,7 +427,7 @@ fn ascii(s : String) -> Bytes {
 }
 
 ///|
-fn has_at(hay : BytesView, at : Int, needle : BytesView) -> Bool {
+fn has_at(hay : BytesView, at : Int32, needle : BytesView) -> Bool {
   if at < 0 || at + needle.length() > hay.length() {
     return false
   }
@@ -440,7 +440,7 @@ fn has_at(hay : BytesView, at : Int, needle : BytesView) -> Bool {
 }
 
 ///|
-fn index_of(hay : BytesView, needle : BytesView, from : Int) -> Int {
+fn index_of(hay : BytesView, needle : BytesView, from : Int32) -> Int32 {
   let last = hay.length() - needle.length()
   for i = from; i <= last; i = i + 1 {
     if has_at(hay, i, needle) {
@@ -451,7 +451,7 @@ fn index_of(hay : BytesView, needle : BytesView, from : Int) -> Int {
 }
 
 ///|
-fn find(hay : StringView, needle : StringView, from : Int) -> Int {
+fn find(hay : StringView, needle : StringView, from : Int32) -> Int32 {
   let last = hay.length() - needle.length()
   for i = from; i <= last; i = i + 1 {
     let mut same = true
@@ -498,6 +498,6 @@ fn trim(s : StringView) -> String {
 }
 
 ///|
-fn is_space(c : Int) -> Bool {
+fn is_space(c : Int32) -> Bool {
   c == 0x20 || c == 0x09 || c == 0x0D || c == 0x0A
 }

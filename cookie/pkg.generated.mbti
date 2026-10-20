@@ -20,7 +20,7 @@ pub(all) struct Cookie {
   name : String
   value : String
   expires : @moondate.Moment?
-  max_age : Int?
+  max_age : Int32?
   domain : String?
   path : String?
   secure : Bool
@@ -30,7 +30,7 @@ pub(all) struct Cookie {
 pub fn Cookie::decode(StringView) -> Self?
 pub fn Cookie::encode(Self) -> String
 pub fn Cookie::equal(Self, Self) -> Bool
-pub fn Cookie::new(String, String, expires? : @moondate.Moment, max_age? : Int, domain? : String, path? : String?, secure? : Bool, http_only? : Bool, same_site? : SameSite?) -> Self
+pub fn Cookie::new(String, String, expires? : @moondate.Moment, max_age? : Int32, domain? : String, path? : String?, secure? : Bool, http_only? : Bool, same_site? : SameSite?) -> Self
 pub fn Cookie::not_equal(Self, Self) -> Bool
 pub fn Cookie::to_repr(Self) -> @debug.Repr
 
