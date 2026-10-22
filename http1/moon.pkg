@@ -7,6 +7,10 @@
 // A head that has not all arrived raises `Partial` rather than blocking, so the
 // caller reads more and asks again. That is what lets the same codec drive a
 // server on a socket, a client on a TLS stream, and a test on a byte array.
+//
+// `Conn` puts the codec under h11's state machine: the order of messages,
+// keep-alive, pipelining and protocol switches for a whole connection, still
+// without a socket.
 import {
   "moonbitstack/moonhttp/header",
 }

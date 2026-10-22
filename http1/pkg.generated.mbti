@@ -29,6 +29,7 @@ pub(all) suberror Refused {
   Malformed(String)
   Exceeded(limit~ : Int32, got~ : Int32)
   Smuggled(String)
+  Order(String)
 } derive(Eq, @debug.Debug)
 pub fn Refused::equal(Self, Self) -> Bool
 pub fn Refused::not_equal(Self, Self) -> Bool
@@ -56,6 +57,30 @@ pub(all) enum Chunk {
 pub fn Chunk::equal(Self, Self) -> Bool
 pub fn Chunk::not_equal(Self, Self) -> Bool
 
+type Conn
+pub fn Conn::new(Role, limits? : Limits) -> Self
+pub fn Conn::next(Self) -> Event raise Refused
+pub fn Conn::ours(Self) -> State
+pub fn Conn::receive(Self, BytesView) -> Unit raise Refused
+pub fn Conn::send(Self, Event) -> Bytes raise Refused
+pub fn Conn::start_next(Self) -> Unit raise Refused
+pub fn Conn::theirs(Self) -> State
+pub fn Conn::trailing(Self) -> Bytes
+
+pub(all) enum Event {
+  Request(Request)
+  Response(Response)
+  Informational(Response)
+  Data(Bytes)
+  End(Array[@header.Header])
+  NeedData
+  Paused
+  Closed
+} derive(Eq, @debug.Debug)
+pub fn Event::equal(Self, Self) -> Bool
+pub fn Event::not_equal(Self, Self) -> Bool
+pub fn Event::to_repr(Self) -> @debug.Repr
+
 pub(all) struct Limits {
   head : Int32
   fields : Int32
@@ -73,12 +98,13 @@ pub(all) struct Request {
   body : Body
   expects : Bool
   keep_alive : Bool
-} derive(Eq)
+} derive(Eq, @debug.Debug)
 pub fn Request::encode(Self) -> Bytes
 pub fn Request::equal(Self, Self) -> Bool
 pub fn Request::field(Self, String) -> Bytes?
 pub fn Request::not_equal(Self, Self) -> Bool
 pub fn Request::of(String, String, fields? : Array[@header.Header], version? : String, body? : Body, host? : String, keep_alive? : Bool) -> Self
+pub fn Request::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Response {
   version : String
@@ -87,12 +113,36 @@ pub(all) struct Response {
   fields : Array[@header.Header]
   body : Body
   keep_alive : Bool
-} derive(Eq)
+} derive(Eq, @debug.Debug)
 pub fn Response::encode(Self) -> Bytes
 pub fn Response::equal(Self, Self) -> Bool
 pub fn Response::field(Self, String) -> Bytes?
 pub fn Response::not_equal(Self, Self) -> Bool
 pub fn Response::of(Int32, fields? : Array[@header.Header], reason? : String, version? : String, body? : Body, keep_alive? : Bool) -> Self
+pub fn Response::to_repr(Self) -> @debug.Repr
+
+pub(all) enum Role {
+  Server
+  Client
+} derive(Eq, @debug.Debug)
+pub fn Role::equal(Self, Self) -> Bool
+pub fn Role::not_equal(Self, Self) -> Bool
+pub fn Role::to_repr(Self) -> @debug.Repr
+
+pub(all) enum State {
+  Idle
+  SendResponse
+  SendBody
+  Done
+  MustClose
+  Closed
+  MightSwitch
+  Switched
+  Error
+} derive(Eq, @debug.Debug)
+pub fn State::equal(Self, Self) -> Bool
+pub fn State::not_equal(Self, Self) -> Bool
+pub fn State::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

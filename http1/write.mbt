@@ -206,6 +206,27 @@ pub extend Chunk with Eq::{not_equal, equal}
 /// than sixteen hexadecimal digits is refused rather than accumulated: a size that
 /// needs more than sixty-four bits is not a size.
 pub fn chunked(data : BytesView) -> Chunk raise Refused {
+  let (size, from) = chunk_size(data)
+  if size == 0 {
+    // The trailer section, which ends at a blank line like any other.
+    let (trailers, used) = trailer(data[from:])
+    return Done(trailers, from + used)
+  }
+  if data.length() < from + size + 2 {
+    raise Partial
+  }
+  let body = data[from:from + size].to_owned()
+  let tail = from + size
+  if data[tail] != b'\r' && data[tail] != b'\n' {
+    raise Malformed("a chunk not terminated by a break")
+  }
+  Piece(body, past(data, tail))
+}
+
+///|
+/// The size line at the front of `data`: the size, and where the chunk's octets
+/// begin.
+fn chunk_size(data : BytesView) -> (Int32, Int32) raise Refused {
   let stop = line_end(data, 0)
   if stop < 0 {
     raise Partial
@@ -232,21 +253,7 @@ pub fn chunked(data : BytesView) -> Chunk raise Refused {
       raise Malformed("a chunk size larger than an Int holds")
     }
   }
-  let from = past(data, stop)
-  if size == 0 {
-    // The trailer section, which ends at a blank line like any other.
-    let (trailers, used) = trailer(data[from:])
-    return Done(trailers, from + used)
-  }
-  if data.length() < from + size + 2 {
-    raise Partial
-  }
-  let body = data[from:from + size].to_owned()
-  let tail = from + size
-  if data[tail] != b'\r' && data[tail] != b'\n' {
-    raise Malformed("a chunk not terminated by a break")
-  }
-  Piece(body, past(data, tail))
+  (size, past(data, stop))
 }
 
 ///|

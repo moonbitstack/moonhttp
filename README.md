@@ -56,7 +56,7 @@ The API reference is generated from the sources' doc comments:
 | `header` | A header field: a name and a value, as octets | RFC 9110 §5 |
 | `hpack` | HTTP/2 header compression: both tables, both ends | RFC 7541 |
 | `qpack` | HTTP/3 header compression: both tables, the field lines, both instruction streams | RFC 9204 |
-| `http1` | HTTP/1.1 messages: the request and status lines, field lines, body framing and the chunked coding | RFC 9112 |
+| `http1` | HTTP/1.1 messages: the request and status lines, field lines, body framing and the chunked coding; `Conn`, a whole connection for either end on h11's state machine, octets in and events out | RFC 9112 |
 | `http2` | HTTP/2 framing: the nine-octet header, all ten frame types, the connection preface | RFC 9113 |
 | `http3` | HTTP/3 frames, their placement rules, settings, stream types and connection | RFC 9114 |
 

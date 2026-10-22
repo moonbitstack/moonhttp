@@ -5,13 +5,15 @@
 /// Why a message was refused.
 ///
 /// `Partial` is not a fault: it is the reader saying the bytes have not all
-/// arrived, which is the answer a caller feeds more and asks again. Everything
-/// else is a message that will not become valid by waiting.
+/// arrived, which is the answer a caller feeds more and asks again. `Order` is
+/// this side's mistake, an event sent where the exchange does not allow it.
+/// Everything else is a peer's message that will not become valid by waiting.
 pub(all) suberror Refused {
   Partial
   Malformed(String)
   Exceeded(limit~ : Int32, got~ : Int32)
   Smuggled(String)
+  Order(String)
 } derive(Eq, Debug)
 
 ///|
@@ -22,6 +24,7 @@ pub impl Show for Refused with fn output(self, logger) {
     Exceeded(limit~, got~) =>
       logger.write_string("Exceeded(limit=\{limit}, got=\{got})")
     Smuggled(m) => logger.write_string("Smuggled(" + m + ")")
+    Order(m) => logger.write_string("Order(" + m + ")")
   }
 }
 
@@ -116,10 +119,13 @@ pub(all) struct Request {
   // `Expect: 100-continue` — the client is waiting to be told to send the body.
   expects : Bool
   keep_alive : Bool
-} derive(Eq)
+} derive(Eq, Debug)
 
 ///|
 pub extend Request with Eq::{not_equal, equal}
+
+///|
+pub extend Request with Debug::{to_repr}
 
 ///|
 /// A response's head: the status line and the fields under it.
@@ -130,10 +136,13 @@ pub(all) struct Response {
   fields : Array[@header.Header]
   body : Body
   keep_alive : Bool
-} derive(Eq)
+} derive(Eq, Debug)
 
 ///|
 pub extend Response with Eq::{not_equal, equal}
+
+///|
+pub extend Response with Debug::{to_repr}
 
 ///|
 /// The value of the first field named `name`, or `None`.
