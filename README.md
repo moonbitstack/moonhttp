@@ -14,7 +14,7 @@ in, with nothing about sockets in them.
 @cookie.get(request_header[:], "sid"[:])
 
 // A posted form, whichever way the browser encoded it.
-let form = @mime.parse(body[:], content_type[:])
+let form = @form.parse(body[:], content_type[:])
 form.field("name")
 form.file("avatar")
 
@@ -23,16 +23,15 @@ let etag = @conditional.hash(body[:], digest=@sha2.Hasher::new())
 @conditional.Ask::read(headers[:]).evaluate(verb="GET", etag~)  // Go | Fresh | Failed
 ```
 
-Run `moon run examples/tour` for the whole surface in one go. The fourteen
-worked examples run a package each:
+Run `moon run examples/tour` for the whole surface in one go. The worked
+examples run a package each:
 
 ```
-moon run examples/04-ws-handshake       moon run examples/10-http3-message
-moon run examples/05-ws-frame           moon run examples/11-http3-conn
-moon run examples/06-qpack-primitives   moon run examples/12-range
-moon run examples/07-qpack-field        moon run examples/13-url
-moon run examples/08-qpack-dynamic      moon run examples/14-dataurl
-moon run examples/09-http3-frames       moon run examples/15-conditional
+moon run examples/04-ws-handshake       moon run examples/09-http3-frames
+moon run examples/05-ws-frame           moon run examples/10-http3-message
+moon run examples/06-qpack-primitives   moon run examples/11-http3-conn
+moon run examples/07-qpack-field        moon run examples/12-range
+moon run examples/08-qpack-dynamic      moon run examples/13-conditional
 ```
 
 The API reference is generated from the sources' doc comments:
@@ -43,10 +42,7 @@ The API reference is generated from the sources' doc comments:
 | Package | What | Specification |
 |:--:|:--|:--|
 | `sse` | Server-Sent Events, both directions | WHATWG HTML, the event-stream format |
-| `mime` | `multipart/form-data` and `application/x-www-form-urlencoded` | RFC 7578, WHATWG URL §5.1 |
-| `url` | A URI reference: taking one apart, putting it back, resolving a relative one, and percent coding by component | RFC 3986 |
-| `dataurl` | A representation written inside the reference to it | RFC 2397 |
-| `media` | What a response says its body is, and under what name to save it | RFC 9110 §8.3, RFC 6266 |
+| `form` | A request body read as the form its `Content-Type` says it is, `multipart/form-data` or `application/x-www-form-urlencoded` | WHATWG HTML form submission |
 | `range` | Asking for part of a representation: the fields, the arithmetic that resolves a range against a length, and the multi-range body | RFC 9110 §14 |
 | `conditional` | Entity-tags, the five precondition fields, and the order they are weighed in | RFC 9110 §8.8, §13 |
 | `cookie` | `Cookie` and `Set-Cookie`, each read and written | RFC 6265, and its revision for `SameSite` |
@@ -76,15 +72,14 @@ mainstream uses.
 
 ```moonbit
 // A bound belongs to an endpoint. Either form names one.
-let small = @mime.Limits::new(parts=8, part_size=64 * 1024)
-let same = { ..@mime.limits, parts: 8, part_size: 64 * 1024 }
+let small = @moonmime.Limits::new(parts=8, part_size=64 * 1024)
+let same = { ..@moonmime.limits, parts: 8, part_size: 64 * 1024 }
 
-@mime.parse(body[:], content_type[:], limits=small)
+@form.parse(body[:], content_type[:], limits=small)
 
 // By default a body that is not a form is an empty form, and a multipart body
 // that stops making sense gives up the parts it read. `strict` says so instead.
-@mime.parse(body[:], content_type[:], strict=true)   // raises NotAForm
-@mime.multipart(body[:], edge[:], strict=true)       // raises Malformed(at~)
+@form.parse(body[:], content_type[:], strict=true)   // raises NotAForm, or Malformed(at~)
 
 @sse.Event::of("hello").encode(space=false)          // drop the optional space
 ```
@@ -104,28 +99,11 @@ arrive from two places, as in `mooncred`, the precedence is published with it.
 
 ## Downloads
 
-Naming a download is a question about a format, not about a framework: the
-answer is the same whether the bytes came from a file, a database or a
-generator. So it lives here rather than in whatever is serving them.
-
-```moonbit
-@media.type_of("report.pdf")                      // "application/pdf"
-@media.disposition("my report.pdf")               // filename*=utf-8''my%20report.pdf
-@media.disposition("cover.png", inline=true)      // display it, do not save it
-```
-
-A name that survives percent-encoding unchanged is quoted as it is; anything
-else — a space, an accent, a quote, a newline — goes out as RFC 6266's
-`filename*`, which is the only form that can carry a character outside ASCII and
-the only one a name cannot break out of.
-
-Text types carry `charset=utf-8`, because a browser handed `text/plain` with no
-charset applies its own locale's and shows something else.
-
-**Still to come for a complete download**: `Range` and `Content-Range`
-(RFC 9110 §14), which is what resumable downloads and media seeking need, and
-conditional requests. Reading the file and sending it in pieces is the server's,
-not this library's — there are no sockets here.
+A download needs three answers, and each comes from its own place: what the body
+is and under what name to save it is [moonmime](https://github.com/moonbitstack/moonmime)'s
+`guess_type` and `content_disposition`; resuming it and seeking in it is `range`;
+not sending it again is `conditional`. Reading the file and sending it in pieces
+is the server's, not this library's — there are no sockets here.
 
 ## Framing, not transport
 
@@ -139,7 +117,7 @@ written; `events` answers what a browser's `EventSource` hands its listeners —
 no event for a frame without data, the type defaulting to `message`, and the id
 and reconnection delay carried from frame to frame as the stream's own state.
 
-`mime` reads a body that has already arrived. Both of its encodings are bounded
+`form` reads a body that has already arrived. Both of its encodings are bounded
 by a `Limits` the caller sets, because the body came from whoever sent it: a
 million empty parts and one enormous part are two ways of asking a server to
 allocate more than it has. A form over its bounds is refused whole, not
@@ -156,19 +134,11 @@ and the things a reader must ignore rather than refuse are ignored. `events` is
 read against the same streams, and each rule by which it differs from `decode`
 is checked by a test that turns red when the rule is removed.
 
-`mime` is measured against a `multipart/form-data` body written the way a
-browser writes one — repeated names, a file with its own headers, the trailing
-CRLF that belongs to the delimiter and not the content — and against the `+`
-that is a space in a form body and nowhere else.
-
-`url` is measured against the test set RFC 3986 prints for itself: all
-forty-two references of §5.4, the abnormal half included — a resolver that
-passes the normal examples and fails those is the usual kind of broken. Beside
-them, the components that are absent rather than empty, the colon that does not
-make a scheme, and the percent-coding edges.
-
-`dataurl` is measured against the four examples of RFC 2397 §4, the second of
-which is deliberately malformed, and against the two things `strict` refuses.
+`form` is measured on both encodings by content type, upper case and a charset
+parameter included, on what `strict` turns into an error, and on one bound
+holding for both. The decoders behind it are measured where they live:
+moonmime against a browser's multipart body, moonurl against the parser and
+serialiser cases of web-platform-tests.
 
 `conditional` follows §13, which states rules rather than printing vectors: the
 comparison table of §8.8.3.2 entry for entry, then §13.2.2's steps one at a
@@ -196,10 +166,10 @@ masked text messages, the fragmented one, the ping with its pong, and the two
 long length forms. `upgrade` is measured against the key and proof §1.3 prints,
 which is the one computation in it.
 
-## What is not here yet
+## What lives elsewhere
 
-Content negotiation, ranges, caching and conditional requests. They are planned in
-that order; the tracking list lives with the project.
+URI references and data URLs are [moonurl](https://github.com/moonbitstack/moonurl);
+media types, multipart and `Content-Disposition` are [moonmime](https://github.com/moonbitstack/moonmime).
 
 The variable-length integers are not here either. HTTP/3's frames are counted in
 QUIC's varint and both header compressions count in RFC 7541's prefixed integer;
@@ -217,4 +187,4 @@ moon add moonbitstack/moonhttp
 
 ## Licence
 
-Apache-2.0.
+Apache-2.0. See [LICENSE](LICENSE).

@@ -6,10 +6,7 @@ import re, html, pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 PKGS = [
-    ("url", "url", "RFC 3986 URI references: taking one apart, putting it back, resolving a relative one, and percent coding by component."),
-    ("mime", "mime", "RFC 7578 multipart/form-data and WHATWG urlencoded — both ways a browser posts a form."),
-    ("dataurl", "dataurl", "RFC 2397 data URLs: a whole representation written inside the reference to it."),
-    ("media", "media", "RFC 9110 media types and RFC 6266 Content-Disposition — what a body is, and what to save it as."),
+    ("form", "form", "A request body read as the form its Content-Type says it is: multipart/form-data through moonmime, application/x-www-form-urlencoded through moonurl."),
     ("range", "range", "RFC 9110 §14 range requests: the fields, the arithmetic against a length, and the multi-range body."),
     ("conditional", "conditional", "RFC 9110 §8.8 and §13: entity-tags, the five precondition fields, and the order §13.2.2 weighs them in."),
     ("cookie", "cookie", "RFC 6265 Cookie and Set-Cookie, each read and written."),

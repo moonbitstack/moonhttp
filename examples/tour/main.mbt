@@ -27,7 +27,7 @@ fn main raise {
 
   // A form, as a browser posts one.
   let posted = "name=Ada+Lovelace&born=1815&field=%E9%AA%87%E5%85%94"
-  let form = @mime.parse(
+  let form = @form.parse(
     @utf8.encode(posted[:])[:],
     "application/x-www-form-urlencoded",
   )
@@ -38,7 +38,7 @@ fn main raise {
   let body = "------b\r\n" +
     "Content-Disposition: form-data; name=\"notes\"; filename=\"a.txt\"\r\n" +
     "Content-Type: text/plain\r\n\r\nhello\r\n------b--\r\n"
-  let upload = @mime.parse(
+  let upload = @form.parse(
     @utf8.encode(body[:])[:],
     "multipart/form-data; boundary=----b",
   )

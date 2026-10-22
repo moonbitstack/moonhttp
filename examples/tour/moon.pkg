@@ -3,6 +3,6 @@ pkgtype(kind: "executable")
 
 import {
   "moonbitstack/moonhttp/sse",
-  "moonbitstack/moonhttp/mime",
+  "moonbitstack/moonhttp/form",
   "moonbitlang/core/encoding/utf8",
 }

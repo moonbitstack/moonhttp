@@ -1,0 +1,17 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitstack/moonhttp/form"
+
+import {
+  "moonbitstack/moonmime",
+}
+
+// Values
+pub fn parse(BytesView, StringView, limits? : @moonmime.Limits, strict? : Bool) -> @moonmime.Form raise @moonmime.Refused
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

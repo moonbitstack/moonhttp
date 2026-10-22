@@ -1,6 +1,6 @@
 name = "moonbitstack/moonhttp"
 
-version = "0.14.0"
+version = "0.15.0"
 
 readme = "README.md"
 
@@ -10,7 +10,7 @@ license = "Apache-2.0"
 
 keywords = [
   "http",
-  "url",
+  "http2",
   "etag",
   "http3",
   "websocket",
@@ -20,7 +20,7 @@ keywords = [
   "moonbit",
 ]
 
-description = "moonhttp — the HTTP family for MoonBit: URI references and percent coding, conditional requests and entity-tags, range requests, HTTP/1.1, HTTP/2 and HTTP/3 framing, HPACK and QPACK header compression, WebSocket framing and its handshake, Server-Sent Events, cookies, data URLs, multipart bodies and media types, each a package of its own. Bytes in, events out; no sockets."
+description = "moonhttp — the HTTP family for MoonBit: conditional requests and entity-tags, range requests, HTTP/1.1, HTTP/2 and HTTP/3 framing and connections, HPACK and QPACK header compression, WebSocket framing and its handshake, Server-Sent Events, cookies, and form bodies by content type, each a package of its own. Bytes in, events out; no sockets."
 
 preferred_target = "wasm-gc"
 
@@ -29,4 +29,6 @@ import {
   "moonbitstack/moondate@0.1.0",
   "moonbitstack/mooncrypt@0.3.1",
   "moonbitstack/moonbase@0.4.0",
+  "moonbitstack/moonmime@0.2.0",
+  "moonbitstack/moonurl@0.2.0",
 }
