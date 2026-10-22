@@ -1,6 +1,11 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "moonbitstack/moonhttp/http2"
 
+import {
+  "moonbitlang/core/debug",
+  "moonbitstack/moonhttp/header",
+}
+
 // Values
 pub fn decode(Bytes, offset? : Int32) -> (Frame, Int32) raise Refused
 
@@ -64,7 +69,13 @@ pub let frame_window_update : Int32
 
 pub fn has_preface(Bytes) -> Bool
 
+pub let initial : Settings
+
 pub let preface : Bytes
+
+pub let settings : Settings
+
+pub let settings_enable_connect_protocol : Int32
 
 pub let settings_enable_push : Int32
 
@@ -83,6 +94,8 @@ pub(all) suberror Refused {
   Incomplete
   FrameSizeError(String)
   ProtocolError(String)
+  Connection(code~ : Int32, String)
+  Order(String)
 } derive(Eq)
 pub fn Refused::equal(Self, Self) -> Bool
 pub fn Refused::not_equal(Self, Self) -> Bool
@@ -91,6 +104,48 @@ pub fn Refused::to_string(Self) -> String
 pub impl Show for Refused
 
 // Types and methods
+type Conn
+pub fn Conn::acknowledge(Self, Int32, Int32) -> Unit raise Refused
+pub fn Conn::data(Self, Int32, BytesView, end? : Bool) -> Unit raise Refused
+pub fn Conn::end(Self, Int32) -> Unit raise Refused
+pub fn Conn::goaway(Self, code? : Int32, debug? : Bytes) -> Unit raise Refused
+pub fn Conn::headers(Self, Int32, Array[@header.Header], end? : Bool) -> Unit raise Refused
+pub fn Conn::new(Role, settings? : Settings) -> Self
+pub fn Conn::next(Self) -> Event raise Refused
+pub fn Conn::next_stream(Self) -> Int32
+pub fn Conn::peer_settings(Self) -> Settings
+pub fn Conn::ping(Self, Bytes) -> Unit raise Refused
+pub fn Conn::push(Self, Int32, Array[@header.Header]) -> Int32 raise Refused
+pub fn Conn::receive(Self, BytesView) -> Unit raise Refused
+pub fn Conn::reset(Self, Int32, code? : Int32) -> Unit raise Refused
+pub fn Conn::settings(Self) -> Settings
+pub fn Conn::take(Self) -> Bytes
+pub fn Conn::update(Self, Settings) -> Unit raise Refused
+pub fn Conn::widen(Self, Int32, Int32) -> Unit raise Refused
+pub fn Conn::window(Self, Int32) -> Int32
+
+pub(all) enum Event {
+  Request(stream~ : Int32, fields~ : Array[@header.Header])
+  Response(stream~ : Int32, fields~ : Array[@header.Header])
+  Informational(stream~ : Int32, fields~ : Array[@header.Header])
+  Trailers(stream~ : Int32, fields~ : Array[@header.Header])
+  Data(stream~ : Int32, data~ : Bytes)
+  End(stream~ : Int32)
+  Reset(stream~ : Int32, code~ : Int32, remote~ : Bool)
+  Pushed(stream~ : Int32, promised~ : Int32, fields~ : Array[@header.Header])
+  WindowUpdated(stream~ : Int32, delta~ : Int32)
+  Settings(Settings)
+  SettingsAcked(Settings)
+  Ping(Bytes)
+  PingAcked(Bytes)
+  GoAway(code~ : Int32, last~ : Int32, debug~ : Bytes)
+  NeedData
+  Closed
+} derive(Eq, @debug.Debug)
+pub fn Event::equal(Self, Self) -> Bool
+pub fn Event::not_equal(Self, Self) -> Bool
+pub fn Event::to_repr(Self) -> @debug.Repr
+
 pub(all) enum Frame {
   Data(stream_id~ : Int32, data~ : Bytes, end_stream~ : Bool, padding~ : Int32)
   Headers(stream_id~ : Int32, fragment~ : Bytes, end_stream~ : Bool, end_headers~ : Bool, priority~ : Priority?, padding~ : Int32)
@@ -127,6 +182,28 @@ pub(all) struct Priority {
 } derive(Eq)
 pub fn Priority::equal(Self, Self) -> Bool
 pub fn Priority::not_equal(Self, Self) -> Bool
+
+pub(all) enum Role {
+  Server
+  Client
+} derive(Eq, @debug.Debug)
+pub fn Role::equal(Self, Self) -> Bool
+pub fn Role::not_equal(Self, Self) -> Bool
+pub fn Role::to_repr(Self) -> @debug.Repr
+
+pub(all) struct Settings {
+  header_table_size : Int32
+  enable_push : Bool
+  max_concurrent_streams : Int32?
+  initial_window_size : Int32
+  max_frame_size : Int32
+  max_header_list_size : Int32?
+  enable_connect_protocol : Bool
+} derive(Eq, @debug.Debug)
+pub fn Settings::equal(Self, Self) -> Bool
+pub fn Settings::new(header_table_size? : Int32, enable_push? : Bool, max_concurrent_streams? : Int32?, initial_window_size? : Int32, max_frame_size? : Int32, max_header_list_size? : Int32?, enable_connect_protocol? : Bool) -> Self
+pub fn Settings::not_equal(Self, Self) -> Bool
+pub fn Settings::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

@@ -37,9 +37,9 @@ pub impl Show for Refused
 // Types and methods
 pub(all) struct Decoder {
   table : Table
-  limit : Int32
+  mut limit : Int32
 }
-pub fn Decoder::decode(Self, BytesView) -> Array[@header.Header] raise Refused
+pub fn Decoder::decode(Self, BytesView, limit? : Int32) -> Array[@header.Header] raise Refused
 pub fn Decoder::new(limit? : Int32) -> Self
 
 pub(all) struct Encoder {

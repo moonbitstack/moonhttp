@@ -115,6 +115,11 @@ pub let settings_max_frame_size : Int32 = 0x5
 pub let settings_max_header_list_size : Int32 = 0x6
 
 ///|
+/// SETTINGS_ENABLE_CONNECT_PROTOCOL (RFC 8441 §3): the extended CONNECT that carries
+/// WebSockets over HTTP/2.
+pub let settings_enable_connect_protocol : Int32 = 0x8
+
+///|
 /// HTTP/2 error codes (RFC 9113 §7), carried by RST_STREAM and GOAWAY.
 pub let error_no_error : Int32 = 0x0
 
@@ -181,12 +186,19 @@ pub(all) struct Priority {
 } derive(Eq)
 
 ///|
-/// A raised decode failure. `Incomplete` is the normal "need more bytes" signal a
-/// streaming reader catches to wait for the rest; the others are protocol errors.
+/// Why a frame or a connection was refused.
+///
+/// `Incomplete` is the normal "need more bytes" signal a streaming reader catches to
+/// wait for the rest, and `FrameSizeError` and `ProtocolError` are frames that do not
+/// decode. A [`Conn`] raises only the last two kinds: `Connection` when the peer broke
+/// the connection, with the GOAWAY that says so already queued, and `Order` when this
+/// side sent something the protocol does not allow now.
 pub(all) suberror Refused {
   Incomplete
   FrameSizeError(String)
   ProtocolError(String)
+  Connection(code~ : Int32, String)
+  Order(String)
 } derive(Eq)
 
 ///|
@@ -197,6 +209,9 @@ pub impl Show for Refused with fn output(self, logger) {
     Incomplete => logger.write_string("Incomplete")
     FrameSizeError(m) => logger.write_string("FrameSizeError(" + m + ")")
     ProtocolError(m) => logger.write_string("ProtocolError(" + m + ")")
+    Connection(code~, m) =>
+      logger.write_string("Connection(code=\{code}, " + m + ")")
+    Order(m) => logger.write_string("Order(" + m + ")")
   }
 }
 

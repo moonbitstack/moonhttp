@@ -5,8 +5,11 @@
 // unrecognised frame is kept verbatim (§4.1) so a reader can forward or ignore it
 // rather than fail.
 //
-// The header compression these frames carry is `moonhttp/hpack`; this package is
-// the envelope and knows nothing about what is inside it.
+// `Conn` is a whole connection on top of the frames, after python-hyper h2: the
+// stream states of §5.1, flow control of §6.9, settings, field validation of §8,
+// and the header compression of `moonhttp/hpack`, still without a socket.
 import {
   "moonbitstack/moonvar/fixed",
+  "moonbitstack/moonhttp/header",
+  "moonbitstack/moonhttp/hpack",
 }

@@ -334,8 +334,40 @@ test "a size update past what the peer allowed is refused (§6.3)" {
   // One more than the cap is a decoding error.
   assert_eq(
     refused_block(decoder, size_update(257)),
-    Exceeded(limit=256, got=257),
+    Malformed("a dynamic table size update to 257, past the agreed 256"),
   )
+}
+
+///|
+test "a size update after a field is refused (§4.2)" {
+  let encoder = Encoder::new()
+  let block = Buffer()
+  block.write_bytes(encoder.encode([@header.Header::of(":method", "GET")]))
+  block.write_bytes(size_update(0))
+  assert_eq(
+    refused_block(Decoder::new(), block.to_bytes()),
+    Malformed("a dynamic table size update after a field"),
+  )
+}
+
+///|
+test "a block past the list limit is refused, and the table stays in step (§4.1)" {
+  let encoder = Encoder::new()
+  let decoder = Decoder::new()
+  let big = @header.Header::of("x-big", "v".repeat(200))
+  // 5 + 200 + 32 octets each: the first fits under 300, the second does not.
+  let first = encoder.encode([big, big])
+  let out = try decoder.decode(first[:], limit=300) catch {
+    e => Some(e)
+  } noraise {
+    _ => None
+  }
+  assert_eq(out, Some(Exceeded(limit=300, got=474)))
+  // The entry the refused block indexed is in the table, so the next block, which
+  // names it by index, still reads.
+  let second = encoder.encode([big])
+  assert_eq(second.length() < 4, true)
+  assert_eq(decoder.decode(second[:], limit=300), [big])
 }
 
 ///|

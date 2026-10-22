@@ -21,7 +21,7 @@ PKGS = [
     ("hpack", "hpack", "RFC 7541 HTTP/2 header compression: both tables, both ends."),
     ("qpack", "qpack", "RFC 9204 HTTP/3 header compression: both tables, the field lines, both instruction streams."),
     ("http1", "http1", "RFC 9112 messages: request and status lines, field lines, body framing, the chunked coding; and Conn, a whole connection on h11's state machine."),
-    ("http2", "http2", "RFC 9113 framing: the nine-octet header, all ten frame types, the connection preface."),
+    ("http2", "http2", "RFC 9113 framing: the nine-octet header, all ten frame types, the connection preface; and Conn, a whole connection after python-hyper h2."),
     ("http3", "http3", "RFC 9114 frames, their placement rules, settings, stream types and connection."),
 ]
 

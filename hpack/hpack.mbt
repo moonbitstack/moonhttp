@@ -2,11 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 ///|
-/// Why a header block was refused (RFC 7541 §6): a representation that does not parse,
-/// an index naming nothing, or a size update past what the peer allowed.
+/// Why a header block was refused (RFC 7541 §6).
 ///
-/// Every one of them is a connection error in HTTP/2 (RFC 9113 §4.3), because the two
+/// `Malformed` and `Index` are connection errors in HTTP/2 (RFC 9113 §4.3): the two
 /// ends' dynamic tables have gone out of step and nothing after this point can be read.
+/// `Exceeded` is not. The block was decoded to its end, so the table is in step, and
+/// only this one field section is refused for being larger than the caller allows.
 pub(all) suberror Refused {
   Malformed(String)
   Index(got~ : Int32)
@@ -334,7 +335,7 @@ pub fn size_update(limit : Int32) -> Bytes {
 /// (`SETTINGS_HEADER_TABLE_SIZE`) a size update may not exceed.
 pub(all) struct Decoder {
   table : Table
-  limit : Int32
+  mut limit : Int32
 }
 
 ///|
@@ -365,15 +366,30 @@ fn Decoder::read_name(
 
 ///|
 /// Decode one complete header block into its header list (RFC 7541 §6), mutating
-/// the dynamic table for incrementally indexed fields and size updates. Raises
-/// `Malformed`/`Malformed` on any malformed representation.
+/// the dynamic table for incrementally indexed fields and size updates.
+///
+/// `limit` bounds the list by RFC 7541 §4.1 size, each field's octets plus 32, which
+/// is what `SETTINGS_MAX_HEADER_LIST_SIZE` counts. Past it the block is still decoded
+/// to its end, so the dynamic table stays in step with the encoder, but no more fields
+/// are kept, and then `Exceeded` is raised. A block of a few octets that names large
+/// table entries over and over would otherwise decode to as much memory as the peer
+/// liked.
 pub fn Decoder::decode(
   self : Decoder,
   block : BytesView,
+  limit? : Int32,
 ) -> Array[@header.Header] raise Refused {
   let out : Array[@header.Header] = []
+  let mut size = 0
   let mut off = 0
   let n = block.length()
+  let keep = (h : @header.Header) => {
+    size = size + h.cost()
+    match limit {
+      Some(l) if size > l => ()
+      _ => out.push(h)
+    }
+  }
   while off < n {
     let b = block[off].to_int()
     if (b & 0x80) != 0 {
@@ -384,7 +400,7 @@ pub fn Decoder::decode(
         raise Malformed("indexed header field with index 0")
       }
       match lookup(self.table, index) {
-        Some(header) => out.push(header)
+        Some(header) => keep(header)
         None => raise Index(got=index)
       }
     } else if (b & 0x40) != 0 {
@@ -396,15 +412,20 @@ pub fn Decoder::decode(
       let (value, value_consumed) = read_string(block, off)
       off = off + value_consumed
       self.table.add(name, value)
-      out.push({ name, value, })
+      keep({ name, value, })
     } else if (b & 0x20) != 0 {
-      // §6.3 Dynamic Table Size Update.
-      let (limit, consumed) = reach(block, off, 5)
-      off = off + consumed
-      if limit > self.limit {
-        raise Exceeded(limit=self.limit, got=limit)
+      // §6.3 Dynamic Table Size Update, which §4.2 allows only at the start of a block.
+      if size > 0 {
+        raise Malformed("a dynamic table size update after a field")
       }
-      self.table.resize(limit)
+      let (wanted, consumed) = reach(block, off, 5)
+      off = off + consumed
+      if wanted > self.limit {
+        raise Malformed(
+          "a dynamic table size update to \{wanted}, past the agreed \{self.limit}",
+        )
+      }
+      self.table.resize(wanted)
     } else {
       // §6.2.2 without indexing (0x00) / §6.2.3 never indexed (0x10); 4-bit prefix.
       let (index, consumed) = reach(block, off, 4)
@@ -413,10 +434,13 @@ pub fn Decoder::decode(
       off = off + name_consumed
       let (value, value_consumed) = read_string(block, off)
       off = off + value_consumed
-      out.push({ name, value, })
+      keep({ name, value, })
     }
   }
-  out
+  match limit {
+    Some(l) if size > l => raise Exceeded(limit=l, got=size)
+    _ => out
+  }
 }
 
 // -- encoder (RFC 7541 §6) --------------------------------------------------
