@@ -13,6 +13,7 @@ PKGS = [
     ("sse", "sse", "WHATWG Server-Sent Events, framed both ways and dispatched the way an EventSource does."),
     ("ws", "ws", "RFC 6455 §5 WebSocket framing: opcodes, masking, reassembly, close statuses."),
     ("upgrade", "upgrade", "RFC 6455 §4, the opening handshake — both sides, and the proof that makes the difference."),
+    ("method", "method", "RFC 9110 §9 request methods: the nine standard ones and any other token, and whether each is safe and idempotent."),
     ("header", "header", "RFC 9110 §5 header fields, as the octets both header compressions share."),
     ("huffman", "huffman", "RFC 7541 Appendix B, the Huffman code HPACK and QPACK both use."),
     ("hpack", "hpack", "RFC 7541 HTTP/2 header compression: both tables, both ends."),

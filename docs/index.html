@@ -114,6 +114,7 @@ footer{margin-top:3rem;padding-top:1.3rem;border-top:1px solid var(--line);color
 <a href="#sse"><span class="at">@</span>sse</a>
 <a href="#ws"><span class="at">@</span>ws</a>
 <a href="#upgrade"><span class="at">@</span>upgrade</a>
+<a href="#method"><span class="at">@</span>method</a>
 <a href="#header"><span class="at">@</span>header</a>
 <a href="#huffman"><span class="at">@</span>huffman</a>
 <a href="#hpack"><span class="at">@</span>hpack</a>
@@ -333,6 +334,28 @@ footer{margin-top:3rem;padding-top:1.3rem;border-top:1px solid var(--line);color
 } derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="doc">Why a handshake was not accepted, so a server can answer with the right status and a client can say what the server got wrong.</p></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><pre class="sig"><span class="k">fn</span> read_request( headers : <span class="ty">ArrayView</span>[(<span class="ty">String</span>, <span class="ty">String</span>)]) <span class="op">-&gt;</span> (<span class="ty">String</span>, <span class="ty">Array</span>[<span class="ty">String</span>]) raise <span class="ty">Refused</span></pre><p class="doc">Read a client&#x27;s handshake headers and answer with its key and the subprotocols it offered (RFC 6455 §4.2.1).  Header names are matched without regard to case, and <code>Connection</code> is read as the comma-separated list §4.2.1 allows it to be, because a proxy may have added to it. A version other than 13 is refused, which is what §4.4 asks a server to answer.</p></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><pre class="sig"><span class="k">fn</span> read_response( key : <span class="ty">String</span>, headers : <span class="ty">ArrayView</span>[(<span class="ty">String</span>, <span class="ty">String</span>)]) <span class="op">-&gt;</span> <span class="ty">Unit</span> raise <span class="ty">Refused</span></pre><p class="doc">Check a server&#x27;s response headers against the key that was sent (RFC 6455 §4.1).  A client that skips this accepts an upgrade from anything that can write <code>101</code>, which is the case §4.2.2&#x27;s proof exists to rule out.</p></div>
+</section>
+<section class="pkg" id="method"><h2><span class="at">@</span>method</h2><p class="pdesc">RFC 9110 §9 request methods: the nine standard ones and any other token, and whether each is safe and idempotent.</p>
+<div class="item" data-k="enum"><span class="kind">enum</span><pre class="sig">enum <span class="ty">Method</span> {
+  <span class="ty">Get</span>
+  <span class="ty">Head</span>
+  <span class="ty">Post</span>
+  <span class="ty">Put</span>
+  <span class="ty">Delete</span>
+  <span class="ty">Connect</span>
+  <span class="ty">Options</span>
+  <span class="ty">Trace</span>
+  <span class="ty">Patch</span>
+  <span class="ty">Other</span>(<span class="ty">String</span>)
+} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="doc">A request method (RFC 9110 §9.1). The eight of RFC 9110 and PATCH (RFC 5789) have their own constructors; any other token is <code>Other</code>.  Method names are case-sensitive, so <code>get</code> is an extension method and not <code>Get</code>. Build a method from its name with <code>Method::of</code>, which picks the constructor: <code>Other(&quot;GET&quot;)</code> written by hand is not equal to <code>Get</code>.</p></div>
+<div class="item" data-k="suberror"><span class="kind">suberror</span><pre class="sig">suberror <span class="ty">Refused</span> {
+  /// <span class="ty">Empty</span>, or holding a character outside `tchar` (<span class="ty">RFC</span> 9110 §5.6.2).
+  <span class="ty">Token</span>(<span class="ty">String</span>)
+} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="doc">Why a name is not a method.</p></div>
+<div class="item" data-k="fn"><span class="kind">fn</span><pre class="sig"><span class="k">fn</span> <span class="ty">Method</span>::of(name : <span class="ty">StringView</span>) <span class="op">-&gt;</span> <span class="ty">Method</span> raise <span class="ty">Refused</span></pre><p class="doc">The method named <code>name</code>.</p></div>
+<div class="item" data-k="fn"><span class="kind">fn</span><pre class="sig"><span class="k">fn</span> <span class="ty">Method</span>::name(self : <span class="ty">Method</span>) <span class="op">-&gt;</span> <span class="ty">String</span></pre><p class="doc">The name sent on the request line or in <code>:method</code>.</p></div>
+<div class="item" data-k="fn"><span class="kind">fn</span><pre class="sig"><span class="k">fn</span> <span class="ty">Method</span>::is_safe(self : <span class="ty">Method</span>) <span class="op">-&gt;</span> <span class="ty">Bool</span></pre><p class="doc">Whether the method is read-only (RFC 9110 §9.2.1), so a crawler, a prefetch or a cache may send it without the user asking. An extension method is not assumed safe.</p></div>
+<div class="item" data-k="fn"><span class="kind">fn</span><pre class="sig"><span class="k">fn</span> <span class="ty">Method</span>::is_idempotent(self : <span class="ty">Method</span>) <span class="op">-&gt;</span> <span class="ty">Bool</span></pre><p class="doc">Whether sending the request twice has the effect of sending it once (RFC 9110 §9.2.2), so a client may retry it after a connection fails before the response arrives. An extension method is not assumed idempotent.</p></div>
 </section>
 <section class="pkg" id="header"><h2><span class="at">@</span>header</h2><p class="pdesc">RFC 9110 §5 header fields, as the octets both header compressions share.</p>
 <div class="item" data-k="struct"><span class="kind">struct</span><pre class="sig"><span class="k">struct</span> <span class="ty">Header</span> {

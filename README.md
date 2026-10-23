@@ -49,6 +49,7 @@ The API reference is generated from the sources' doc comments:
 | `ws` | WebSocket framing: opcodes, masking, fragment reassembly, close statuses | RFC 6455 §5, §7.4.1 |
 | `upgrade` | The WebSocket opening handshake, both sides | RFC 6455 §4 |
 | `huffman` | The Huffman code both header compressions use | RFC 7541 Appendix B |
+| `method` | The request method: the nine standard ones and any other token, with whether each is safe and idempotent | RFC 9110 §9, RFC 5789 |
 | `header` | A header field: a name and a value, as octets | RFC 9110 §5 |
 | `hpack` | HTTP/2 header compression: both tables, both ends, and a bound on the list a block decodes to | RFC 7541 |
 | `qpack` | HTTP/3 header compression: both tables, the field lines, both instruction streams | RFC 9204 |

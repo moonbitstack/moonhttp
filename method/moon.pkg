@@ -1,0 +1,8 @@
+// Request methods, RFC 9110 §9:
+// https://www.rfc-editor.org/rfc/rfc9110#section-9
+//
+// One type for the client that sends a method and the server that routes on it,
+// with the properties a retry or a cache decides by.
+import {
+  "moonbitstack/moonhttp/method",
+} for "test"
