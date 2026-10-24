@@ -11,14 +11,14 @@ test "qpack int: a value still arriving is None, a value too large is a fault" {
   // The arithmetic is `moonvar`'s and tested there. What is this package's is the
   // reading of a refusal on a stream: 0x1f says the prefix overflowed and 0x9a has its
   // continuation bit set, so another octet is owed and may yet come.
-  assert_eq(partial(b""[:], 5), None)
+  assert_eq(partial(b"\x1f\x9a"[:], 5), None)
   assert_eq(partial(b""[:], 5), None)
   // Whereas a complete value is a value, flags above the prefix and all.
-  assert_eq(partial(b""[:], 6), Some((2, 1)))
+  assert_eq(partial(b"\x82"[:], 6), Some((2, 1)))
   // And one that no `Int` could hold will not improve by waiting, so it is malformed.
   let mut refused = false
   try {
-    let _ = partial(b"ÿÿÿÿÿÿÿÿ"[:], 5)
+    let _ = partial(b"\x1f\xff\xff\xff\xff\xff\xff\xff\xff\x7f"[:], 5)
   } catch {
     Malformed(_) => refused = true
     _ => ()
