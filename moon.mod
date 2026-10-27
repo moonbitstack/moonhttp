@@ -20,7 +20,7 @@ keywords = [
   "moonbit",
 ]
 
-description = "moonhttp — the HTTP family for MoonBit: conditional requests and entity-tags, range requests, HTTP/1.1, HTTP/2 and HTTP/3 framing and connections, HPACK and QPACK header compression, WebSocket framing and its handshake, Server-Sent Events, cookies, and form bodies by content type, each a package of its own. Bytes in, events out; no sockets."
+description = "HTTP formats for MoonBit with no I/O: HTTP/1 to HTTP/3, WebSocket, SSE and multipart."
 
 import {
   "moonbitstack/moonvar@0.2.0",
