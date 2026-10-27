@@ -4,7 +4,7 @@
 /// `decode_all` consumes whole frames off a stream and leaves a partial tail;
 /// `frame_allowed` gates a frame against the stream it arrived on.
 ///
-///     moon run examples/30-http3-frames --target native
+///     moon run src/examples/30-http3-frames --target native
 #coverage.skip
 fn main {
   run() catch {

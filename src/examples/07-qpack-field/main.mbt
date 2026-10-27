@@ -4,7 +4,7 @@
 /// raw and Huffman, and decodes back exactly. The Encoded Field Section Prefix
 /// (§4.5.1) carrying the Required Insert Count and Base round-trips too.
 ///
-///     moon run examples/28-qpack-field --target native
+///     moon run src/examples/28-qpack-field --target native
 #coverage.skip
 fn main {
   run() catch {

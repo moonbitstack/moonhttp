@@ -3,7 +3,7 @@
 /// measuring it against the length, and writing the `Content-Range` that goes
 /// back — including the 416 answer, which says how long the file actually is.
 ///
-///     moon run examples/12-range --target native
+///     moon run src/examples/12-range --target native
 #coverage.skip
 fn main {
   // A ten-thousand-octet representation, and the asks §14.1.2 prints.

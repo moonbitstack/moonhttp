@@ -5,7 +5,7 @@
 /// instruction round-trips through the encoder-stream codec, and a dynamic
 /// encode splits the encoder-stream inserts from the field section.
 ///
-///     moon run examples/29-qpack-dynamic --target native
+///     moon run src/examples/29-qpack-dynamic --target native
 #coverage.skip
 fn main {
   run() catch {

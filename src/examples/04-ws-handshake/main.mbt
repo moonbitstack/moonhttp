@@ -4,7 +4,7 @@
 /// + GUID)), and echoes the one subprotocol it selected. The accept key matches
 /// the RFC's own worked example, and the full 101 response is printed.
 ///
-///     moon run examples/11-ws-handshake --target native
+///     moon run src/examples/11-ws-handshake --target native
 #coverage.skip
 fn main {
   let key = "dGhlIHNhbXBsZSBub25jZQ=="

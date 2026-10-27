@@ -1,4 +1,4 @@
-// A second request for something unchanged: `moon run examples/13-conditional`.
+// A second request for something unchanged: `moon run src/examples/13-conditional`.
 pkgtype(kind: "executable")
 
 import {

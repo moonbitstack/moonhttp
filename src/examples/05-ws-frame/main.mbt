@@ -9,7 +9,7 @@
 /// client, for whom masking is mandatory (§5.1), so decoding a frame the server
 /// itself sent asks for the other direction.
 ///
-///     moon run examples/05-ws-frame
+///     moon run src/examples/05-ws-frame
 #coverage.skip
 fn main {
   let text : @ws.Frame = {

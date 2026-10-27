@@ -4,7 +4,7 @@
 ///|
 /// Framing an event stream, and reading a form back out of a request body.
 ///
-///     moon run examples/tour
+///     moon run src/examples/tour
 #coverage.skip
 fn main raise {
   // Each frame is one chunk. A stream sent as one body is not a stream.

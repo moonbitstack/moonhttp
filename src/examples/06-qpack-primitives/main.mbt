@@ -4,7 +4,7 @@
 /// building blocks the field-section encoder is assembled from. The prefixed integer
 /// under them all is RFC 7541 §5.1 unchanged, so it comes from `moonvar`.
 ///
-///     moon run examples/27-qpack-primitives --target native
+///     moon run src/examples/27-qpack-primitives --target native
 #coverage.skip
 fn main {
   run() catch {

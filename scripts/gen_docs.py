@@ -26,7 +26,7 @@ PKGS = [
 
 def sources(pkg):
     """Every source of a package, tests excluded, the root file first."""
-    files = sorted(p for p in (ROOT / pkg).glob("*.mbt")
+    files = sorted(p for p in (ROOT / "src" / pkg).glob("*.mbt")
                    if not p.name.endswith(("_test.mbt", "_wbtest.mbt")))
     return sorted(files, key=lambda p: (p.stem != pkg, p.name))
 

@@ -30,3 +30,5 @@ import {
   "moonbitstack/moonmime@0.2.0",
   "moonbitstack/moonurl@0.2.0",
 }
+
+source = "src"

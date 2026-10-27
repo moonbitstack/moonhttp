@@ -5,7 +5,7 @@
 /// from the peer control stream, classifying the QPACK encoder stream), and the
 /// SETTINGS identifier constants are the RFC assignments.
 ///
-///     moon run examples/32-http3-conn --target native
+///     moon run src/examples/32-http3-conn --target native
 #coverage.skip
 fn main {
   run() catch {

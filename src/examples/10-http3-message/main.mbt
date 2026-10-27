@@ -4,7 +4,7 @@
 /// ordinary headers) plus DATA, and decodes back; a typed request parses out;
 /// and `http3_serve` drives a request through a handler that answers 200.
 ///
-///     moon run examples/31-http3-message --target native
+///     moon run src/examples/31-http3-message --target native
 #coverage.skip
 fn main {
   run() catch {
