@@ -80,7 +80,7 @@ struct Case {
   expect : String
   status : Int32
   /// Seconds the suite waits between the two requests.
-  pause : Int
+  pause : Int32
   /// The response the cache was given.
   response : Array[(String, String)]
   /// The request that produced it.

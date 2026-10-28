@@ -166,7 +166,7 @@ text = '''// Copyright 2026 Leo Cheng
 // segment decompresses to.
 
 ///|
-pub let vectors : Array[(String, Int, Bool, Array[Bytes], Array[Bytes])] = [
+pub let vectors : Array[(String, Int32, Bool, Array[Bytes], Array[Bytes])] = [
 %s,
 ]
 ''' % ",\n".join(body)

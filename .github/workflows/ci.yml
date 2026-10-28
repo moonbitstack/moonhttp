@@ -72,6 +72,7 @@ jobs:
         run: |
           python3 scripts/gen_deflate_vectors.py
           python3 scripts/gen_cache_vectors.py
+          moon fmt
           python3 scripts/gen_docs.py
           git diff --exit-code
 
