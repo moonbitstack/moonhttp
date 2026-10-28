@@ -1,0 +1,11 @@
+// What a cache may do with a response, and where a redirect sends it:
+// `moon run src/examples/15-cache`.
+pkgtype(kind: "executable")
+
+import {
+  "moonbitstack/moondate",
+  "moonbitstack/moonurl",
+  "moonbitstack/moonhttp/cache",
+  "moonbitstack/moonhttp/client",
+  "moonbitstack/moonhttp/method",
+}

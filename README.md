@@ -21,6 +21,19 @@ form.file("avatar")
 // A second request for something that has not changed.
 let etag = @conditional.hash(body[:], digest=@sha2.Hasher::new())
 @conditional.Ask::read(headers[:]).evaluate(verb="GET", etag~)  // Go | Fresh | Failed
+
+// A WebSocket message compressed the way RFC 7692 asks, and the bit that says so.
+let terms = @pmd.Extension::agree(@pmd.offers(offer[:])[:]).unwrap()
+let (frame, compressed) = @pmd.Writer::new(extension=terms).frame(@ws.Opcode::Text, body[:])
+frame.encode_extension(rsv1=compressed)  // one deflate segment, tail stripped
+
+// A stored response, and what may be done with it.
+let stored = @cache.Entry::read(status=200, headers, request, sent~, received~)
+stored.verdict(request=@cache.control, presented=headers, now~)  // Serve | Validate | Miss
+stored.conditional()  // the If-None-Match a cache sends instead
+
+// And where a 302 sends the request next.
+@client.follow(status=302, location="/next", from~, verb=@method.Method::Post, visited=[from][:])
 ```
 
 Run `moon run src/examples/tour` for the whole surface in one go. The worked
@@ -32,6 +45,7 @@ moon run src/examples/05-ws-frame           moon run src/examples/10-http3-messa
 moon run src/examples/06-qpack-primitives   moon run src/examples/11-http3-conn
 moon run src/examples/07-qpack-field        moon run src/examples/12-range
 moon run src/examples/08-qpack-dynamic      moon run src/examples/13-conditional
+moon run src/examples/14-ws-compressed      moon run src/examples/15-cache
 ```
 
 The API reference is generated from the sources' doc comments:
@@ -45,8 +59,12 @@ The API reference is generated from the sources' doc comments:
 | `form` | A request body read as the form its `Content-Type` says it is, `multipart/form-data` or `application/x-www-form-urlencoded` | WHATWG HTML form submission |
 | `range` | Asking for part of a representation: the fields, the arithmetic that resolves a range against a length, and the multi-range body | RFC 9110 §14 |
 | `conditional` | Entity-tags, the five precondition fields, and the order they are weighed in | RFC 9110 §8.8, §13 |
+| `cache` | What may be stored, how long it stays fresh, how old it is, and whether it may answer: the decisions, with no store | RFC 9111 |
+| `client` | Where a redirect sends a request, with which method and which credentials; and `Alt-Svc` read into the alternatives it names | RFC 9110 §15.4, RFC 7838 |
 | `cookie` | `Cookie` and `Set-Cookie`, each read and written | RFC 6265, and its revision for `SameSite` |
 | `ws` | WebSocket framing: opcodes, masking, fragment reassembly, close statuses | RFC 6455 §5, §7.4.1 |
+| `pmd` | The permessage-deflate extension: its four parameters, the offer and the answer, and a reader and writer over `ws` frames | RFC 7692 |
+| `deflate` | Raw DEFLATE shaped for a stream that outlives a message: a window carried across messages, and a ceiling on what one may expand to | RFC 1951 |
 | `upgrade` | The WebSocket opening handshake, both sides | RFC 6455 §4 |
 | `huffman` | The Huffman code both header compressions use | RFC 7541 Appendix B |
 | `method` | The request method: the nine standard ones and any other token, with whether each is safe and idempotent | RFC 9110 §9, RFC 5789 |
@@ -83,6 +101,14 @@ let same = { ..@moonmime.limits, parts: 8, part_size: 64 * 1024 }
 @form.parse(body[:], content_type[:], strict=true)   // raises NotAForm, or Malformed(at~)
 
 @sse.Event::of("hello").encode(space=false)          // drop the optional space
+
+// A compressed message is the one place a peer can ask for memory it did not
+// pay for, so the reader bounds what one expands to, in octets.
+@pmd.Reader::new(limit=1 * 1024 * 1024)
+
+// And a writer can leave a message under this many octets alone, which is worth
+// doing: a compressed "OK" is longer than "OK".
+@pmd.Writer::new(threshold=64)
 ```
 
 | Setting | Default | Why that one |
@@ -91,6 +117,8 @@ let same = { ..@moonmime.limits, parts: 8, part_size: 64 * 1024 }
 | `limits.part_size` | 1 MiB | python-multipart's in-memory part size |
 | `strict` | off | A truncated upload is ordinary on a dropped connection, and "this request carried no form" is an answer rather than a failure. On is for the caller who would rather be told |
 | `space` | on | The space after a colon is optional in the format and universal on the wire; a reader strips it either way |
+| `limit` (`pmd`) | 16 MiB | The ceiling `ws` puts on a message anyway. RFC 7692 sets none, and a compressed message is where that absence would cost the most |
+| `threshold` (`pmd`) | 0 | Every message compressed, which is what agreeing to the extension means. A caller compressing a bulletin board and not a chat box raises it |
 
 `Limits` has no per-call mirror, and therefore no precedence rule. A bound
 belongs to an endpoint rather than to a request — an avatar upload and a
@@ -167,6 +195,31 @@ masked text messages, the fragmented one, the ping with its pong, and the two
 long length forms. `upgrade` is measured against the key and proof §1.3 prints,
 which is the one computation in it.
 
+`deflate` is read against streams zlib wrote, because those are the ones a
+WebSocket endpoint actually meets: messages at every length where DEFLATE or the
+frame layer changes shape, a stored block, a dynamic block, a window negotiated
+down to nine bits, and four messages that only decode if the window of the first
+survives into the last. The other direction is checked by giving what it writes to
+another DEFLATE implementation to read. Every split of a compressed message is
+read as two pieces, which is what a message arriving in fragments is.
+
+`pmd` is measured on §7.1's four parameters — read, written and negotiated, each
+with the values the grammar forbids — and then on the cases the Autobahn suite's
+12.x and 13.x groups probe, replayed frame by frame: a compressed message at each
+frame-form boundary, one split across fragments with a ping in between, the window
+carried over and refused, a stream that does not decompress (1007), one that
+expands past the ceiling (1009), and RSV1 where §6.1 forbids it (1002).
+
+`cache` follows §4.2.1's order for a freshness lifetime, §4.2.2's tenth, §4.2.3's
+arithmetic on four clock readings, §3's list of reasons not to store — each as a
+test that would pass if the rule were dropped — and §4's list of reasons not to
+reuse, including the ones a `Vary` mismatch and a disconnect turn on.
+
+`client` is measured on §15.4's method rewrites (a 301, a 302 and a 303; a 307 and
+a 308 that keep both method and body), on the credentials that stop at the origin
+they were meant for, on relative `Location` resolution, on loops written two ways,
+and on the `Alt-Svc` examples §3 of RFC 7838 prints.
+
 ## What lives elsewhere
 
 URI references and data URLs are [moonurl](https://github.com/moonbitstack/moonurl);
@@ -178,7 +231,9 @@ neither belongs to HTTP, and both are written in more than one protocol. They
 are `moonvar`, which this depends on and which depends on nothing.
 
 TLS is `moontls` and QUIC is `moonquic`, so that parsing an HTTP message does
-not mean carrying a handshake. Compression is `moonzip`.
+not mean carrying a handshake. Content codings are `moonzip`; `deflate` here is
+the other shape — a stream that is stopped and resumed inside, which is what
+RFC 7692 §7.2 needs and what a file compressor has no reason to offer.
 
 ## Install
 
