@@ -1,0 +1,64 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitstack/moonhttp/pmd"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitstack/moonhttp/deflate",
+  "moonbitstack/moonhttp/ws",
+}
+
+// Values
+pub let defaults : Extension
+
+pub let name : String
+
+pub fn offers(StringView) -> Array[Extension]
+
+// Errors
+
+// Types and methods
+pub(all) struct Extension {
+  server_takeover : Bool
+  client_takeover : Bool
+  server_window : Int32
+  client_window : Int32
+  client_window_named : Bool
+} derive(Eq, @debug.Debug)
+pub fn Extension::accepts(Self, Self) -> Bool
+pub fn Extension::agree(ArrayView[Self], support? : Self) -> Self?
+pub fn Extension::decode(StringView) -> Self?
+pub fn Extension::encode(Self, role~ : Role) -> String
+pub fn Extension::equal(Self, Self) -> Bool
+pub fn Extension::new(server_takeover? : Bool, client_takeover? : Bool, server_window? : Int32, client_window? : Int32, client_window_named? : Bool) -> Self
+pub fn Extension::not_equal(Self, Self) -> Bool
+pub fn Extension::to_repr(Self) -> @debug.Repr
+
+pub struct Reader {
+  inner : @ws.Reader
+  inflater : @deflate.Inflater
+  limit : Int32
+  mut compressed : Bool
+  mut in_message : Bool
+  mut got : Int32
+}
+pub fn Reader::feed(Self, @ws.Frame, compressed? : Bool) -> @ws.Step raise @ws.Refused
+pub fn Reader::new(extension? : Extension, role? : Role, limit? : Int32) -> Self
+
+pub(all) enum Role {
+  Client
+  Server
+} derive(Eq, @debug.Debug)
+pub fn Role::equal(Self, Self) -> Bool
+pub fn Role::not_equal(Self, Self) -> Bool
+pub fn Role::to_repr(Self) -> @debug.Repr
+
+pub struct Writer {
+  deflater : @deflate.Deflater
+  threshold : Int32
+}
+pub fn Writer::frame(Self, @ws.Opcode, BytesView, fin? : Bool) -> (@ws.Frame, Bool)
+pub fn Writer::new(extension? : Extension, role? : Role, threshold? : Int32) -> Self
+
+// Type aliases
+
+// Traits

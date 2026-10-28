@@ -1,0 +1,8 @@
+// The compression extension end to end: `moon run src/examples/14-ws-compressed`.
+pkgtype(kind: "executable")
+
+import {
+  "moonbitstack/moonhttp/pmd",
+  "moonbitstack/moonhttp/ws",
+  "moonbitlang/core/encoding/utf8",
+}

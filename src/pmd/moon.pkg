@@ -1,0 +1,22 @@
+// The permessage-deflate compression extension, RFC 7692:
+// https://www.rfc-editor.org/rfc/rfc7692
+//
+// The four parameters of §7.1 and the offer and answer that carry them; a reader
+// that expands compressed messages as their frames arrive, under a ceiling it can
+// enforce; and a writer that compresses its own, keeping the LZ77 window when the
+// terms allow it.
+//
+// The DEFLATE stream itself is `deflate`, which is where the shape §7.2.1 asks
+// for lives: blocks that never set `BFINAL`, and an empty block whose four-octet
+// tail comes off before the message goes on the wire.
+import {
+  "moonbitstack/moonhttp/ws",
+  "moonbitstack/moonhttp/deflate",
+}
+
+import {
+  "moonbitstack/moonhttp/ws",
+  "moonbitstack/moonhttp/pmd",
+  "moonbitstack/moonhttp/deflate",
+  "moonbitlang/core/encoding/utf8",
+} for "test"
