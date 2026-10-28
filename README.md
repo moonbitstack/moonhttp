@@ -48,6 +48,11 @@ moon run src/examples/08-qpack-dynamic      moon run src/examples/13-conditional
 moon run src/examples/14-ws-compressed      moon run src/examples/15-cache
 ```
 
+`src/examples/16-ws-echo` is the other kind: a server, not a walkthrough. It
+serves `ws://127.0.0.1:9001` with this library's handshake, frames and
+compression over a socket from `moonbitlang/async`, which is what
+`scripts/autobahn/run.sh` runs Autobahn against.
+
 The API reference is generated from the sources' doc comments:
 [moonbitstack.github.io/moonhttp](https://moonbitstack.github.io/moonhttp).
 
@@ -204,16 +209,20 @@ another DEFLATE implementation to read. Every split of a compressed message is
 read as two pieces, which is what a message arriving in fragments is.
 
 `pmd` is measured on §7.1's four parameters — read, written and negotiated, each
-with the values the grammar forbids — and then on the cases the Autobahn suite's
-12.x and 13.x groups probe, replayed frame by frame: a compressed message at each
-frame-form boundary, one split across fragments with a ping in between, the window
-carried over and refused, a stream that does not decompress (1007), one that
-expands past the ceiling (1009), and RSV1 where §6.1 forbids it (1002).
+with the values the grammar forbids — and then against Autobahn, whose 12.x and
+13.x groups are the conformance suite for this extension: `scripts/autobahn/run.sh`
+starts the endpoint and points the fuzzingclient at it, and CI runs it. The same
+behaviours are replayed frame by frame in the unit tests, and
+`scripts/autobahn/interop.py` is the check that needs no Docker: a permessage-deflate
+client written against zlib, which is what a browser is.
 
 `cache` follows §4.2.1's order for a freshness lifetime, §4.2.2's tenth, §4.2.3's
 arithmetic on four clock readings, §3's list of reasons not to store — each as a
 test that would pass if the rule were dropped — and §4's list of reasons not to
-reuse, including the ones a `Vary` mismatch and a disconnect turn on.
+reuse, including the ones a `Vary` mismatch and a disconnect turn on. The
+cache-tests suite's cases that a decision is the whole answer to are replayed as
+well (`scripts/cache-tests.json`); the dozen it reads differently are named with
+the reading this package follows in `scripts/gen_cache_vectors.mjs`.
 
 `client` is measured on §15.4's method rewrites (a 301, a 302 and a 303; a 307 and
 a 308 that keep both method and body), on the credentials that stop at the origin
