@@ -3,6 +3,12 @@
 The HTTP family for MoonBit: the formats a request and a response are written
 in, with nothing about sockets in them.
 
+[Site](https://moonbitstack.github.io/moonhttp/) ·
+[Guide](https://moonbitstack.github.io/moonhttp/guide.html) ·
+[API](https://moonbitstack.github.io/moonhttp/api.html) ·
+[Figures](https://moonbitstack.github.io/moonhttp/protocols.html) ·
+[mooncakes](https://mooncakes.io/docs/moonbitstack/moonhttp)
+
 ```moonbit
 // An event stream, one frame at a time.
 @sse.Event::new(data="{\"seq\":1}", kind="tick", id="1").encode()
@@ -53,8 +59,13 @@ serves `ws://127.0.0.1:9001` with this library's handshake, frames and
 compression over a socket from `moonbitlang/async`, which is what
 `scripts/autobahn/run.sh` runs Autobahn against.
 
-The API reference is generated from the sources' doc comments:
-[moonbitstack.github.io/moonhttp](https://moonbitstack.github.io/moonhttp).
+The documentation is a site of four pages: a
+[guide](https://moonbitstack.github.io/moonhttp/guide.html) that takes the
+library one message at a time, the
+[API reference](https://moonbitstack.github.io/moonhttp/api.html) generated from
+the sources' doc comments, and [nine figures](https://moonbitstack.github.io/moonhttp/protocols.html)
+that draw the byte layouts — a frame header, a chunked body, the DEFLATE stream a
+WebSocket keeps open.
 
 ## Packages
 

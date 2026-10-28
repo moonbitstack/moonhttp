@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guide — moonhttp</title>
+<meta name="description" content="Fourteen steps through moonhttp: a request head, an answer, event streams, cookies, forms, ranges, conditional requests, cache decisions, redirects, WebSocket frames and compression.">
+<meta name="theme-color" content="#e8f4f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d232d" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Noto+Sans+SC:wght@300;400;500;700&display=swap">
+<link rel="stylesheet" href="./assets/site.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="page top-in">
+    <a class="brand" href="./"><span class="tile"><i></i><i></i><i></i></span>moonhttp</a>
+    <nav class="nav">
+      <a href="./guide.html" class="on">Guide</a>
+      <a href="./api.html">API</a>
+      <a href="./protocols.html">Protocols</a>
+      <a class="gh" href="https://github.com/moonbitstack/moonhttp" aria-label="GitHub repository" title="GitHub">
+        <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+      </a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <section class="page masthead">
+    <svg class="tick tick-tr" width="148" height="56" viewBox="0 0 148 56" aria-hidden="true">
+      <path class="a" d="M36 4h112"/><path class="b" d="M72 20h76"/><path class="c" d="M110 36h38"/>
+    </svg>
+    <p class="label">Guide · <b>fourteen steps</b></p>
+    <h1 class="display">From octets<br>to decisions.</h1>
+    <p class="lede">One message at a time, in the order it travels: a head, an answer, the fields around it, and then the decisions a cache or a client makes before anything is sent. Every output shown here came from running the code.</p>
+    <div class="meta"><span>20 minutes</span><i>/</i><span>MoonBit</span><i>/</i><span>no sockets</span></div>
+  </section>
+
+  <div class="page doc">
+    <aside class="rail">
+      <p class="label">Steps</p>
+      <nav>
+        <a href="#install"><span>01</span>Install</a>
+        <a href="#request"><span>02</span>A request head</a>
+        <a href="#answer"><span>03</span>The answer</a>
+        <a href="#methods"><span>04</span>Methods</a>
+        <a href="#events"><span>05</span>Event streams</a>
+        <a href="#cookies"><span>06</span>Cookies</a>
+        <a href="#forms"><span>07</span>Forms</a>
+        <a href="#ranges"><span>08</span>Byte ranges</a>
+        <a href="#conditional"><span>09</span>Conditional</a>
+        <a href="#cache"><span>10</span>Cache decisions</a>
+        <a href="#redirects"><span>11</span>Redirects</a>
+        <a href="#frames"><span>12</span>WebSocket frames</a>
+        <a href="#compression"><span>13</span>Compression</a>
+        <a href="#bounds"><span>14</span>Bounds</a>
+      </nav>
+    </aside>
+
+    <article>
+
+      <section class="step" id="install">
+        <span class="step-no">01 — INSTALL</span>
+        <h2>One module, nineteen packages</h2>
+        <p>Add the module once. A file then imports the package it needs by path, and calls it through the name that path ends in.</p>
+        <div class="code">
+          <div class="code-top"><span>shell</span><button>copy</button></div>
+          <pre>moon add moonbitstack/moonhttp</pre>
+        </div>
+        <div class="code">
+          <div class="code-top"><span>moonbit</span><button>copy</button></div>
+          <pre>import {
+  "moonbitstack/moonhttp/http1",      <span class="c">// @http1</span>
+  "moonbitstack/moonhttp/conditional" <span class="c">// @conditional</span>
+}</pre>
+        </div>
+        <p class="note">Nothing has to be initialised, and no package holds global state. A parser is a function; a connection is a value a caller keeps.</p>
+      </section>
+
+      <section class="step" id="request">
+        <span class="step-no">02 — A REQUEST HEAD</span>
+        <h2>A head, and how much of the buffer it used</h2>
+        <p>A request arrives as octets, and the first thing to know is where it ends. <code>request</code> answers both: the head as a record, and the count of octets it took. Everything after that count is the body — or, on a kept-alive connection, the next message.</p>
+        <div class="code">
+          <div class="code-top"><span>moonbit</span><button>copy</button></div>
+          <pre><span class="c">// The octets as they arrived.</span>
+let head = b"GET /notes/42 HTTP/1.1\r\nHost: example.com\r\nIf-None-Match: \"v7\"\r\n\r\n"
+let (request, used) = @http1.request(head[:])
+println("\{request.verb} \{request.target} \{used}")</pre>
+        </div>
+        <div class="out">GET /notes/42 66</div>
+        <p>Fields are looked up without regard to case and come back as bytes, not as text: a field value is whatever the peer sent, and deciding it is text is a later, fallible step.</p>
+        <div class="code">
+          <div class="code-top"><span>moonbit</span><button>copy</button></div>
+          <pre>request.field("if-none-match")  <span class="c">// Some(b'"v7"')</span>
+request.field("if-none-match").unwrap()[:]  <span class="c">// b'"v7"', quotes included</span></pre>
+        </div>
+      </section>
+
+      <section class="step" id="answer">
+        <span class="step-no">03 — THE ANSWER</span>
+        <h2>A status line, in both directions</h2>
+        <p>The same package reads a response and writes one. <code>Response::of</code> takes a status, the fields and a body; <code>encode</code> writes the octets. The reason phrase is the registered one unless a caller says otherwise, and a 304 carries neither a body nor the framing fields a body would need.</p>
+        <div class="code">
+          <div class="code-top"><span>moonbit</span><button>copy</button></div>
+          <pre>let not_modified = @http1.Response::of(
+  304,
+  fields=[@header.Header::of("ETag", "\"v7\"")],
+  reason="Not Modified",
+)
+let wire = not_modified.encode()</pre>
+        </div>
+        <div class="out">HTTP/1.1 304 Not Modified\r\nETag: "v7"\r\n\r\n</div>
+        <p>Reading one works the other way: <code>@http1.response(bytes[:], verb="GET")</code> takes the verb because a response's body framing depends on the request that asked for it — a <span class="method m-head">HEAD</span> response has the fields of a body and none of the body.</p>
+      </section>
+
+      <section class="step" id="methods">
+        <span class="step-no">04 — METHODS</span>
+        <h2>Safe is not the same as idempotent</h2>
+        <p>Two properties decide what a client may do with a request it has already sent: safe means the method asks for nothing to change, idempotent means sending it twice is the same as sending it once. Retrying, redirecting and caching all turn on one of them.</p>
+        <table class="tbl">
+          <thead><tr><th>Method</th><th>Safe</th><th>Idempotent</th><th>What it is for</th></tr></thead>
+          <tbody>
+            <tr><td><span class="method m-get">GET</span></td><td>yes</td><td>yes</td><td>the representation itself</td></tr>
+            <tr><td><span class="method m-head">HEAD</span></td><td>yes</td><td>yes</td><td>the fields, without the body</td></tr>
+            <tr><td><span class="method m-post">POST</span></td><td>no</td><td>no</td><td>whatever the target does with it</td></tr>
+            <tr><td><span class="method m-put">PUT</span></td><td>no</td><td>yes</td><td>replace the representation</td></tr>
+            <tr><td><span class="method m-patch">PATCH</span></td><td>no</td><td>no</td><td>a delta to the representation</td></tr>
+            <tr><td><span class="method m-delete">DELETE</span></td><td>no</td><td>yes</td><td>remove it</td></tr>
+            <tr><td><span class="method m-options">OPTIONS</span></td><td>yes</td><td>yes</td><td>what may be asked of it</td></tr>
+            <tr><td><span class="method m-trace">TRACE</span></td><td>yes</td><td>yes</td><td>the request as it was received</td></tr>
+            <tr><td><span class="method m-connect">CONNECT</span></td><td>no</td><td>no</td><td>a tunnel through the origin</td></tr>
+          </tbody>
+        </table>
+        <div class="code">
+          <div class="code-top"><span>moonbit</span><button>copy</button></div>
+          <pre>let verb = @method.Method::of("PUT"[:])
+verb.is_safe()        <span class="c">// false</span>
+verb.is_idempotent()  <span class="c">// true — two PUTs, one result</span></pre>
+        </div>
+      </section>
+
+      <section class="step" id="events">
+        <span class="step-no">05 — EVENT STREAMS</span>
+        <h2>Frames are written, events are dispatched</h2>
+        <p>An event is a few lines and a blank one. Writing is <code>encode</code>; reading is <code>events</code>, which follows what an <code>EventSource</code> does rather than what the bytes say: a comment dispatches nothing, a frame without data dispatches nothing, and the type defaults to <code>message</code>.</p>
+        <div class="code">
+          <div class="code-top"><span>moonbit</span><button>copy</button></div>
+          <pre>let frame = @sse.Event::new(data="{\"seq\":1}", kind="tick", id="1").encode()
+let events = @sse.events(frame[:])</pre>
+        </div>
+        <div class="out">id: 1
+event: tick
+data: {"seq":1}
+
+1 event — data {"seq":1}, kind tick</div>
+        <p>Sending each frame as its own chunk is the caller's job, and it matters: a stream delivered as a single body is not a stream, because a client dispatches an event only when it reads that event's blank line.</p>
+      </section>
+
+      <section class="step" id="cookies">
+        <span class="step-no">06 — COOKIES</span>
+        <h2>One header answers, the other one asks</h2>
+        <p><code>Set-Cookie</code> travels alone and carries attributes; <code>Cookie</code> travels as one line and carries none. The two sides are different formats, so they are different calls, and a cookie read from a request has no attributes because the request never had them.</p>
+        <div class="code">
+          <div class="code-top"><span>moonbit</span><button>copy</button></div>
+          <pre>let cookie = @cookie.Cookie::new(
+  "sid",
+  "8f2c",
+  http_only=true,
+  secure=true,
+  same_site=Some(@cookie.SameSite::Lax),
+).encode()
+let token = @cookie.get("a=1; sid=8f2c; b=2"[:], "sid"[:]).unwrap()
+println(cookie)
+println(token)</pre>
+        </div>
+        <div class="out">sid=8f2c; Path=/; Secure; HttpOnly; SameSite=Lax
+8f2c</div>
+        <p>A path defaults to <code>/</code> because a cookie without one is sent to the whole origin anyway; <code>SameSite</code> is written only when a caller names it, since the default differs between browsers and pretending to know it here would hide that.</p>
+      </section>
+
+      <section class="step" id="forms">
+        <span class="step-no">07 — FORMS</span>
+        <h2>A body becomes fields</h2>
+        <p>The two encodings are chosen by <code>Content-Type</code>, and the body is read as whichever one it says. A file part keeps its name, its type and the octets; a text part is the string it decoded to.</p>
+        <div class="code">
+          <div class="code-top"><span>moonbit</span><button>copy</button></div>
+          <pre>let body = b"name=ada&amp;role=dev"
+let form = @form.parse(body[:], "application/x-www-form-urlencoded"[:])
+println(form.field("name").unwrap())
+println(form.field("role").unwrap())</pre>
+        </div>
+        <div class="out">ada
+dev</div>
+        <p>Because the body came from whoever sent it, both encodings are bounded by a <code>Limits</code> the endpoint owns — a million empty parts and one enormous part are two ways of asking a server to allocate more than it has. A form over its bounds is refused whole rather than truncated: a handler given the first thousand parts of a larger form would answer a request nobody sent.</p>
+      </section>
+
+      <section class="step" id="ranges">
+        <span class="step-no">08 — BYTE RANGES</span>
+        <h2>Ask for a range, get parts</h2>
+        <p><code>decode</code> reads the field; <code>measure</code> resolves every range against the length, merging overlapping ones and refusing the request as a whole if any of them is unsatisfiable. What comes back is what a <code>206</code> is allowed to carry.</p>
+        <div class="code">
+          <div class="code-top"><span>moonbit</span><button>copy</button></div>
+          <pre>let specs = @range.decode("bytes=0-499, 1000-"[:])       <span class="c">// two specs</span>
+let parts = @range.measure(specs[:], length=10000L)     <span class="c">// two parts</span>
+for part in parts.unwrap() {
+  println(@range.Content::new(part, complete=10000L).encode())
+}
+println(@range.unsatisfied(10000L).encode())</pre>
+        </div>
+        <div class="out">bytes 0-499/10000
+bytes 1000-9999/10000
+bytes */10000</div>
+        <p>A suffix range is measured from the end, so <code>bytes=-200</code> on a ten-kilobyte file is <code>9800-9999</code>. A multi-range result is a body with its own boundary, and <code>@range.parts</code> writes it.</p>
+      </section>
+
+      <section class="step" id="conditional">
+        <span class="step-no">09 — CONDITIONAL</span>
+        <h2>Has the copy changed?</h2>
+        <p>An entity-tag is a hash of the representation, and a precondition is a question about it. Five fields ask, and they are weighed in a fixed order — if a resource has both a date and a tag, the tag decides and the date is not consulted.</p>
+        <div class="code">
+          <div class="code-top"><span>moonbit</span><button>copy</button></div>
+          <pre>let tag = @conditional.hash(b"hello"[:], digest=@sha2.Hasher::new())
+let ask = @conditional.Ask::read([("If-None-Match", tag.encode())][:])
+println(tag.encode())
+match ask.evaluate(verb="GET", etag=tag) {
+  Fresh => println("304")   <span class="c">// the copy is still good</span>
+  Go => println("200")
+  Failed => println("412")
+}</pre>
+        </div>
+        <div class="out">"5-2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+304</div>
+        <p><code>Fresh</code> answers a 304 with no body; a failed precondition answers 412; <code>Go</code> means the client was not describing a copy at all, so the method is carried out as usual.</p>
+      </section>
+
+      <section class="step" id="cache">
+        <span class="step-no">10 — CACHE DECISIONS</span>
+        <h2>Four questions, and a clock</h2>
+        <p>A cache decides whether it may store a response, how long that response is fresh, how old it is now, and whether it may answer this request with it. Those are four functions of the fields and a clock; where the octets live is somebody else's problem, and this package does not keep them.</p>
+        <div class="code">
+          <div class="code-top"><span>moonbit</span><button>copy</button></div>
+          <pre>let sent = @moondate.http("Sun, 06 Nov 1994 08:49:37 GMT")
+let stored = @cache.Entry::read(
+  status=200,
+  headers=[("Cache-Control", "max-age=60"), ("Date", "Sun, 06 Nov 1994 08:49:37 GMT")],
+  request=[],
+  sent~,
+  received=sent,
+)
+let now = sent.plus(@moondate.Span::new(seconds=30L))
+println(stored.current_age(now~))
+match stored.verdict(request=@cache.control, presented=[], now~) {
+  Serve => println("serve")
+  Validate => println("validate")
+  Miss => println("miss")
+}</pre>
+        </div>
+        <div class="out">30
+serve</div>
+        <p>Thirty seconds into a sixty-second lifetime, the stored response answers on its own. At ninety it is stale, and the verdict is <code>Validate</code> if the entry has a validator and <code>Miss</code> if it has none. <a href="./protocols.html#age">The age figure</a> takes the four clock readings apart.</p>
+      </section>
+
+      <section class="step" id="redirects">
+        <span class="step-no">11 — REDIRECTS</span>
+        <h2>Where next, with what</h2>
+        <p>A redirect is four answers: which URL, which method, whether the body goes with it, and which credentials stop at the origin. The status decides the method — <span class="method m-get">GET</span> and <span class="method m-head">HEAD</span> are unchanged everywhere, while <span class="method m-post">POST</span> becomes a <span class="method m-get">GET</span> on 301, 302 and 303 and stays a <span class="method m-post">POST</span> on 307 and 308.</p>
+        <div class="code">
+          <div class="code-top"><span>moonbit</span><button>copy</button></div>
+          <pre>let from = @moonurl.Url::decode("https://example.com/a")
+let step = @client.follow(
+  status=302,
+  location="/b",
+  from~,
+  verb=@method.Method::Post,
+  visited=[from][:],
+)
+println("\{step.verb.name()} \{step.url.encode()} body=\{step.body}")</pre>
+        </div>
+        <div class="out">GET https://example.com/b body=false</div>
+        <p><code>strip</code> lists the field names to drop, and it is empty only while the origin stays the same. A relative <code>Location</code> is resolved against the request that was redirected; a target that has already been visited is a loop, not a hop.</p>
+        <div class="code">
+          <div class="code-top"><span>moonbit</span><button>copy</button></div>
+          <pre><span class="c">// An alternative service, as a server advertises one.</span>
+let alternatives = @client.altsvc("h3=\":443\"; ma=3600"[:])</pre>
+        </div>
+        <p><code>altsvc</code> answers the alternatives in the server's order, or <code>None</code> for <code>clear</code>; <code>best</code> picks the first one this client speaks that has not expired.</p>
+      </section>
+
+      <section class="step" id="frames">
+        <span class="step-no">12 — WEBSOCKET FRAMES</span>
+        <h2>A frame is a byte layout</h2>
+        <p>Two octets of header, then a length that may grow, then a key the client chose, then the payload. A client masks; a server does not. Reading is a function over a buffer that answers <code>None</code> until the whole frame has arrived.</p>
+        <div class="code">
+          <div class="code-top"><span>moonbit</span><button>copy</button></div>
+          <pre>let frame : @ws.Frame = { fin: true, opcode: @ws.Opcode::Text, payload: b"hi" }
+let wire = frame.encode(mask=b"\x01\x02\x03\x04")   <span class="c">// 8 octets</span>
+let (back, used) = @ws.decode(wire[:], client=true).unwrap()</pre>
+        </div>
+        <div class="out">81 82 01 02 03 04 69 6b
+payload: "hi"</div>
+        <p><code>81</code> is FIN and the text opcode, <code>82</code> is the mask bit and a length of two, and the last two octets are the payload masked with the key. The masking is what makes a frame from a client a frame from a client.</p>
+      </section>
+
+      <section class="step" id="compression">
+        <span class="step-no">13 — COMPRESSION</span>
+        <h2>One connection, one DEFLATE stream</h2>
+        <p>permessage-deflate is four parameters and a stream that never ends. Each message is stopped with an empty block whose four-octet tail is then removed; the next message carries on inside the same stream, which is why the window survives across messages unless the terms say otherwise.</p>
+        <div class="code">
+          <div class="code-top"><span>moonbit</span><button>copy</button></div>
+          <pre>let offers = @pmd.offers("permessage-deflate; client_max_window_bits"[:])
+let terms = @pmd.Extension::agree(offers[:]).unwrap()
+let writer = @pmd.Writer::new(extension=terms)
+let (frame, compressed) = writer.frame(@ws.Opcode::Text, body[:])
+let wire = frame.encode_extension(rsv1=compressed)
+println(terms.encode(role=@pmd.Role::Server))</pre>
+        </div>
+        <div class="out">permessage-deflate; client_max_window_bits=15</div>
+        <p>Agreeing to the extension means every message may be compressed, so <code>threshold</code> exists for the caller who would rather not pay for a message under sixty-four octets. On the reading side, <code>limit</code> caps what one message may expand to — the one place a peer can ask for memory it did not pay for.</p>
+      </section>
+
+      <section class="step" id="bounds">
+        <span class="step-no">14 — BOUNDS</span>
+        <h2>Every bound is an argument</h2>
+        <p>Nothing here grows without a limit, and no limit is hidden. Each one has the default the mainstream uses, so a caller who does not care gets a defensible answer and a caller who does care passes a value.</p>
+        <table class="tbl">
+          <thead><tr><th>Where</th><th>Setting</th><th>Default</th></tr></thead>
+          <tbody>
+            <tr><td>@form</td><td>limits.parts</td><td>1000</td></tr>
+            <tr><td>@form</td><td>limits.part_size</td><td>1 MiB</td></tr>
+            <tr><td>@form</td><td>strict</td><td>off</td></tr>
+            <tr><td>@http1</td><td>limits.head</td><td>16 KiB</td></tr>
+            <tr><td>@http1</td><td>limits.fields</td><td>100</td></tr>
+            <tr><td>@pmd</td><td>limit</td><td>16 MiB</td></tr>
+            <tr><td>@pmd</td><td>threshold</td><td>0</td></tr>
+            <tr><td>@sse</td><td>space</td><td>on</td></tr>
+          </tbody>
+        </table>
+        <p class="note">A bound that is passed on is <code>Exceeded(limit~, got~)</code>, so a refusal says what the ceiling was and what arrived — the two numbers a caller needs to decide whether to raise it.</p>
+        <p>That is the whole surface in one pass. <a href="./api.html">The reference</a> has every function with its doc comment, and <a href="./protocols.html">the figures</a> take the byte layouts apart.</p>
+      </section>
+
+    </article>
+  </div>
+
+</main>
+
+<footer class="foot">
+  <div class="page">
+    <div class="foot-grid">
+      <div class="about">
+        <a class="brand" href="./"><span class="tile"><i></i><i></i><i></i></span>moonhttp</a>
+        <p>HTTP logic for MoonBit, with no I/O in it. Bytes in, values out, on every target the compiler builds for.</p>
+      </div>
+      <div>
+        <h4>Pages</h4>
+        <ul>
+          <li><a href="./guide.html">Guide</a></li>
+          <li><a href="./api.html">API reference</a></li>
+          <li><a href="./protocols.html">Protocols</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Families</h4>
+        <ul>
+          <li><a href="./api.html#http1">HTTP/1.1</a></li>
+          <li><a href="./api.html#http2">HTTP/2</a></li>
+          <li><a href="./api.html#http3">HTTP/3</a></li>
+          <li><a href="./api.html#ws">WebSocket</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Elsewhere</h4>
+        <ul>
+          <li><a href="https://github.com/moonbitstack/moonhttp">GitHub</a></li>
+          <li><a href="https://mooncakes.io/docs/moonbitstack/moonhttp">mooncakes</a></li>
+          <li><a href="https://github.com/moonbitstack/moonhttp/blob/master/LICENSE">Apache-2.0</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="meta">
+      <svg class="tick-meta" width="56" height="6" viewBox="0 0 56 6" aria-hidden="true"><path class="a" d="M0 3h22"/><path class="b" d="M28 3h14"/><path class="c" d="M48 3h8"/></svg>
+      <span>Apache-2.0</span>
+      <span>© 2026 Leo Cheng</span>
+      <span>RFC 9110 · 9111 · 9112 · 9113 · 9114 · 6455 · 7692 · 7838</span>
+    </div>
+  </div>
+</footer>
+
+<script src="./assets/site.js"></script>
+</body>
+</html>

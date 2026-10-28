@@ -65,8 +65,8 @@ jobs:
         run: |
           moon info --target all && git diff --exit-code
 
-      # The vectors and the API reference are generated and committed, so CI fails
-      # if either was hand-edited or left behind by a change to the sources.
+      # The vectors and the API page are generated and committed, so CI fails if
+      # either was hand-edited or left behind by a change to the sources.
       - name: generated files are current
         if: runner.os == 'Linux'
         run: |

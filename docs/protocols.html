@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Protocols, drawn — moonhttp</title>
+<meta name="description" content="The byte layouts of HTTP/1.1, chunked coding, HTTP/2, HTTP/3, WebSocket and permessage-deflate, plus a cache age calculator and the redirect rewrite table.">
+<meta name="theme-color" content="#e8f4f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d232d" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Noto+Sans+SC:wght@300;400;500;700&display=swap">
+<link rel="stylesheet" href="./assets/site.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="page top-in">
+    <a class="brand" href="./"><span class="tile"><i></i><i></i><i></i></span>moonhttp</a>
+    <nav class="nav">
+      <a href="./guide.html">Guide</a>
+      <a href="./api.html">API</a>
+      <a href="./protocols.html" class="on">Protocols</a>
+      <a class="gh" href="https://github.com/moonbitstack/moonhttp" aria-label="GitHub repository" title="GitHub">
+        <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+      </a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <section class="page masthead">
+    <svg class="tick tick-tr" width="148" height="56" viewBox="0 0 148 56" aria-hidden="true">
+      <path class="a" d="M36 4h112"/><path class="b" d="M72 20h76"/><path class="c" d="M110 36h38"/>
+    </svg>
+    <p class="label">Figures · <b>nine plates</b></p>
+    <h1 class="display">The wire,<br>drawn to scale.</h1>
+    <p class="lede">A protocol is a shape before it is a rule. Each plate below is one of the shapes this library has to get right: a head, a chunk, a frame, a stream, and the arithmetic a cache does over a clock.</p>
+    <div class="meta"><span>1 cell = 8 bits</span><i>/</i><span>RFC 9112 · 9113 · 9114 · 6455 · 7692 · 9111</span></div>
+  </section>
+
+  <div class="page" style="padding-top:56px">
+
+    <!-- 01 -->
+    <figure class="fig">
+      <div class="fig-head"><span class="no">FIG. 01</span><h2>An HTTP/1.1 message</h2><span class="tag">RFC 9112 §2</span></div>
+      <div class="plate">
+        <div class="plate-top"><span class="label"><b>request</b>, 66 octets of head</span><span class="legend">CRLF ends every line</span></div>
+        <div class="anatomy">
+          <div class="ln head"><span>GET /notes/42 HTTP/1.1</span><span class="anote">request-line: method SP target SP version</span></div>
+          <div class="ln"><span>Host: example.com</span><span class="anote">field-line: name ":" value</span></div>
+          <div class="ln"><span>If-None-Match: "v7"</span><span class="anote">a field may be repeated, never folded</span></div>
+          <div class="ln blank"><span>\r\n\r\n</span><span class="anote">the empty line that ends the head</span></div>
+          <div class="ln body"><span>{"seq":1}</span><span class="anote">body, framed by Content-Length or Transfer-Encoding</span></div>
+        </div>
+      </div>
+      <div class="fig-notes">
+        <p class="label">What to notice</p>
+        <div>
+          <p>The head has no length field. It ends at the first empty line, which is why a reader scans for four octets rather than jumping to an offset — and why the octet count it returns matters: everything after it is body, or the next message on a kept-alive connection.</p>
+          <p>Fields are bytes. Deciding that <code>"v7"</code> is a quoted string is the next layer's problem, and a decision that can fail.</p>
+        </div>
+      </div>
+    </figure>
+
+    <!-- 02 -->
+    <figure class="fig">
+      <div class="fig-head"><span class="no">FIG. 02</span><h2>Chunked body</h2><span class="tag">RFC 9112 §7.1</span></div>
+      <div class="plate">
+        <div class="plate-top"><span class="label"><b>Transfer-Encoding: chunked</b></span><span class="legend">size in hex</span></div>
+        <div class="anatomy">
+          <div class="ln head"><span>1a</span><span class="anote">chunk size in hex — 26 octets</span></div>
+          <div class="ln"><span>{"seq":1,"ok":true,"n":7}</span><span class="anote">that many octets, then CRLF</span></div>
+          <div class="ln head"><span>0</span><span class="anote">last chunk: a size of zero</span></div>
+          <div class="ln"><span></span><span class="anote">trailer section, empty here</span></div>
+        </div>
+      </div>
+      <div class="fig-notes">
+        <p class="label">What to notice</p>
+        <div>
+          <p>The size is hex and counts the data, not the CRLF that follows it. A chunk extension may sit after the size behind a semicolon, and a reader that treats it as part of the number reads the wrong body.</p>
+          <p>The last chunk carries zero octets and is followed by the trailers — fields that belong to the message but arrive after its body.</p>
+        </div>
+      </div>
+    </figure>
+
+    <!-- 03 -->
+    <figure class="fig">
+      <div class="fig-head"><span class="no">FIG. 03</span><h2>HTTP/2 frame header</h2><span class="tag">RFC 9113 §4.1</span></div>
+      <div class="plate">
+        <div class="plate-top"><span class="label"><b>nine octets</b>, every frame</span><span class="legend">big-endian</span></div>
+        <div class="octets">
+          <div class="o span3"><b>LENGTH</b>24 bits</div>
+          <div class="o op"><b>TYPE</b>8</div>
+          <div class="o"><b>FLAGS</b>8</div>
+          <div class="o data span4"><b>R + STREAM ID</b>1 + 31</div>
+        </div>
+        <div class="octet-nums"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span></div>
+        <figcaption>Length counts the payload only, never the header.</figcaption>
+      </div>
+      <div class="fig-notes">
+        <p class="label">What to notice</p>
+        <div>
+          <p>Every frame starts with the same nine octets, so a reader can skip a type it does not know by trusting the length — which is the point of putting the length first.</p>
+          <p>Flags mean different things per type: the same bit is END_STREAM on a DATA frame and END_HEADERS on a HEADERS one. The type and the flag are read together or not at all. The reserved bit is not spare: a receiver that sees it set treats the frame as a connection error.</p>
+        </div>
+      </div>
+    </figure>
+
+    <!-- 04 -->
+    <figure class="fig">
+      <div class="fig-head"><span class="no">FIG. 04</span><h2>A variable-length integer</h2><span class="tag">RFC 9000 §16</span></div>
+      <div class="plate">
+        <div class="plate-top"><span class="label"><b>HTTP/3 and QUIC</b> count in this</span><span class="legend">the prefix is the width</span></div>
+        <table class="tbl" style="margin-top:18px">
+          <thead><tr><th>Prefix</th><th>Width</th><th>Value</th><th>Where it is used</th></tr></thead>
+          <tbody>
+            <tr><td>00</td><td>1 octet</td><td>6 bits · 0–63</td><td>a small frame type or stream type</td></tr>
+            <tr><td>01</td><td>2 octets</td><td>14 bits · 0–16 383</td><td>most lengths</td></tr>
+            <tr><td>10</td><td>4 octets</td><td>30 bits · 0–2³⁰−1</td><td>a body that does not fit in 16 KiB</td></tr>
+            <tr><td>11</td><td>8 octets</td><td>62 bits · 0–2⁶²−1</td><td>the connection's stream count</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="fig-notes">
+        <p class="label">What to notice</p>
+        <div>
+          <p>The first two bits say how many bits the value has, and the value is written in as few octets as its own size allows. The encoding is self-describing, so a reader never needs the field's type to parse it.</p>
+          <p>QUIC and HTTP/3 use the same integer, which is why it lives in <code>moonvar</code> rather than here.</p>
+        </div>
+      </div>
+    </figure>
+
+    <!-- 05 -->
+    <figure class="fig">
+      <div class="fig-head"><span class="no">FIG. 05</span><h2>A WebSocket frame</h2><span class="tag">RFC 6455 §5.2</span></div>
+      <div class="plate">
+        <div class="plate-top"><span class="label"><b>client to server</b>, two octets of payload</span><span class="legend">1 cell = 1 bit</span></div>
+        <div class="bits">
+          <div class="bn">0x00</div>
+          <div class="bcell"><b>FIN</b>1</div>
+          <div class="bcell">RSV1</div>
+          <div class="bcell">RSV2</div>
+          <div class="bcell">RSV3</div>
+          <div class="bcell op b4"><b>OPCODE</b>4</div>
+          <div class="bn">0x01</div>
+          <div class="bcell"><b>MASK</b>1</div>
+          <div class="bcell b7"><b>LENGTH</b>7</div>
+        </div>
+        <div class="octets" style="grid-template-columns:repeat(3,minmax(0,1fr));margin-top:8px">
+          <div class="o mask span2"><b>MASKING KEY</b>32 bits — the client's four octets</div>
+          <div class="o data"><b>PAYLOAD</b>2 octets, each XORed with the key</div>
+        </div>
+        <figcaption>The same message on the wire: <code>81 82 01 02 03 04 69 6b</code> — <code>81</code> is FIN and the text opcode, <code>82</code> is the mask bit and a length of two, and <code>hi</code> arrives as <code>69 6b</code>.</figcaption>
+      </div>
+      <div class="fig-notes">
+        <p class="label">What to notice</p>
+        <div>
+          <p>The mask is not encryption and is not meant to be: it exists so that a client cannot be tricked into sending octets a proxy would read as a request. That is also why a server must not mask, and why a client that does not mask is refused.</p>
+          <p>RSV1 belongs to the extension, which is the next plate.</p>
+        </div>
+      </div>
+    </figure>
+
+    <!-- 06 -->
+    <figure class="fig">
+      <div class="fig-head"><span class="no">FIG. 06</span><h2>The stream permessage-deflate shares</h2><span class="tag">RFC 7692 §7.2</span></div>
+      <div class="plate">
+        <div class="plate-top"><span class="label"><b>one stream</b>, three messages</span><span class="legend">tail removed by the sender</span></div>
+        <div class="stream">
+          <div class="row">
+            <span class="tag">message 1</span>
+            <div class="bar">f2 48 cd c9 c9 07 00</div>
+            <span class="cut">00 00 ff ff</span>
+          </div>
+          <div class="row">
+            <span class="tag">message 2</span>
+            <div class="bar">2a 4e 4c 4a 2e 01 00</div>
+            <span class="cut">00 00 ff ff</span>
+          </div>
+          <div class="row">
+            <span class="tag">message 3</span>
+            <div class="bar">a message that compressed to nothing</div>
+            <span class="cut">00 00 ff ff</span>
+          </div>
+          <p class="stream-note">One DEFLATE stream, stopped and resumed at each message boundary. The receiver puts the four octets back before decompressing, which is what makes the pieces one stream again.</p>
+        </div>
+      </div>
+      <div class="fig-notes">
+        <p class="label">What to notice</p>
+        <div>
+          <p>The window is not reset between messages unless the terms say <code>server_no_context_takeover</code> or <code>client_no_context_takeover</code>. A match in message 2 may reach into message 1, which is where most of the ratio comes from.</p>
+          <p>That is also why a message cannot be decompressed on its own: the stream, not the message, is the unit the compressor works in.</p>
+        </div>
+      </div>
+    </figure>
+
+    <!-- 07 -->
+    <figure class="fig" id="age">
+      <div class="fig-head"><span class="no">FIG. 07</span><h2>How old is a stored response</h2><span class="tag">RFC 9111 §4.2.3</span></div>
+      <div class="plate">
+        <div class="plate-top"><span class="label"><b>four clock readings</b>, one age</span><span class="legend">drag to change</span></div>
+        <div class="calc" id="calc" style="margin-top:20px;border:0;padding:0;background:transparent">
+          <div class="calc-rows">
+            <div class="calc-row">
+              <label for="a-dated">Date, before now</label>
+              <input id="a-dated" type="range" min="0" max="300" step="1" value="0">
+              <output id="v-dated">0s</output>
+            </div>
+            <div class="calc-row">
+              <label for="a-age">Age field</label>
+              <input id="a-age" type="range" min="0" max="300" step="1" value="0">
+              <output id="v-age">0s</output>
+            </div>
+            <div class="calc-row">
+              <label for="a-delay">request → response</label>
+              <input id="a-delay" type="range" min="0" max="30" step="1" value="1">
+              <output id="v-delay">1s</output>
+            </div>
+            <div class="calc-row">
+              <label for="a-resident">received → now</label>
+              <input id="a-resident" type="range" min="0" max="300" step="1" value="30">
+              <output id="v-resident">30s</output>
+            </div>
+            <div class="calc-row">
+              <label for="a-life">freshness lifetime</label>
+              <input id="a-life" type="range" min="10" max="600" step="10" value="60">
+              <output id="v-life">60s</output>
+            </div>
+          </div>
+          <div class="calc-sum">
+            <div><div class="k">initial age</div><div class="v" id="r-initial">1s</div></div>
+            <div><div class="k">current age</div><div class="v" id="r-age">31s</div></div>
+            <div><div class="k">left</div><div class="v" id="r-left">29s</div></div>
+          </div>
+          <div class="calc-verdict" id="verdict"><span class="dot"></span>fresh — may be served</div>
+          <p class="formula">
+            apparent = max(0, response_time − date)<br>
+            corrected = age + (response_time − request_time)<br>
+            current = max(apparent, corrected) + (now − response_time)
+          </p>
+        </div>
+      </div>
+      <div class="fig-notes">
+        <p class="label">What to notice</p>
+        <div>
+          <p>The largest of the two ages wins: what the origin said, and what the trip added. That max is why a response dated in the future is not newborn — the delay still counts.</p>
+          <p>Freshness is <code>age ≤ lifetime</code>, not <code>&lt;</code>. A response is stale once its age is <b>greater</b> than the lifetime, so the second it turns exactly is still fresh; move the sliders to the boundary and watch the verdict change.</p>
+        </div>
+      </div>
+    </figure>
+
+    <!-- 08 -->
+    <figure class="fig">
+      <div class="fig-head"><span class="no">FIG. 08</span><h2>What a redirect does to the method</h2><span class="tag">RFC 9110 §15.4</span></div>
+      <div class="plate">
+        <div class="plate-top"><span class="label"><b>five statuses</b>, two behaviours</span><span class="legend">method and body together</span></div>
+        <table class="tbl" style="margin-top:18px">
+          <thead><tr><th>Status</th><th>From</th><th>To</th><th>Body</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td>301</td><td><span class="method m-post">POST</span></td><td><span class="method m-get">GET</span></td><td>dropped</td><td>moved permanently; the original said so</td></tr>
+            <tr><td>302</td><td><span class="method m-post">POST</span></td><td><span class="method m-get">GET</span></td><td>dropped</td><td>found; what browsers have always done</td></tr>
+            <tr><td>303</td><td><span class="method m-put">PUT</span></td><td><span class="method m-get">GET</span></td><td>dropped</td><td>see other; the answer is elsewhere</td></tr>
+            <tr><td>307</td><td><span class="method m-post">POST</span></td><td><span class="method m-post">POST</span></td><td>kept</td><td>temporary; the method must not change</td></tr>
+            <tr><td>308</td><td><span class="method m-put">PUT</span></td><td><span class="method m-put">PUT</span></td><td>kept</td><td>permanent, and the same prohibition</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="fig-notes">
+        <p class="label">What to notice</p>
+        <div>
+          <p>303 is the only one that rewrites for every method: it exists to turn a submission into a fetch. 307 and 308 exist for the opposite reason, and a client whose body cannot be replayed must refuse them rather than send an empty one.</p>
+          <p>Credentials are a separate decision from the method: <code>Authorization</code> and <code>Cookie</code> are dropped when the origin changes, compared by scheme, host and the effective port.</p>
+        </div>
+      </div>
+    </figure>
+
+    <!-- 09 -->
+    <figure class="fig">
+      <div class="fig-head"><span class="no">FIG. 09</span><h2>An alternative service</h2><span class="tag">RFC 7838 §3</span></div>
+      <div class="plate">
+        <div class="plate-top"><span class="label"><b>Alt-Svc</b>, as a server writes it</span><span class="legend">one member of a list</span></div>
+        <div class="anatomy">
+          <div class="ln head"><span>h3=":443"; ma=3600</span><span class="anote">protocol-id = alt-authority ; parameters</span></div>
+          <div class="ln"><span>h3</span><span class="anote">an ALPN name, percent-encoded when it has to be</span></div>
+          <div class="ln"><span>":443"</span><span class="anote">an empty host means the origin's own; the port is never implied</span></div>
+          <div class="ln"><span>ma=3600</span><span class="anote">seconds this stays fresh — 86400 when absent</span></div>
+          <div class="ln"><span>persist=1</span><span class="anote">optional: keep this across a change of network</span></div>
+        </div>
+      </div>
+      <div class="fig-notes">
+        <p class="label">What to notice</p>
+        <div>
+          <p>An alternative is authoritative for the <b>origin</b>, not for itself: a connection to it still presents the origin's name in TLS and its <code>Host</code>. That is what makes it a redirection rather than a different site.</p>
+          <p><code>clear</code> as the whole value forgets every alternative the origin ever advertised. A member this reader cannot parse is dropped rather than failing the field: the others are still what the origin said.</p>
+        </div>
+      </div>
+    </figure>
+
+    <p style="font-family:var(--mono);font-size:11px;color:var(--ink-2);letter-spacing:.04em;padding:4px 0 48px">
+      Each plate is drawn from the section named in its header. The calculator runs RFC 9111 §4.2.3 with the same comparison the library uses.
+    </p>
+
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="page">
+    <div class="foot-grid">
+      <div class="about">
+        <a class="brand" href="./"><span class="tile"><i></i><i></i><i></i></span>moonhttp</a>
+        <p>HTTP logic for MoonBit, with no I/O in it. Bytes in, values out, on every target the compiler builds for.</p>
+      </div>
+      <div>
+        <h4>Pages</h4>
+        <ul>
+          <li><a href="./guide.html">Guide</a></li>
+          <li><a href="./api.html">API reference</a></li>
+          <li><a href="./protocols.html">Protocols</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Families</h4>
+        <ul>
+          <li><a href="./api.html#http1">HTTP/1.1</a></li>
+          <li><a href="./api.html#http2">HTTP/2</a></li>
+          <li><a href="./api.html#http3">HTTP/3</a></li>
+          <li><a href="./api.html#ws">WebSocket</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Elsewhere</h4>
+        <ul>
+          <li><a href="https://github.com/moonbitstack/moonhttp">GitHub</a></li>
+          <li><a href="https://mooncakes.io/docs/moonbitstack/moonhttp">mooncakes</a></li>
+          <li><a href="https://github.com/moonbitstack/moonhttp/blob/master/LICENSE">Apache-2.0</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="meta">
+      <svg class="tick-meta" width="56" height="6" viewBox="0 0 56 6" aria-hidden="true"><path class="a" d="M0 3h22"/><path class="b" d="M28 3h14"/><path class="c" d="M48 3h8"/></svg>
+      <span>Apache-2.0</span>
+      <span>© 2026 Leo Cheng</span>
+      <span>RFC 9110 · 9111 · 9112 · 9113 · 9114 · 6455 · 7692 · 7838</span>
+    </div>
+  </div>
+</footer>
+
+<script src="./assets/site.js"></script>
+</body>
+</html>

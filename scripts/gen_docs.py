@@ -1,30 +1,36 @@
 #!/usr/bin/env python3
-"""Generate a self-contained, styled API-reference site (docs/index.html) for
-gh-pages from the package sources' `///` doc comments. Reproducible: reads the
-.mbt files, so the docs never drift from the code."""
+"""Generate docs/api.html — the reference — from the `///` comments above the
+public items in each package.
+
+Reproducible: it reads the .mbt files, so the page cannot drift from the code.
+`docs/index.html`, `guide.html` and `protocols.html` are written by hand and are
+not touched here.
+"""
 import re, html, pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+
+# (anchor, source directory, section of the specification, one line about it)
 PKGS = [
-    ("form", "form", "A request body read as the form its Content-Type says it is: multipart/form-data through moonmime, application/x-www-form-urlencoded through moonurl."),
-    ("range", "range", "RFC 9110 §14 range requests: the fields, the arithmetic against a length, and the multi-range body."),
-    ("conditional", "conditional", "RFC 9110 §8.8 and §13: entity-tags, the five precondition fields, and the order §13.2.2 weighs them in."),
-    ("cookie", "cookie", "RFC 6265 Cookie and Set-Cookie, each read and written."),
-    ("cache", "cache", "RFC 9111 cache decisions: Cache-Control both sides, freshness, age, storability and reuse, and the conditional request a cache sends."),
-    ("client", "client", "RFC 9110 §15.4 redirection and RFC 7838 Alt-Svc: where a response sends a client next, with which method, and which credentials stop at the origin."),
-    ("sse", "sse", "WHATWG Server-Sent Events, framed both ways and dispatched the way an EventSource does."),
-    ("ws", "ws", "RFC 6455 §5 WebSocket framing: opcodes, masking, reassembly, close statuses."),
-    ("pmd", "pmd", "RFC 7692 permessage-deflate: the four parameters, the offer and answer, and a reader and writer over ws frames."),
-    ("deflate", "deflate", "RFC 1951 raw DEFLATE shaped for a stream that outlives one message: a window that can be carried across messages, and a ceiling on what a message may expand to."),
-    ("upgrade", "upgrade", "RFC 6455 §4, the opening handshake — both sides, and the proof that makes the difference."),
-    ("method", "method", "RFC 9110 §9 request methods: the nine standard ones and any other token, and whether each is safe and idempotent."),
-    ("header", "header", "RFC 9110 §5 header fields, as the octets both header compressions share."),
-    ("huffman", "huffman", "RFC 7541 Appendix B, the Huffman code HPACK and QPACK both use."),
-    ("hpack", "hpack", "RFC 7541 HTTP/2 header compression: both tables, both ends."),
-    ("qpack", "qpack", "RFC 9204 HTTP/3 header compression: both tables, the field lines, both instruction streams."),
-    ("http1", "http1", "RFC 9112 messages: request and status lines, field lines, body framing, the chunked coding; and Conn, a whole connection on h11's state machine."),
-    ("http2", "http2", "RFC 9113 framing: the nine-octet header, all ten frame types, the connection preface; and Conn, a whole connection after python-hyper h2."),
-    ("http3", "http3", "RFC 9114 frames, their placement rules, settings, stream types and connection."),
+    ("form", "form", "WHATWG", "A request body read as the form its Content-Type says it is: multipart/form-data through moonmime, application/x-www-form-urlencoded through moonurl."),
+    ("range", "range", "RFC 9110 §14", "Range requests: the fields, the arithmetic against a length, and the multi-range body."),
+    ("conditional", "conditional", "RFC 9110 §13", "Entity-tags, the five precondition fields, and the order §13.2.2 weighs them in."),
+    ("cookie", "cookie", "RFC 6265", "Cookie and Set-Cookie, each read and written."),
+    ("cache", "cache", "RFC 9111", "Cache decisions: Cache-Control both sides, freshness, age, storability and reuse, and the conditional request a cache sends."),
+    ("client", "client", "9110 §15.4 · 7838", "Redirection and Alt-Svc: where a response sends a client next, with which method, and which credentials stop at the origin."),
+    ("sse", "sse", "WHATWG", "Server-Sent Events, framed both ways and dispatched the way an EventSource does."),
+    ("ws", "ws", "RFC 6455 §5", "WebSocket framing: opcodes, masking, reassembly, close statuses."),
+    ("pmd", "pmd", "RFC 7692", "permessage-deflate: the four parameters, the offer and answer, and a reader and writer over ws frames."),
+    ("deflate", "deflate", "RFC 1951", "Raw DEFLATE shaped for a stream that outlives one message: a window carried across messages, and a ceiling on what one may expand to."),
+    ("upgrade", "upgrade", "RFC 6455 §4", "The opening handshake — both sides, and the proof that makes the difference."),
+    ("method", "method", "RFC 9110 §9", "Request methods: the nine standard ones and any other token, and whether each is safe and idempotent."),
+    ("header", "header", "RFC 9110 §5", "Header fields, as the octets both header compressions share."),
+    ("huffman", "huffman", "RFC 7541 App. B", "The Huffman code HPACK and QPACK both use."),
+    ("hpack", "hpack", "RFC 7541", "HTTP/2 header compression: both tables, both ends."),
+    ("qpack", "qpack", "RFC 9204", "HTTP/3 header compression: both tables, the field lines, both instruction streams."),
+    ("http1", "http1", "RFC 9112", "HTTP/1.1 messages: request and status lines, field lines, body framing, the chunked coding; and Conn, a whole connection on h11's state machine."),
+    ("http2", "http2", "RFC 9113", "HTTP/2 framing: the nine-octet header, all ten frame types, the connection preface; and Conn, a whole connection after python-hyper h2."),
+    ("http3", "http3", "RFC 9114", "HTTP/3 frames, their placement rules, settings, stream types and connection."),
 ]
 
 
@@ -88,15 +94,14 @@ def shape(held, doc):
     """One item: its kind, its signature, and what was said above it."""
     kind = kind_of(held[0].lstrip())
     if kind in ("struct", "enum", "suberror", "trait"):
-        sig = "\n".join(held)
+        # A type keeps its body — the fields and variants are the type — but the
+        # `///` marks go: the page is documentation, not the source.
+        sig = "\n".join(re.sub(r"^\s*///\s?", "", line) for line in held)
     else:
         sig = re.sub(r"\s+", " ", " ".join(x.strip() for x in held))
         sig = re.sub(r"\s*\{.*$", "", sig).rstrip()
         sig = re.sub(r",\s*\)", ")", sig)
     return (kind, sig, " ".join(doc).strip())
-
-
-TYPES = {"Bytes", "String", "Int", "Char", "Bool", "Array", "Map", "UInt64", "Unit"}
 
 
 def tint(sig):
@@ -112,193 +117,135 @@ def prose(t):
     return re.sub(r"`([^`]+)`", r"<code>\1</code>", t)
 
 
-CSS = r"""
-:root{
-  --bg:#fbfbfd; --panel:#ffffff; --panel-2:#f6f7fb; --ink:#14181f;
-  --muted:#5b6675; --line:#e8ebf1; --accent:#6d5efc; --accent-soft:#efecff; --out:#0ca678;
-  --code-bg:#f4f5f9; --shadow:0 1px 2px rgba(20,24,31,.04),0 8px 24px -12px rgba(20,24,31,.10);
-}
-@media (prefers-color-scheme:dark){:root{
-  --bg:#0b0e14; --panel:#131722; --panel-2:#0f131c; --ink:#e9edf6; --muted:#96a1b5;
-  --line:#212736; --accent:#9d8bff; --accent-soft:#1c1b3a; --out:#2dd4a7;
-  --code-bg:#161b26; --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 30px -14px rgba(0,0,0,.5);
-}}
-:root[data-theme=light]{--bg:#fbfbfd;--panel:#fff;--panel-2:#f6f7fb;--ink:#14181f;--muted:#5b6675;--line:#e8ebf1;--accent:#6d5efc;--accent-soft:#efecff;--out:#0ca678;--code-bg:#f4f5f9;--shadow:0 1px 2px rgba(20,24,31,.04),0 8px 24px -12px rgba(20,24,31,.10)}
-:root[data-theme=dark]{--bg:#0b0e14;--panel:#131722;--panel-2:#0f131c;--ink:#e9edf6;--muted:#96a1b5;--line:#212736;--accent:#9d8bff;--accent-soft:#1c1b3a;--out:#2dd4a7;--code-bg:#161b26;--shadow:0 1px 2px rgba(0,0,0,.3),0 12px 30px -14px rgba(0,0,0,.5)}
-*{box-sizing:border-box}
-html{scroll-behavior:smooth}
-@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
-body{margin:0;background:var(--bg);color:var(--ink);
-  font-family:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-  font-size:15.5px;line-height:1.6;-webkit-font-smoothing:antialiased}
-code,pre,.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-a{color:var(--accent);text-decoration:none}
-a:hover{text-decoration:underline}
-.layout{display:grid;grid-template-columns:264px minmax(0,1fr);max-width:1180px;margin:0 auto}
-
-/* sidebar */
-.sidebar{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;
-  border-right:1px solid var(--line);padding:1.6rem 1.1rem 2rem;background:var(--panel-2)}
-.brand{display:flex;align-items:center;gap:.55rem;font-family:"IBM Plex Mono";font-weight:600;
-  font-size:1.35rem;letter-spacing:-.01em;color:var(--ink);margin-bottom:.15rem}
-.brand .dot{width:11px;height:11px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
-.brand-sub{color:var(--muted);font-size:.8rem;margin:0 0 1.3rem;padding-left:.15rem}
-.side-nav{display:flex;flex-direction:column;gap:.1rem}
-.side-nav a{color:var(--muted);font-size:.9rem;padding:.32rem .6rem;border-radius:8px;
-  font-family:"IBM Plex Mono";display:flex;align-items:center;gap:.4rem;border-left:2px solid transparent}
-.side-nav a .at{color:var(--accent);opacity:.6}
-.side-nav a:hover{background:var(--accent-soft);color:var(--ink);text-decoration:none}
-.side-nav a.active{color:var(--ink);background:var(--accent-soft);border-left-color:var(--accent);font-weight:500}
-.side-nav a.active .at{opacity:1}
-.side-foot{margin-top:1.6rem;padding-top:1.1rem;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:.4rem}
-.side-foot img{height:20px;display:block}
-.theme-btn{margin-top:1rem;background:none;border:1px solid var(--line);color:var(--muted);
-  border-radius:8px;padding:.35rem .6rem;font:inherit;font-size:.82rem;cursor:pointer;width:100%}
-.theme-btn:hover{border-color:var(--accent);color:var(--ink)}
-
-/* main */
-main{padding:2.6rem 2.4rem 5rem;min-width:0}
-.hero h1{font-family:"IBM Plex Mono";font-weight:600;font-size:2.9rem;letter-spacing:-.02em;margin:0}
-.hero .tag{color:var(--muted);font-size:1.12rem;max-width:60ch;margin:.5rem 0 1.1rem;text-wrap:balance}
-.badges{display:flex;flex-wrap:wrap;gap:.45rem;margin:0 0 1.4rem}
-.badges img{height:21px;display:block}
-.install{display:flex;align-items:center;gap:.6rem;background:var(--panel);border:1px solid var(--line);
-  border-radius:12px;padding:.65rem 1rem;box-shadow:var(--shadow);max-width:420px}
-.install .prompt{color:var(--out);user-select:none;font-weight:600}
-.install code{flex:1;font-size:.95rem}
-.copy{background:none;border:1px solid var(--line);border-radius:7px;color:var(--muted);
-  cursor:pointer;font:inherit;font-size:.72rem;padding:.2rem .5rem}
-.copy:hover{border-color:var(--accent);color:var(--accent)}
-.copy.ok{color:var(--out);border-color:var(--out)}
-
-/* playground */
-.pg{margin:2.2rem 0 .5rem;background:
-   radial-gradient(120% 130% at 100% 0%, var(--accent-soft) 0%, transparent 55%), var(--panel);
-  border:1px solid var(--line);border-radius:16px;padding:1.3rem 1.4rem;box-shadow:var(--shadow)}
-.pg h2{margin:0 0 .1rem;font-size:1.06rem;display:flex;align-items:center;gap:.5rem}
-.pg h2 .spark{color:var(--accent)}
-.pg .hint{color:var(--muted);font-size:.86rem;margin:0 0 .9rem}
-.pg input{width:100%;font-family:"IBM Plex Mono";font-size:1rem;color:var(--ink);
-  background:var(--code-bg);border:1px solid var(--line);border-radius:10px;padding:.7rem .9rem;outline:none}
-.pg input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
-.pg-rows{margin-top:.9rem;display:grid;gap:.35rem}
-.pg-row{display:grid;grid-template-columns:84px 1fr auto;align-items:center;gap:.7rem;
-  padding:.4rem .6rem;border-radius:9px}
-.pg-row:hover{background:var(--panel-2)}
-.pg-row .lbl{font-family:"IBM Plex Mono";font-size:.8rem;color:var(--accent);font-weight:500}
-.pg-row .val{font-family:"IBM Plex Mono";font-size:.9rem;color:var(--out);overflow-x:auto;white-space:nowrap;
-  scrollbar-width:thin}
-.pg-row .val::-webkit-scrollbar{height:5px}
-
-/* sections + cards */
-section.pkg{scroll-margin-top:1.2rem;padding-top:2.4rem;margin-top:2rem;border-top:1px solid var(--line)}
-section.pkg > h2{font-family:"IBM Plex Mono";font-size:1.55rem;margin:0 0 .15rem;letter-spacing:-.01em}
-section.pkg > h2 .at{color:var(--accent)}
-.pdesc{color:var(--muted);margin:.15rem 0 1.2rem;max-width:70ch}
-.item{background:var(--panel);border:1px solid var(--line);border-radius:13px;
-  padding:1rem 1.2rem;margin:.85rem 0;box-shadow:var(--shadow);transition:border-color .15s,transform .15s}
-.item:hover{border-color:color-mix(in oklab,var(--accent) 40%,var(--line))}
-.kind{display:inline-block;font-size:.66rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;
-  border-radius:6px;padding:.1rem .45rem;margin-bottom:.55rem;
-  color:var(--accent);background:var(--accent-soft);border:1px solid color-mix(in oklab,var(--accent) 26%,transparent)}
-.item[data-k=struct] .kind{--c:#8b5cf6}.item[data-k=fn] .kind{--c:#0ca678}.item[data-k=let] .kind{--c:#2563eb}
-.item .kind{color:var(--c,var(--accent));background:color-mix(in oklab,var(--c,var(--accent)) 13%,transparent);
-  border-color:color-mix(in oklab,var(--c,var(--accent)) 30%,transparent)}
-.sig{font-size:.98rem;margin:0 0 .55rem;overflow-x:auto;white-space:pre;color:var(--ink);padding-bottom:.15rem}
-.sig .k{color:#8b5cf6;font-weight:500}.sig .ty{color:var(--accent)}.sig .op{color:var(--muted)}
-@media (prefers-color-scheme:dark){.sig .k{color:#b794ff}}
-.doc{margin:0;color:var(--ink);max-width:74ch}
-.doc code{background:var(--code-bg);padding:.06rem .35rem;border-radius:5px;font-size:.9em;color:var(--accent)}
-footer{margin-top:3rem;padding-top:1.3rem;border-top:1px solid var(--line);color:var(--muted);font-size:.9rem}
-
-@media (max-width:820px){
-  .layout{grid-template-columns:1fr}
-  .sidebar{position:static;height:auto;border-right:none;border-bottom:1px solid var(--line)}
-  .side-nav{flex-flow:row wrap}.side-nav a{border-left:none}.side-nav a.active{border-left:none}
-  main{padding:1.8rem 1.2rem 4rem}.hero h1{font-size:2.2rem}
-  .pg-row{grid-template-columns:70px 1fr auto}
-}
-"""
-
-# JS: codecs (mirror the library exactly) + playground + scroll-spy + copy + theme
-JS = r"""
-document.addEventListener("DOMContentLoaded",()=>{
-  // copy buttons
-  document.querySelectorAll("[data-copy]").forEach(btn=>btn.addEventListener("click",()=>{
-    navigator.clipboard.writeText(btn.getAttribute("data-copy")).then(()=>{
-      const t=btn.textContent;btn.textContent="copied";btn.classList.add("ok");
-      setTimeout(()=>{btn.textContent=t;btn.classList.remove("ok");},1100);});}));
-  // scroll-spy
-  const links=[...document.querySelectorAll(".side-nav a")];
-  const map=Object.fromEntries(links.map(a=>[a.getAttribute("href").slice(1),a]));
-  const spy=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){
-    links.forEach(a=>a.classList.remove("active"));const a=map[e.target.id];if(a)a.classList.add("active");}});},
-    {rootMargin:"-10% 0px -80% 0px"});
-  document.querySelectorAll("section.pkg").forEach(s=>spy.observe(s));
-  // theme toggle
-  const tb=document.getElementById("theme");if(tb)tb.addEventListener("click",()=>{
-    const cur=document.documentElement.getAttribute("data-theme")
-      ||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
-    document.documentElement.setAttribute("data-theme",cur==="dark"?"light":"dark");});
-});
-"""
-
-
 def esc(t):
     return html.escape(t)
 
 
+HEAD = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>API reference — moonhttp</title>
+<meta name="description" content="Every public type, function and value in moonhttp, generated from the doc comments in the sources.">
+<meta name="theme-color" content="#e8f4f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d232d" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Noto+Sans+SC:wght@300;400;500;700&display=swap">
+<link rel="stylesheet" href="./assets/site.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="page top-in">
+    <a class="brand" href="./"><span class="tile"><i></i><i></i><i></i></span>moonhttp</a>
+    <nav class="nav">
+      <a href="./guide.html">Guide</a>
+      <a href="./api.html" class="on">API</a>
+      <a href="./protocols.html">Protocols</a>
+      <a class="gh" href="https://github.com/moonbitstack/moonhttp" aria-label="GitHub repository" title="GitHub">
+        <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+      </a>
+    </nav>
+  </div>
+</header>
+"""
+
+FOOT = """<footer class="foot">
+  <div class="page">
+    <div class="foot-grid">
+      <div class="about">
+        <a class="brand" href="./"><span class="tile"><i></i><i></i><i></i></span>moonhttp</a>
+        <p>HTTP logic for MoonBit, with no I/O in it. Bytes in, values out, on every target the compiler builds for.</p>
+      </div>
+      <div>
+        <h4>Pages</h4>
+        <ul>
+          <li><a href="./guide.html">Guide</a></li>
+          <li><a href="./api.html">API reference</a></li>
+          <li><a href="./protocols.html">Protocols</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Families</h4>
+        <ul>
+          <li><a href="./api.html#http1">HTTP/1.1</a></li>
+          <li><a href="./api.html#http2">HTTP/2</a></li>
+          <li><a href="./api.html#http3">HTTP/3</a></li>
+          <li><a href="./api.html#ws">WebSocket</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Elsewhere</h4>
+        <ul>
+          <li><a href="https://github.com/moonbitstack/moonhttp">GitHub</a></li>
+          <li><a href="https://mooncakes.io/docs/moonbitstack/moonhttp">mooncakes</a></li>
+          <li><a href="https://github.com/moonbitstack/moonhttp/blob/master/LICENSE">Apache-2.0</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="meta">
+      <svg class="tick-meta" width="56" height="6" viewBox="0 0 56 6" aria-hidden="true"><path class="a" d="M0 3h22"/><path class="b" d="M28 3h14"/><path class="c" d="M48 3h8"/></svg>
+      <span>Apache-2.0</span>
+      <span>© 2026 Leo Cheng</span>
+      <span>RFC 9110 · 9111 · 9112 · 9113 · 9114 · 6455 · 7692 · 7838</span>
+    </div>
+  </div>
+</footer>
+
+<script src="./assets/site.js"></script>
+</body>
+</html>
+"""
+
+
 def main():
-    HEAD = ('<!doctype html><html lang="en"><head><meta charset="utf-8">'
-            '<meta name="viewport" content="width=device-width,initial-scale=1">'
-            '<title>moonhttp — MoonBit API</title>'
-            '<link rel="preconnect" href="https://fonts.googleapis.com">'
-            '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
-            '<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&'
-            'family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">'
-            '<style>' + CSS + '</style></head><body>')
+    body = [HEAD, '<main>', '<section class="page masthead">',
+            '<svg class="tick tick-tr" width="148" height="56" viewBox="0 0 148 56" aria-hidden="true">'
+            '<path class="a" d="M36 4h112"/><path class="b" d="M72 20h76"/><path class="c" d="M110 36h38"/></svg>',
+            '<p class="label">Reference · <b>generated</b></p>',
+            '<h1 class="display">Every name,<br>with its section.</h1>',
+            '<p class="lede">This page is built from the doc comments above the public items in the sources, '
+            'so a function that is documented is a function that is here. Nineteen packages, in the order the '
+            'site lists them.</p>',
+            '</section>', '<div class="page api">']
 
-    side = ['<aside class="sidebar"><div class="brand"><span class="dot"></span>moonhttp</div>'
-            '<p class="brand-sub">MoonBit API reference</p><nav class="side-nav">']
-    side += ['<a href="#%s"><span class="at">@</span>%s</a>' % (n, n) for n, _, _ in PKGS]
-    side += ['</nav>'
-             '<button class="theme-btn" id="theme">◐ toggle theme</button>'
-             '<div class="side-foot">'
-             '<a href="https://github.com/moonbitstack/moonhttp/actions"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/moonbitstack/moonhttp/ci.yml?branch=master&label=CI&logo=github"></a>'
-             '<a href="https://mooncakes.io/docs/moonbitstack/moonhttp"><img alt="mooncakes" src="https://img.shields.io/badge/mooncakes-moonbitstack%2Fmoonhttp-1f6feb"></a>'
-             '</div></aside>']
+    body.append('<aside class="apirail">'
+                '<div class="search"><input id="q" type="search" placeholder="filter names" '
+                'aria-label="Filter the reference by name" autocomplete="off" spellcheck="false">'
+                '<span class="slash">/</span></div>'
+                '<nav>')
+    for i, (anchor, _, _, _) in enumerate(PKGS, 1):
+        body.append('<a href="#%s"><span>%02d</span>%s</a>' % (anchor, i, anchor))
+    body.append('</nav><p class="count" id="hits"></p></aside>')
 
-    hero = ('<main><header class="hero"><h1>moonhttp</h1>'
-            '<p class="tag">The HTTP family for MoonBit: the formats a request and a response '
-            'are written in, each a package of its own. Bytes in, events out; no sockets.</p>'
-            '<div class="badges">'
-            '<a href="https://github.com/moonbitstack/moonhttp/actions"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/moonbitstack/moonhttp/ci.yml?branch=master&label=CI&logo=github"></a>'
-            '<img alt="tests" src="https://img.shields.io/badge/tests-238%20passing-0ca678">'
-            '<a href="https://github.com/moonbitstack/moonhttp"><img alt="GitHub" src="https://img.shields.io/badge/GitHub-source-24292f?logo=github"></a>'
-            '<img alt="license" src="https://img.shields.io/badge/license-Apache--2.0-6d5efc"></div>'
-            '<div class="install"><span class="prompt">$</span><code>moon add moonbitstack/moonhttp</code>'
-            '<button class="copy" data-copy="moon add moonbitstack/moonhttp">copy</button></div>'
-            '</header>')
-
-    body = [HEAD, '<div class="layout">'] + side + [hero]
-    for name, pkg, desc in PKGS:
-        body.append('<section class="pkg" id="%s"><h2><span class="at">@</span>%s</h2>'
-                    '<p class="pdesc">%s</p>' % (name, name, esc(desc)))
+    body.append('<div class="ref">')
+    total = 0
+    for i, (anchor, pkg, spec, desc) in enumerate(PKGS, 1):
         items = [item for path in sources(pkg) for item in parse(path)]
+        total += len(items)
+        body.append('<section class="pkg" id="%s">' % anchor)
+        body.append('<div class="pkg-head"><span class="no">%02d</span>'
+                    '<h2><span class="at">@</span>%s</h2><span class="spec">%s</span></div>'
+                    % (i, anchor, esc(spec)))
+        body.append('<p class="pkg-desc">%s</p>' % esc(desc))
         for kind, sig, doc in items:
             body.append('<div class="item" data-k="%s"><span class="kind">%s</span>'
-                        '<pre class="sig">%s</pre>%s</div>'
-                        % (kind, kind, tint(sig), ('<p class="doc">%s</p>' % prose(doc)) if doc else ''))
+                        '<div><pre class="sig">%s</pre>%s</div></div>'
+                        % (kind, kind, tint(sig), ('<p class="item-doc">%s</p>' % prose(doc)) if doc else ''))
         body.append('</section>')
-    body.append('<footer>Generated from source <code>///</code> doc-comments · '
-                '<a href="https://mooncakes.io/docs/moonbitstack/moonhttp">mooncakes</a> · '
-                '<a href="https://github.com/moonbitstack/moonhttp">GitHub</a> · Apache-2.0 © Leo Cheng</footer>')
-    body.append('</main></div><script>' + JS + '</script></body></html>')
+    body.append('<p class="empty hidden" id="empty">Nothing here matches that.</p>')
+    body.append('</div></div></main>')
 
-    out = ROOT / "docs" / "index.html"
-    out.parent.mkdir(exist_ok=True)
-    out.write_text("\n".join(body), encoding="utf-8")
-    total = sum(len(parse(p)) for _, pkg, _ in PKGS for p in sources(pkg))
+    body.append(FOOT)
+    body = "\n".join(body)
+    body = body.replace('<p class="count" id="hits"></p>',
+                        '<p class="count" id="hits">%d entries</p>' % total)
+
+    out = ROOT / "docs" / "api.html"
+    out.write_text(body, encoding="utf-8")
     print("wrote %s (%d public items across %d packages)" % (out, total, len(PKGS)))
 
 
