@@ -1,0 +1,20 @@
+// The decisions a client makes about where a response sends it next:
+// RFC 9110 §15.4 (redirection) and RFC 7838 (alternative services).
+//
+// A redirect is four answers — where, with which method, with or without the body,
+// and which credentials to drop — and each of them is a rule in a section rather
+// than a thing a socket does. Alt-Svc is the same kind of thing: a field that says
+// the origin can be reached another way, read into the alternatives it names.
+import {
+  "moonbitlang/core/encoding/utf8",
+  "moonbitstack/moonurl",
+  "moonbitstack/moondate",
+  "moonbitstack/moonhttp/method",
+}
+
+import {
+  "moonbitstack/moonurl",
+  "moonbitstack/moondate",
+  "moonbitstack/moonhttp/method",
+  "moonbitstack/moonhttp/client",
+} for "test"
