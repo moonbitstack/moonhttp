@@ -1,0 +1,815 @@
+[
+ {
+  "id": "age-parse-parameter",
+  "suite": "age-parse",
+  "kind": "check",
+  "status": 200,
+  "pause": 3,
+  "response": [
+   [
+    "Date",
+    "Sun, 06 Nov 1994 08:49:37 GMT"
+   ],
+   [
+    "Cache-Control",
+    "max-age=3600"
+   ],
+   [
+    "Age",
+    "7200;foo=bar"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [],
+  "expect": "not_cached"
+ },
+ {
+  "id": "age-parse-numeric-parameter",
+  "suite": "age-parse",
+  "kind": "check",
+  "status": 200,
+  "pause": 3,
+  "response": [
+   [
+    "Date",
+    "Sun, 06 Nov 1994 08:49:37 GMT"
+   ],
+   [
+    "Cache-Control",
+    "max-age=3600"
+   ],
+   [
+    "Age",
+    "7200;foo=111"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [],
+  "expect": "not_cached"
+ },
+ {
+  "id": "freshness-max-age-date",
+  "suite": "cc-freshness",
+  "kind": "check",
+  "status": 200,
+  "pause": 3,
+  "response": [
+   [
+    "Date",
+    "Sun, 06 Nov 1994 06:49:37 GMT"
+   ],
+   [
+    "Cache-Control",
+    "max-age=3600"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [],
+  "expect": "not_cached"
+ },
+ {
+  "id": "freshness-max-age-two-fresh-stale-sameline",
+  "suite": "cc-parse",
+  "kind": "check",
+  "status": 200,
+  "pause": 3,
+  "response": [
+   [
+    "Cache-Control",
+    "max-age=1800, max-age=1"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [],
+  "expect": "cached"
+ },
+ {
+  "id": "freshness-max-age-two-fresh-stale-sepline",
+  "suite": "cc-parse",
+  "kind": "check",
+  "status": 200,
+  "pause": 3,
+  "response": [
+   [
+    "Cache-Control",
+    "max-age=1800"
+   ],
+   [
+    "Cache-Control",
+    "max-age=1"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [],
+  "expect": "cached"
+ },
+ {
+  "id": "freshness-max-age-quoted",
+  "suite": "cc-parse",
+  "kind": "check",
+  "status": 200,
+  "pause": 3,
+  "response": [
+   [
+    "Cache-Control",
+    "max-age=\"3600\""
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [],
+  "expect": "cached"
+ },
+ {
+  "id": "freshness-max-age-space-before-equals",
+  "suite": "cc-parse",
+  "kind": "check",
+  "status": 200,
+  "pause": 3,
+  "response": [
+   [
+    "Cache-Control",
+    "max-age =3600"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [],
+  "expect": "not_cached"
+ },
+ {
+  "id": "freshness-max-age-space-after-equals",
+  "suite": "cc-parse",
+  "kind": "check",
+  "status": 200,
+  "pause": 3,
+  "response": [
+   [
+    "Cache-Control",
+    "max-age= 3600"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [],
+  "expect": "not_cached"
+ },
+ {
+  "id": "ccreq-ma0",
+  "suite": "cc-request",
+  "kind": "check",
+  "status": 200,
+  "pause": 3,
+  "response": [
+   [
+    "Cache-Control",
+    "max-age=100000"
+   ],
+   [
+    "Date",
+    "Sun, 06 Nov 1994 08:49:37 GMT"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [
+   [
+    "Cache-Control",
+    "max-age=0"
+   ]
+  ],
+  "expect": "not_cached"
+ },
+ {
+  "id": "ccreq-ma1",
+  "suite": "cc-request",
+  "kind": "check",
+  "status": 200,
+  "pause": 3,
+  "response": [
+   [
+    "Cache-Control",
+    "max-age=100000"
+   ],
+   [
+    "Date",
+    "Sun, 06 Nov 1994 08:49:37 GMT"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [
+   [
+    "Cache-Control",
+    "max-age=1"
+   ]
+  ],
+  "expect": "not_cached"
+ },
+ {
+  "id": "ccreq-magreaterage",
+  "suite": "cc-request",
+  "kind": "check",
+  "status": 200,
+  "pause": 3,
+  "response": [
+   [
+    "Cache-Control",
+    "max-age=100000"
+   ],
+   [
+    "Date",
+    "Sun, 06 Nov 1994 08:49:37 GMT"
+   ],
+   [
+    "Age",
+    "1800"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [
+   [
+    "Cache-Control",
+    "max-age=600"
+   ]
+  ],
+  "expect": "not_cached"
+ },
+ {
+  "id": "ccreq-max-stale",
+  "suite": "cc-request",
+  "kind": "check",
+  "status": 200,
+  "pause": 3,
+  "response": [
+   [
+    "Cache-Control",
+    "max-age=2"
+   ],
+   [
+    "Date",
+    "Sun, 06 Nov 1994 08:49:37 GMT"
+   ],
+   [
+    "Template-A",
+    "1"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [
+   [
+    "Cache-Control",
+    "max-stale=1000"
+   ]
+  ],
+  "expect": "cached"
+ },
+ {
+  "id": "ccreq-max-stale-age",
+  "suite": "cc-request",
+  "kind": "check",
+  "status": 200,
+  "pause": 0,
+  "response": [
+   [
+    "Cache-Control",
+    "max-age=1500"
+   ],
+   [
+    "Age",
+    "2000"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [
+   [
+    "Cache-Control",
+    "max-stale=1000"
+   ]
+  ],
+  "expect": "cached"
+ },
+ {
+  "id": "ccreq-min-fresh",
+  "suite": "cc-request",
+  "kind": "check",
+  "status": 200,
+  "pause": 0,
+  "response": [
+   [
+    "Cache-Control",
+    "max-age=1500"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [
+   [
+    "Cache-Control",
+    "min-fresh=2000"
+   ]
+  ],
+  "expect": "not_cached"
+ },
+ {
+  "id": "ccreq-min-fresh-age",
+  "suite": "cc-request",
+  "kind": "check",
+  "status": 200,
+  "pause": 0,
+  "response": [
+   [
+    "Cache-Control",
+    "max-age=1500"
+   ],
+   [
+    "Age",
+    "1000"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [
+   [
+    "Cache-Control",
+    "min-fresh=1000"
+   ]
+  ],
+  "expect": "not_cached"
+ },
+ {
+  "id": "ccreq-no-cache",
+  "suite": "cc-request",
+  "kind": "check",
+  "status": 200,
+  "pause": 0,
+  "response": [
+   [
+    "Cache-Control",
+    "max-age=3600"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [
+   [
+    "Cache-Control",
+    "no-cache"
+   ]
+  ],
+  "expect": "not_cached"
+ },
+ {
+  "id": "ccreq-no-cache-lm",
+  "suite": "cc-request",
+  "kind": "check",
+  "status": 200,
+  "pause": 0,
+  "response": [
+   [
+    "Cache-Control",
+    "max-age=3600"
+   ],
+   [
+    "Last-Modified",
+    "Sun, 06 Nov 1994 06:02:57 GMT"
+   ],
+   [
+    "Date",
+    "Sun, 06 Nov 1994 08:49:37 GMT"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [
+   [
+    "Cache-Control",
+    "no-cache"
+   ]
+  ],
+  "expect": "lm_validated"
+ },
+ {
+  "id": "ccreq-no-cache-etag",
+  "suite": "cc-request",
+  "kind": "check",
+  "status": 200,
+  "pause": 0,
+  "response": [
+   [
+    "Cache-Control",
+    "max-age=3600"
+   ],
+   [
+    "ETag",
+    "\"aiqygowemucksai\""
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [
+   [
+    "Cache-Control",
+    "no-cache"
+   ]
+  ],
+  "expect": "etag_validated"
+ },
+ {
+  "id": "ccreq-no-store",
+  "suite": "cc-request",
+  "kind": "check",
+  "status": 200,
+  "pause": 3,
+  "response": [
+   [
+    "Cache-Control",
+    "max-age=100000"
+   ],
+   [
+    "Date",
+    "Sun, 06 Nov 1994 08:49:37 GMT"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [
+   [
+    "Cache-Control",
+    "no-store"
+   ]
+  ],
+  "expect": "not_cached"
+ },
+ {
+  "id": "cdn-max-age-space-before-equals",
+  "suite": "cdn-cache-control",
+  "kind": "check",
+  "status": 200,
+  "pause": 3,
+  "response": [
+   [
+    "Cache-Control",
+    "max-age=1"
+   ],
+   [
+    "CDN-Cache-Control",
+    "max-age =100"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [],
+  "expect": "not_cached"
+ },
+ {
+  "id": "cdn-max-age-space-after-equals",
+  "suite": "cdn-cache-control",
+  "kind": "check",
+  "status": 200,
+  "pause": 3,
+  "response": [
+   [
+    "Cache-Control",
+    "max-age=1"
+   ],
+   [
+    "CDN-Cache-Control",
+    "max-age= 100"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [],
+  "expect": "not_cached"
+ },
+ {
+  "id": "heuristic-delta-30",
+  "suite": "heuristic",
+  "kind": "check",
+  "status": 200,
+  "pause": 3,
+  "response": [
+   [
+    "Last-Modified",
+    "Sun, 06 Nov 1994 08:49:07 GMT"
+   ],
+   [
+    "Date",
+    "Sun, 06 Nov 1994 08:49:37 GMT"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [],
+  "expect": "cached"
+ },
+ {
+  "id": "heuristic-delta-60",
+  "suite": "heuristic",
+  "kind": "check",
+  "status": 200,
+  "pause": 3,
+  "response": [
+   [
+    "Last-Modified",
+    "Sun, 06 Nov 1994 08:48:37 GMT"
+   ],
+   [
+    "Date",
+    "Sun, 06 Nov 1994 08:49:37 GMT"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [],
+  "expect": "cached"
+ },
+ {
+  "id": "heuristic-delta-300",
+  "suite": "heuristic",
+  "kind": "check",
+  "status": 200,
+  "pause": 3,
+  "response": [
+   [
+    "Last-Modified",
+    "Sun, 06 Nov 1994 08:44:37 GMT"
+   ],
+   [
+    "Date",
+    "Sun, 06 Nov 1994 08:49:37 GMT"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [],
+  "expect": "cached"
+ },
+ {
+  "id": "heuristic-delta-600",
+  "suite": "heuristic",
+  "kind": "check",
+  "status": 200,
+  "pause": 3,
+  "response": [
+   [
+    "Last-Modified",
+    "Sun, 06 Nov 1994 08:39:37 GMT"
+   ],
+   [
+    "Date",
+    "Sun, 06 Nov 1994 08:49:37 GMT"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [],
+  "expect": "cached"
+ },
+ {
+  "id": "heuristic-delta-1200",
+  "suite": "heuristic",
+  "kind": "check",
+  "status": 200,
+  "pause": 3,
+  "response": [
+   [
+    "Last-Modified",
+    "Sun, 06 Nov 1994 08:29:37 GMT"
+   ],
+   [
+    "Date",
+    "Sun, 06 Nov 1994 08:49:37 GMT"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [],
+  "expect": "cached"
+ },
+ {
+  "id": "heuristic-delta-1800",
+  "suite": "heuristic",
+  "kind": "check",
+  "status": 200,
+  "pause": 3,
+  "response": [
+   [
+    "Last-Modified",
+    "Sun, 06 Nov 1994 08:19:37 GMT"
+   ],
+   [
+    "Date",
+    "Sun, 06 Nov 1994 08:49:37 GMT"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [],
+  "expect": "cached"
+ },
+ {
+  "id": "heuristic-delta-3600",
+  "suite": "heuristic",
+  "kind": "check",
+  "status": 200,
+  "pause": 3,
+  "response": [
+   [
+    "Last-Modified",
+    "Sun, 06 Nov 1994 07:49:37 GMT"
+   ],
+   [
+    "Date",
+    "Sun, 06 Nov 1994 08:49:37 GMT"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [],
+  "expect": "cached"
+ },
+ {
+  "id": "heuristic-delta-43200",
+  "suite": "heuristic",
+  "kind": "check",
+  "status": 200,
+  "pause": 3,
+  "response": [
+   [
+    "Last-Modified",
+    "Sat, 05 Nov 1994 20:49:37 GMT"
+   ],
+   [
+    "Date",
+    "Sun, 06 Nov 1994 08:49:37 GMT"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [],
+  "expect": "cached"
+ },
+ {
+  "id": "heuristic-delta-86400",
+  "suite": "heuristic",
+  "kind": "check",
+  "status": 200,
+  "pause": 3,
+  "response": [
+   [
+    "Last-Modified",
+    "Sat, 05 Nov 1994 08:49:37 GMT"
+   ],
+   [
+    "Date",
+    "Sun, 06 Nov 1994 08:49:37 GMT"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [],
+  "expect": "cached"
+ },
+ {
+  "id": "other-heuristic-content-disposition-attachment",
+  "suite": "other",
+  "kind": "check",
+  "status": 200,
+  "pause": 0,
+  "response": [
+   [
+    "Last-Modified",
+    "Sat, 05 Nov 1994 05:02:57 GMT"
+   ],
+   [
+    "Date",
+    "Sun, 06 Nov 1994 08:49:37 GMT"
+   ],
+   [
+    "Content-Disposition",
+    "attachment; filename=example.txt"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [],
+  "expect": "cached"
+ },
+ {
+  "id": "other-fresh-content-disposition-attachment",
+  "suite": "other",
+  "kind": "check",
+  "status": 200,
+  "pause": 3,
+  "response": [
+   [
+    "Cache-Control",
+    "max-age=100000"
+   ],
+   [
+    "Date",
+    "Sun, 06 Nov 1994 08:49:37 GMT"
+   ],
+   [
+    "Content-Disposition",
+    "attachment; filename=example.txt"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [],
+  "expect": "cached"
+ },
+ {
+  "id": "pragma-request-no-cache",
+  "suite": "pragma",
+  "kind": "check",
+  "status": 200,
+  "pause": 3,
+  "response": [
+   [
+    "Cache-Control",
+    "max-age=100000"
+   ],
+   [
+    "Date",
+    "Sun, 06 Nov 1994 08:49:37 GMT"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [
+   [
+    "Pragma",
+    "no-cache"
+   ]
+  ],
+  "expect": "cached"
+ },
+ {
+  "id": "pragma-request-extension",
+  "suite": "pragma",
+  "kind": "check",
+  "status": 200,
+  "pause": 3,
+  "response": [
+   [
+    "Cache-Control",
+    "max-age=100000"
+   ],
+   [
+    "Date",
+    "Sun, 06 Nov 1994 08:49:37 GMT"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [
+   [
+    "Pragma",
+    "unrecognised-extension"
+   ]
+  ],
+  "expect": "cached"
+ },
+ {
+  "id": "pragma-response-no-cache",
+  "suite": "pragma",
+  "kind": "check",
+  "status": 200,
+  "pause": 0,
+  "response": [
+   [
+    "Cache-Control",
+    "max-age=3600"
+   ],
+   [
+    "Pragma",
+    "no-cache"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [],
+  "expect": "cached"
+ },
+ {
+  "id": "pragma-response-no-cache-heuristic",
+  "suite": "pragma",
+  "kind": "check",
+  "status": 200,
+  "pause": 0,
+  "response": [
+   [
+    "Date",
+    "Sun, 06 Nov 1994 08:49:37 GMT"
+   ],
+   [
+    "Last-Modified",
+    "Sun, 06 Nov 1994 06:02:57 GMT"
+   ],
+   [
+    "Pragma",
+    "no-cache"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [],
+  "expect": "cached"
+ },
+ {
+  "id": "pragma-response-extension",
+  "suite": "pragma",
+  "kind": "check",
+  "status": 200,
+  "pause": 0,
+  "response": [
+   [
+    "Cache-Control",
+    "max-age=3600"
+   ],
+   [
+    "Pragma",
+    "unrecognised-extension"
+   ]
+  ],
+  "setup_request": [],
+  "check_request": [],
+  "expect": "cached"
+ }
+]

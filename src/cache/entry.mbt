@@ -102,11 +102,7 @@ pub fn Entry::read(
     control,
     date: date(headers, "date"),
     age: match find(headers, "age") {
-      Some(text) =>
-        match digits(trim(text)) {
-          Some(n) => Some(n)
-          None => None
-        }
+      Some(text) => digits(trim(text))
       None => None
     },
     expires: date(headers, "expires"),
@@ -247,7 +243,9 @@ pub fn Entry::fresh(
   shared~ : Bool = false,
 ) -> Bool {
   match self.fresh_for(shared~) {
-    Some(lifetime) => self.current_age(now~) < lifetime
+    // §5.2.2.1: a response is stale once its age is *greater* than the lifetime,
+    // so the second it turns exactly is still fresh.
+    Some(lifetime) => self.current_age(now~) <= lifetime
     None => false
   }
 }
@@ -368,10 +366,17 @@ pub fn Entry::verdict(
   if !self.vary_matches(presented) {
     return Miss
   }
+  // §5.2.1.5 is about storing, and a cache that answered from the store anyway
+  // would be doing the thing the client asked it not to; it is never obliged to
+  // reuse, so refusing here is allowed and is what the client meant.
+  if request.no_store {
+    return Miss
+  }
   let age = self.current_age(now~)
   let lifetime = self.fresh_for(shared~)
   let fresh = match lifetime {
-    Some(lifetime) => age < lifetime
+    // §5.2.2.1: stale when the age is greater than the lifetime, and not before.
+    Some(lifetime) => age <= lifetime
     None => false
   }
   if fresh {
@@ -526,22 +531,30 @@ fn seconds(later : @moondate.Moment, earlier : @moondate.Moment) -> Int32 {
 }
 
 ///|
-/// A `delta-seconds` value: digits only (§1.2.2).
+/// The seconds at the front of an `Age`, and nothing of whatever follows.
+///
+/// §5.1's grammar is delta-seconds and nothing else, but an `Age` carrying an
+/// extension parameter is still unambiguous about its seconds, and reading them
+/// can only make a response look older than it is — the safe direction. A value
+/// with no digits at all is no age, and the field is ignored.
 fn digits(text : String) -> Int32? {
-  if text.length() == 0 {
-    return None
-  }
   let mut out = 0
+  let mut seen = false
   for c in text {
     let digit = c.to_int() - 0x30
     if digit < 0 || digit > 9 {
-      return None
+      break
     }
+    seen = true
     if out < 0x7FFFFFF {
       out = out * 10 + digit
     }
   }
-  Some(out)
+  if seen {
+    Some(out)
+  } else {
+    None
+  }
 }
 
 ///|

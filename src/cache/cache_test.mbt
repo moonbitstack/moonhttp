@@ -505,3 +505,83 @@ test "a 304 freshens what is stored without replacing the body" {
   assert_true(refreshed.fresh(now=stale))
   assert_eq(refreshed.current_age(now=stale), 0)
 }
+
+///|
+/// The ASCII case folding a field name needs, in the test package's own words.
+fn lower(text : String) -> String {
+  let out = StringBuilder()
+  for c in text {
+    let n = c.to_int()
+    out.write_char(
+      if n >= 0x41 && n <= 0x5a {
+        (n + 32).unsafe_to_char()
+      } else {
+        c
+      },
+    )
+  }
+  out.to_string()
+}
+
+///|
+/// Whether a field list carries that name, matched without regard to case.
+fn carries(fields : Array[(String, String)], name : String) -> Bool {
+  for (field, _) in fields {
+    if lower(field) == name {
+      return true
+    }
+  }
+  false
+}
+
+///|
+/// The cache-tests suite, case by case: the response a cache was given, the pause
+/// the suite takes, the request that follows, and what must happen next.
+///
+/// The cases come from `scripts/cache-tests.json`, which is the suite's own
+/// definitions reduced to the questions a decision can answer: `cached` means the
+/// response is storable and may be served without asking, `not_cached` means it
+/// may not, and the two validated forms mean the request that follows has to
+/// carry the validator they name.
+test "the cache-tests suite, where a decision is the whole answer" {
+  let now = epoch()
+  let missed : Array[String] = []
+  for case in cases {
+    let entry = @cache.Entry::read(
+      status=case.status,
+      headers=case.response,
+      request=case.setup,
+      sent=now,
+      received=now,
+    )
+    let storable = entry.storable(
+      verb=@method.Method::Get,
+      request=@cache.Control::of(case.setup),
+    )
+    let verdict = entry.verdict(
+      request=@cache.Control::of(case.request),
+      presented=case.request,
+      now=later(now, case.pause),
+    )
+    let conditional = entry.conditional()
+    let ok = match case.expect {
+      "cached" => storable && verdict is @cache.Serve
+      "not_cached" => !(storable && verdict is @cache.Serve)
+      "etag_validated" =>
+        verdict is @cache.Validate && carries(conditional, "if-none-match")
+      "lm_validated" =>
+        verdict is @cache.Validate && carries(conditional, "if-modified-since")
+      _ => false
+    }
+    if !ok {
+      missed.push(case.name)
+    }
+  }
+  if missed.length() > 0 {
+    let out = StringBuilder()
+    for name in missed {
+      out.write_string(" " + name)
+    }
+    fail("answered differently:" + out.to_string())
+  }
+}

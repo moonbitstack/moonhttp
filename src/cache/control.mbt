@@ -132,9 +132,10 @@ pub fn Control::decode(value : StringView) -> Control {
     if piece.length() == 0 {
       continue
     }
+    // §5.2's grammar puts no space around the equals sign, so one there makes the
+    // directive one this reader does not know rather than one it reads.
     let (key, raw) = match piece.find("=") {
-      Some(at) =>
-        (trim(piece[:at].to_owned()), Some(trim(piece[at + 1:].to_owned())))
+      Some(at) => (piece[:at].to_owned(), Some(piece[at + 1:].to_owned()))
       None => (piece, None)
     }
     let name = lower(key)
