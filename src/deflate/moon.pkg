@@ -1,0 +1,16 @@
+// Raw DEFLATE, RFC 1951:
+// https://www.rfc-editor.org/rfc/rfc1951
+//
+// The three block types and the two code tables, both directions, shaped for a
+// stream that outlives one message. Compression is a fixed-Huffman block with a
+// window the caller sets and, optionally, a window that survives a message
+// boundary; decompression reads blocks until the octets run out at a block
+// boundary, may reach back into the messages before it, and stops at a ceiling.
+//
+// This exists because permessage-deflate needs a DEFLATE stream it can stop and
+// resume inside (RFC 7692 §7.2), which is a shape a file compressor does not
+// have to offer.
+import {
+  "moonbitstack/moonhttp/deflate",
+  "moonbitstack/moonzip/deflate" @zip,
+} for "test"

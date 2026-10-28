@@ -1,0 +1,53 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitstack/moonhttp/deflate"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub let vectors : Array[(String, Int32, Bool, Array[Bytes], Array[Bytes])]
+
+// Errors
+pub(all) suberror Refused {
+  Block(at~ : Int32, got~ : Int32)
+  Code(at~ : Int32)
+  Truncated(at~ : Int32)
+  Distance(at~ : Int32, got~ : Int32)
+  Exceeded(limit~ : Int32, got~ : Int32)
+} derive(Eq, @debug.Debug)
+pub fn Refused::equal(Self, Self) -> Bool
+pub fn Refused::not_equal(Self, Self) -> Bool
+pub fn Refused::output(Self, &Logger) -> Unit
+pub fn Refused::to_repr(Self) -> @debug.Repr
+pub fn Refused::to_string(Self) -> String
+pub impl Show for Refused
+
+// Types and methods
+pub struct Deflater {
+  bits : Int32
+  takeover : Bool
+  mut history : Array[Byte]
+}
+pub fn Deflater::compress(Self, BytesView, finish? : Bool) -> Bytes
+pub fn Deflater::new(bits? : Int32, takeover? : Bool) -> Self
+pub fn Deflater::reset(Self) -> Unit
+pub fn Deflater::takeover(Self) -> Bool
+pub fn Deflater::window(Self) -> Int32
+
+pub struct Inflater {
+  bits : Int32
+  takeover : Bool
+  limit : Int32
+  mut dict : Array[Byte]
+  mut pending : Bytes
+  mut acc : Int32
+  mut held : Int32
+}
+pub fn Inflater::decompress(Self, BytesView, more? : Bool) -> Bytes raise Refused
+pub fn Inflater::new(bits? : Int32, takeover? : Bool, limit? : Int32) -> Self
+pub fn Inflater::reset(Self) -> Unit
+
+// Type aliases
+
+// Traits
