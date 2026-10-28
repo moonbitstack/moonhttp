@@ -126,11 +126,35 @@ pub(all) struct Frame {
 /// The length takes the shortest of the three forms — seven bits up to 125, sixteen bits
 /// under `126`, sixty-four under `127`.
 pub fn Frame::encode(self : Frame, mask~ : Bytes = b"") -> Bytes {
+  encoded(self, mask~, rsv1=false)
+}
+
+///|
+/// The frame with RSV1 set, for a connection where an extension has claimed the bit
+/// (RFC 7692 §6).
+///
+/// The bit is not part of `Frame` because it is not part of §5.2's frame: it means
+/// whatever the negotiated extension says it means, and a frame carrying one is
+/// only readable by a peer that agreed to that extension.
+pub fn Frame::encode_extension(
+  self : Frame,
+  mask~ : Bytes = b"",
+  rsv1~ : Bool = false,
+) -> Bytes {
+  encoded(self, mask~, rsv1~)
+}
+
+///|
+/// The frame as §5.2 lays it out, with the RSV bits a caller asked for.
+fn encoded(frame : Frame, mask~ : Bytes, rsv1~ : Bool = false) -> Bytes {
   let buf = Buffer()
-  let first = (if self.fin { 0x80 } else { 0 }) | self.opcode.code()
+  let mut first = (if frame.fin { 0x80 } else { 0 }) | frame.opcode.code()
+  if rsv1 {
+    first = first | 0x40
+  }
   buf.write_byte(first.to_byte())
   let masked = mask.length() == 4
-  let n = self.payload.length()
+  let n = frame.payload.length()
   let flag = if masked { 0x80 } else { 0 }
   if n <= 125 {
     buf.write_byte((flag | n).to_byte())
@@ -145,11 +169,11 @@ pub fn Frame::encode(self : Frame, mask~ : Bytes = b"") -> Bytes {
     buf.write_bytes(mask)
     for i = 0; i < n; i = i + 1 {
       buf.write_byte(
-        (self.payload[i].to_int() ^ mask[i % 4].to_int()).to_byte(),
+        (frame.payload[i].to_int() ^ mask[i % 4].to_int()).to_byte(),
       )
     }
   } else {
-    buf.write_bytes(self.payload)
+    buf.write_bytes(frame.payload)
   }
   buf.to_bytes()
 }
@@ -173,6 +197,47 @@ pub fn check(
   if (b0 & 0x70) != 0 {
     raise Protocol("an RSV bit is set with no extension negotiated")
   }
+  framing(b0, b1, len, client~, limit~)
+}
+
+///|
+/// Check a frame's first two bytes when an extension has claimed RSV1, answering with
+/// the opcode and whether the bit was set (RFC 7692 §6).
+///
+/// The bit belongs to an extension negotiated for the whole connection, so a caller
+/// that has none must not read frames this way; `check` is that caller.
+///
+/// What the bit may say is narrower than a data frame: §6.1 forbids it on control
+/// frames and on a continuation, whose RSV bits belong to whichever frame started the
+/// message. Both are refused here, which leaves the extension only the question of
+/// what a set bit on a first data frame means.
+pub fn check_extension(
+  b0 : Int32,
+  b1 : Int32,
+  len : Int64,
+  client~ : Bool,
+  limit~ : Int32 = limit,
+) -> (Opcode, Bool) raise Refused {
+  if (b0 & 0x30) != 0 {
+    raise Protocol("an RSV bit is set that no extension claimed")
+  }
+  let rsv1 = (b0 & 0x40) != 0
+  let opcode = framing(b0, b1, len, client~, limit~)
+  if rsv1 && (opcode.is_control() || opcode is Continuation) {
+    raise Protocol("RSV1 on a control frame or on a continuation")
+  }
+  (opcode, rsv1)
+}
+
+///|
+/// The framing rules of §5.2 and §5.5 that do not depend on the RSV bits.
+fn framing(
+  b0 : Int32,
+  b1 : Int32,
+  len : Int64,
+  client~ : Bool,
+  limit~ : Int32,
+) -> Opcode raise Refused {
   guard Opcode::of(b0 & 0x0f) is Some(opcode) else {
     raise Protocol("a reserved opcode")
   }
@@ -204,6 +269,36 @@ pub fn decode(
   client~ : Bool = true,
   limit~ : Int32 = limit,
 ) -> (Frame, Int32)? raise Refused {
+  match decoded(b, client~, limit~, false) {
+    Some((frame, used, _)) => Some((frame, used))
+    None => None
+  }
+}
+
+///|
+/// One frame at the start of `b`, read under an extension that claimed RSV1, with the
+/// bit's value reported alongside (RFC 7692 §6).
+///
+/// Everything `decode` says about a short buffer and a broken frame holds here too;
+/// what is added is that RSV1 is allowed on a first data frame, and is that
+/// extension's to interpret.
+pub fn decode_extension(
+  b : BytesView,
+  client~ : Bool = true,
+  limit~ : Int32 = limit,
+) -> (Frame, Int32, Bool)? raise Refused {
+  decoded(b, client~, limit~, true)
+}
+
+///|
+/// The frame decoder both of the above wrap, with the extension's claim as a flag so
+/// that the rules live in one place.
+fn decoded(
+  b : BytesView,
+  client~ : Bool,
+  limit~ : Int32,
+  claim : Bool,
+) -> (Frame, Int32, Bool)? raise Refused {
   if b.length() < 2 {
     return None
   }
@@ -222,8 +317,12 @@ pub fn decode(
     len = v.reinterpret_as_int64()
     at = at + 8
   }
-  let opcode = check(b0, b1, len, client~, limit~)
-  // `check` bounded it, so narrowing cannot truncate.
+  let (opcode, rsv1) = if claim {
+    check_extension(b0, b1, len, client~, limit~)
+  } else {
+    (check(b0, b1, len, client~, limit~), false)
+  }
+  // The check bounded it, so narrowing cannot truncate.
   let n = len.to_int()
   let masked = (b1 & 0x80) != 0
   let mut key = 0
@@ -248,7 +347,11 @@ pub fn decode(
     }
   }
   Some(
-    ({ fin: (b0 & 0x80) != 0, opcode, payload: payload.to_bytes(), }, at + n),
+    (
+      { fin: (b0 & 0x80) != 0, opcode, payload: payload.to_bytes(), },
+      at + n,
+      rsv1,
+    ),
   )
 }
 

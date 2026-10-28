@@ -11,9 +11,13 @@ pub fn allowed(Int32) -> Bool
 
 pub fn check(Int32, Int32, Int64, client~ : Bool, limit? : Int32) -> Opcode raise Refused
 
+pub fn check_extension(Int32, Int32, Int64, client~ : Bool, limit? : Int32) -> (Opcode, Bool) raise Refused
+
 pub fn close(Int32, reason? : String) -> Bytes
 
 pub fn decode(BytesView, client? : Bool, limit? : Int32) -> (Frame, Int32)? raise Refused
+
+pub fn decode_extension(BytesView, client? : Bool, limit? : Int32) -> (Frame, Int32, Bool)? raise Refused
 
 pub let limit : Int32
 
@@ -42,6 +46,7 @@ pub(all) struct Frame {
   payload : Bytes
 } derive(Eq, @debug.Debug)
 pub fn Frame::encode(Self, mask? : Bytes) -> Bytes
+pub fn Frame::encode_extension(Self, mask? : Bytes, rsv1? : Bool) -> Bytes
 pub fn Frame::equal(Self, Self) -> Bool
 pub fn Frame::not_equal(Self, Self) -> Bool
 pub fn Frame::to_repr(Self) -> @debug.Repr
