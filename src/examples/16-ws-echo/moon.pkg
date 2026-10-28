@@ -1,0 +1,20 @@
+// The conformance endpoint: `moon run src/examples/16-ws-echo`, then point
+// Autobahn's fuzzingclient at it.
+//
+// The library has no sockets in it, so this is where they are: the handshake and
+// every frame are this library's, and the two ends of a TCP connection are
+// `moonbitlang/async`'s. Native only, because that is where the sockets are.
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/socket",
+  "moonbitstack/moonhttp/ws",
+  "moonbitstack/moonhttp/pmd",
+  "moonbitstack/moonhttp/upgrade",
+  "moonbitstack/moonhttp/http1",
+  "moonbitstack/moonhttp/header",
+  "moonbitlang/core/encoding/utf8",
+}
+
+supported_targets = "+native"
+
+pkgtype(kind: "executable")

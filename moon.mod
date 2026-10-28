@@ -30,6 +30,7 @@ import {
   "moonbitstack/moonmime@0.2.0",
   "moonbitstack/moonurl@0.2.0",
   "moonbitstack/moonzip@0.3.0",
+  "moonbitlang/async@0.22.5",
 }
 
 source = "src"

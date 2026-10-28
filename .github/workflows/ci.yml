@@ -49,6 +49,9 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           for dir in src/examples/*/; do
+            # The conformance endpoint is a server: it runs until something stops
+            # it, and `scripts/autobahn/run.sh` is what does.
+            case "$dir" in *16-ws-echo*) continue ;; esac
             if grep -q 'kind: "executable"' "$dir/moon.pkg" && ! grep -q 'supported_targets = "js"' "$dir/moon.pkg"; then
               moon run "$dir" --target native > /dev/null
             fi
@@ -68,5 +71,39 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           python3 scripts/gen_deflate_vectors.py
+          python3 scripts/gen_cache_vectors.py
           python3 scripts/gen_docs.py
           git diff --exit-code
+
+  # The permessage-deflate conformance run: Autobahn's fuzzingclient, cases 12.*
+  # and 13.*, against the endpoint `src/examples/16-ws-echo` builds. It is a job of
+  # its own because it needs Docker and a socket, and because a failure here is a
+  # protocol failure rather than a build one.
+  conformance:
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: install-unix
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+
+      - name: post install
+        run: |
+          moon version --all
+          moon update
+
+      - name: autobahn, cases 12.* and 13.*
+        run: sh scripts/autobahn/run.sh
+
+      - name: the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: autobahn
+          path: _build/autobahn
