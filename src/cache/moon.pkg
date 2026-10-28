@@ -1,0 +1,23 @@
+// Cache semantics, RFC 9111: https://www.rfc-editor.org/rfc/rfc9111
+//
+// What a cache may store, how long what it stored stays fresh, how old it is, and
+// whether it may answer a request — decisions only. There is no store here: where
+// the octets live, how they are evicted and what the key is belong to whoever is
+// keeping them.
+//
+// A stored response is `Entry`, which is the handful of fields a decision needs
+// rather than the message; `Control` is `Cache-Control` read from either side,
+// because the same directive means a freshness lifetime in a response and a
+// ceiling in a request.
+import {
+  "moonbitstack/moondate",
+  "moonbitstack/moonhttp/conditional",
+  "moonbitstack/moonhttp/method",
+}
+
+import {
+  "moonbitstack/moondate",
+  "moonbitstack/moonhttp/cache",
+  "moonbitstack/moonhttp/conditional",
+  "moonbitstack/moonhttp/method",
+} for "test"

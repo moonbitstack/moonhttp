@@ -1,0 +1,95 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitstack/moonhttp/cache"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitstack/moondate",
+  "moonbitstack/moonhttp/conditional",
+  "moonbitstack/moonhttp/method",
+}
+
+// Values
+pub let control : Control
+
+pub fn heuristically_cacheable(Int32) -> Bool
+
+// Errors
+
+// Types and methods
+pub(all) struct Control {
+  max_age : Int32?
+  s_maxage : Int32?
+  max_stale : Stale?
+  min_fresh : Int32?
+  no_cache : Bool
+  no_cache_fields : Array[String]
+  no_store : Bool
+  no_transform : Bool
+  only_if_cached : Bool
+  must_revalidate : Bool
+  must_understand : Bool
+  private_ : Bool
+  private_fields : Array[String]
+  proxy_revalidate : Bool
+  public : Bool
+  immutable : Bool
+  stale_while_revalidate : Int32?
+  stale_if_error : Int32?
+  extensions : Array[(String, String?)]
+} derive(Eq, @debug.Debug)
+pub fn Control::decode(StringView) -> Self
+pub fn Control::encode(Self) -> String
+pub fn Control::equal(Self, Self) -> Bool
+pub fn Control::not_equal(Self, Self) -> Bool
+pub fn Control::of(ArrayView[(String, String)]) -> Self
+pub fn Control::to_repr(Self) -> @debug.Repr
+
+pub(all) struct Entry {
+  status : Int32
+  control : Control
+  date : @moondate.Moment?
+  age : Int32?
+  expires : @moondate.Moment?
+  last_modified : @moondate.Moment?
+  etag : @conditional.Tag?
+  vary : Array[String]
+  selects : Array[(String, String)]
+  sent : @moondate.Moment
+  received : @moondate.Moment
+} derive(Eq, @debug.Debug)
+pub fn Entry::aged(Self, now~ : @moondate.Moment) -> (String, String)
+pub fn Entry::conditional(Self) -> Array[(String, String)]
+pub fn Entry::current_age(Self, now~ : @moondate.Moment) -> Int32
+pub fn Entry::equal(Self, Self) -> Bool
+pub fn Entry::fresh(Self, now~ : @moondate.Moment, shared? : Bool) -> Bool
+pub fn Entry::fresh_for(Self, shared? : Bool) -> Int32?
+pub fn Entry::freshened(Self, headers~ : ArrayView[(String, String)], received~ : @moondate.Moment) -> Self
+pub fn Entry::heuristic(Self, fraction? : Int32) -> Int32?
+pub fn Entry::lifetime(Self, shared? : Bool) -> Int32?
+pub fn Entry::not_equal(Self, Self) -> Bool
+pub fn Entry::read(status~ : Int32, headers~ : ArrayView[(String, String)], request~ : ArrayView[(String, String)], sent~ : @moondate.Moment, received~ : @moondate.Moment) -> Self
+pub fn Entry::storable(Self, verb~ : @method.Method, request~ : Control, shared? : Bool, understood? : Bool, authorized? : Bool) -> Bool
+pub fn Entry::to_repr(Self) -> @debug.Repr
+pub fn Entry::vary_matches(Self, ArrayView[(String, String)]) -> Bool
+pub fn Entry::verdict(Self, request~ : Control, presented~ : ArrayView[(String, String)], now~ : @moondate.Moment, shared? : Bool, connected? : Bool) -> Verdict
+
+pub(all) enum Stale {
+  Any
+  Within(Int32)
+} derive(Eq, @debug.Debug)
+pub fn Stale::equal(Self, Self) -> Bool
+pub fn Stale::not_equal(Self, Self) -> Bool
+pub fn Stale::to_repr(Self) -> @debug.Repr
+
+pub(all) enum Verdict {
+  Serve
+  Validate
+  Miss
+} derive(Eq, @debug.Debug)
+pub fn Verdict::equal(Self, Self) -> Bool
+pub fn Verdict::not_equal(Self, Self) -> Bool
+pub fn Verdict::to_repr(Self) -> @debug.Repr
+
+// Type aliases
+
+// Traits
