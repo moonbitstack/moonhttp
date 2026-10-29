@@ -118,7 +118,7 @@ if (calc) {
     const life = Number(input("life").value);
 
     const m = await engine;
-    const { initial, current, lifetime, left, fresh } = JSON.parse(
+    const { initial, current, left, fresh } = JSON.parse(
       m.age(dated, ageField, delay, resident, life),
     );
 
@@ -129,7 +129,6 @@ if (calc) {
     out("life").textContent = life + "s";
 
     $("#r-age", calc).textContent = current + "s";
-    $("#r-life", calc).textContent = lifetime + "s";
     $("#r-left", calc).textContent = left >= 0 ? left + "s" : "—";
     $("#r-initial", calc).textContent = initial + "s";
 
