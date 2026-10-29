@@ -105,7 +105,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visibl
 }
 
 /* 滚动条 */
-* { scrollbar-width: thin; scrollbar-color: var(--wall-3) transparent; }
 @supports not selector(::-webkit-scrollbar) {
   * { scrollbar-width: thin; scrollbar-color: var(--wall-3) transparent; }
 }
@@ -1140,4 +1139,13 @@ input[type="range"]::-moz-range-thumb {
   .bits { grid-template-columns: 34px repeat(8, minmax(0, 1fr)); gap: 2px; font-size: 7px; }
   .bits .bcell { min-height: 34px; }
   .bits .bcell b { font-size: 8.5px; }
+}
+
+/* The page scroll bar shows while the page moves or under the pointer and
+   hides a moment after; it keeps its place, so nothing shifts. */
+@supports selector(::-webkit-scrollbar) {
+  html:not(.scrolling)::-webkit-scrollbar-thumb { background: transparent; border-color: transparent; box-shadow: none; }
+}
+@supports not selector(::-webkit-scrollbar) {
+  html:not(.scrolling) { scrollbar-color: transparent transparent; }
 }
