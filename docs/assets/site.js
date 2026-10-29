@@ -101,26 +101,26 @@ if (spyLinks.length && "IntersectionObserver" in window) {
 
 // ---------------------------------------------------------------- cache age
 
+// The numbers come from moonhttp's cache.Entry built to JavaScript
+// (engine/moonhttp.js, written by the docs workflow).
 const calc = $("#calc");
+const engine = calc ? import("../engine/moonhttp.js") : null;
 if (calc) {
   const input = (name) => $("#a-" + name, calc);
   const out = (name) => $("#v-" + name, calc);
   const verdict = $("#verdict", calc);
 
-  const paint = () => {
+  const paint = async () => {
     const dated = Number(input("dated").value);
     const ageField = Number(input("age").value);
     const delay = Number(input("delay").value);
     const resident = Number(input("resident").value);
     const life = Number(input("life").value);
 
-    // §4.2.3: the apparent age is how old the origin already said it was, the
-    // corrected age adds the trip, and the initial age is the larger of the two.
-    const apparent = Math.max(0, dated);
-    const corrected = ageField + delay;
-    const initial = Math.max(apparent, corrected);
-    const current = initial + resident;
-    const left = life - current;
+    const m = await engine;
+    const { initial, current, lifetime, left, fresh } = JSON.parse(
+      m.age(dated, ageField, delay, resident, life),
+    );
 
     out("dated").textContent = dated + "s";
     out("age").textContent = ageField + "s";
@@ -129,12 +129,10 @@ if (calc) {
     out("life").textContent = life + "s";
 
     $("#r-age", calc).textContent = current + "s";
-    $("#r-life", calc).textContent = life + "s";
+    $("#r-life", calc).textContent = lifetime + "s";
     $("#r-left", calc).textContent = left >= 0 ? left + "s" : "—";
     $("#r-initial", calc).textContent = initial + "s";
 
-    // §5.2.2.1: stale once the age is greater than the lifetime.
-    const fresh = current <= life;
     verdict.classList.toggle("stale", !fresh);
     verdict.textContent = "";
     const dot = document.createElement("span");

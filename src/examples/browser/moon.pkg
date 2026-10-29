@@ -1,0 +1,10 @@
+// The site's engine: moonhttp built to JavaScript for the cache calculator on
+// the protocols page. Numbers in, JSON out.
+import {
+  "moonbitstack/moonhttp/cache",
+  "moonbitstack/moondate",
+}
+
+options(
+  link: { "js": { "exports": [ "age" ], "format": "esm" } },
+)

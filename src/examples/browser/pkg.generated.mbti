@@ -1,0 +1,13 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitstack/moonhttp/examples/browser"
+
+// Values
+pub fn age(Int32, Int32, Int32, Int32, Int32) -> String
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
