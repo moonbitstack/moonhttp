@@ -39,10 +39,7 @@ pub struct Inflater {
   bits : Int32
   takeover : Bool
   limit : Int32
-  mut dict : Array[Byte]
-  mut pending : Bytes
-  mut acc : Int32
-  mut held : Int32
+  // private fields
 }
 pub fn Inflater::decompress(Self, BytesView, more? : Bool) -> Bytes raise Refused
 pub fn Inflater::new(bits? : Int32, takeover? : Bool, limit? : Int32) -> Self

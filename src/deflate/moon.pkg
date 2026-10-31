@@ -14,3 +14,7 @@ import {
   "moonbitstack/moonhttp/deflate",
   "moonbitstack/moonzip/deflate" @zip,
 } for "test"
+
+import {
+  "moonbitstack/moonzip/deflate" @zip,
+} for "wbtest"

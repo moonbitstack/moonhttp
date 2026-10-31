@@ -265,3 +265,31 @@ test "a message that stops inside a block and never continues is refused" {
   }
   assert_true(out is Some(@deflate.Truncated(..)))
 }
+
+///|
+test "every stream zlib wrote reads the same fed an octet at a time" {
+  // Every block type zlib writes, fixed, dynamic and stored, with the window
+  // carried from message to message: each fragment ends inside a symbol, a header
+  // or a stored run somewhere, and decoding has to pick up exactly there.
+  for vector in @deflate.vectors {
+    let (name, bits, takeover, segments, messages) = vector
+    let inflater = @deflate.Inflater::new(bits~, takeover~)
+    for i in 0..<segments.length() {
+      let segment = segments[i]
+      let got = Buffer()
+      for at in 0..<segment.length() {
+        let piece = inflater.decompress(segment[at:at + 1], more=true) catch {
+          e => fail("\{name}: octet \{at} of segment \{i}: " + e.to_string())
+        }
+        got.write_bytes(piece)
+      }
+      let rest = inflater.decompress(b""[:]) catch {
+        e => fail("\{name}: the end of segment \{i}: " + e.to_string())
+      }
+      got.write_bytes(rest)
+      if got.to_bytes() != messages[i] {
+        fail("\{name}: segment \{i} read an octet at a time differs")
+      }
+    }
+  }
+}

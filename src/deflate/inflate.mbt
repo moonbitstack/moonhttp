@@ -12,18 +12,32 @@
 /// reports what a message carried — the stream itself may continue in the next
 /// call, with or without the window of the last one.
 ///
-/// Running out of octets *inside* a block is a different thing, and is refused:
-/// that is a message somebody truncated, not a message that ended.
+/// Running out of octets *inside* a block is a different thing at the end of a
+/// message, and is refused: that is a message somebody truncated. Inside a
+/// message it is the ordinary case, and decoding picks up where it stopped.
 pub struct Inflater {
   bits : Int32
   takeover : Bool
   limit : Int32
-  mut dict : Array[Byte]
-  /// What a fragment ended in the middle of: the octets from the last block
-  /// boundary on, and the bits of the byte before them.
-  mut pending : Bytes
-  mut acc : Int32
-  mut held : Int32
+  priv mut dict : Array[Byte]
+  // What a fragment ended in the middle of: the octets of a symbol, a stored
+  // block's header or a dynamic block's code tables that were not all there yet,
+  // and the bits of the byte before them. Resuming from a symbol rather than a
+  // block keeps a message split into small frames linear: a block can run to
+  // the whole message, and decoding it again per frame is quadratic.
+  priv mut pending : Bytes
+  priv mut acc : Int32
+  priv mut held : Int32
+  priv mut mode : Mode
+  priv mut last : Bool
+}
+
+///|
+/// Where the decoder stands between blocks or inside one.
+priv enum Mode {
+  Header
+  Stored(Int32)
+  Codes(Huffman, Huffman)
 }
 
 ///|
@@ -43,7 +57,17 @@ pub fn Inflater::new(
   guard bits >= 8 && bits <= 15 else {
     abort("deflate: a \{bits}-bit window is outside what DEFLATE allows")
   }
-  { bits, takeover, limit, dict: [], pending: b"", acc: 0, held: 0, }
+  {
+    bits,
+    takeover,
+    limit,
+    dict: [],
+    pending: b"",
+    acc: 0,
+    held: 0,
+    mode: Header,
+    last: false,
+  }
 }
 
 ///|
@@ -53,6 +77,8 @@ pub fn Inflater::reset(self : Inflater) -> Unit {
   self.pending = b""
   self.acc = 0
   self.held = 0
+  self.mode = Header
+  self.last = false
 }
 
 ///|
@@ -80,23 +106,53 @@ pub fn Inflater::decompress(
   if !more {
     src.write_bytes(Bytes::from_array([b'\x00', b'\x00', b'\xff', b'\xff']))
   }
-  let src = src.to_bytes()
-  let br = BitReader::{ src, pos: 0, acc: self.acc, held: self.held, }
+  let br = BitReader::{
+    src: src.to_bytes(),
+    pos: 0,
+    acc: self.acc,
+    held: self.held,
+  }
   let out : Array[Byte] = []
-  // Where the last complete block ended, which is where a resumption starts —
-  // octets, bits and how much output the blocks before it produced.
-  let mut boundary = (0, 0, 0, 0)
+  // Where the last whole step ended — a block header, a stored run, a symbol —
+  // which is where the next call resumes if this one runs out of octets.
+  let mut mark = (0, self.acc, self.held)
   let mut cut = false
-  let mut last = false
-  while !last {
-    if br.empty() {
-      // The octets ran out where a block begins: the stream continues in the next
-      // message, which is the ordinary case rather than the end of one.
-      break
-    }
-    boundary = (br.pos, br.acc, br.held, out.length())
+  let mut done = false
+  while !done {
+    mark = (br.pos, br.acc, br.held)
     try {
-      last = one_block(br, out, self.dict, self.bits, self.limit)
+      match self.mode {
+        Header => {
+          if br.empty() {
+            // The octets ran out where a block begins: the stream continues in
+            // the next message, which is the ordinary case rather than the end.
+            break
+          }
+          self.mode = header(br, self)
+        }
+        Stored(left) => {
+          let there = br.src.length() - br.pos
+          let take = if left < there { left } else { there }
+          if self.limit >= 0 && out.length() + take > self.limit {
+            raise Exceeded(limit=self.limit, got=out.length() + take)
+          }
+          for _ in 0..<take {
+            out.push(br.src[br.pos])
+            br.pos += 1
+          }
+          if take < left {
+            self.mode = Stored(left - take)
+            raise Truncated(at=br.pos)
+          }
+          self.mode = Header
+          done = self.last
+        }
+        Codes(litlen, dist) =>
+          if symbol(br, out, self.dict, self.bits, litlen, dist, self.limit) {
+            self.mode = Header
+            done = self.last
+          }
+      }
     } catch {
       Truncated(..) => {
         cut = true
@@ -105,22 +161,19 @@ pub fn Inflater::decompress(
       e => raise e
     }
   }
-  if cut && !more {
+  if !more && (cut || !(self.mode is Header)) {
     // A message that stops inside a block is a message somebody cut short.
     raise Truncated(at=br.pos)
   }
   if cut {
-    // The block that ran out produced part of a message that will be produced
-    // again when the rest of it arrives, so what it wrote goes back.
-    let (at, acc, held, length) = boundary
-    while out.length() > length {
-      let _ = out.pop()
+    // A stored run keeps what it copied; anything else resumes at the step it
+    // was in the middle of, so what that step read is read again.
+    let (at, acc, held) = if self.mode is Stored(_) {
+      (br.pos, br.acc, br.held)
+    } else {
+      mark
     }
-    let kept : Array[Byte] = []
-    for k in at..<src.length() {
-      kept.push(src[k])
-    }
-    self.pending = Bytes::from_array(kept)
+    self.pending = br.src[at:].to_owned()
     self.acc = acc
     self.held = held
   } else {
@@ -128,30 +181,45 @@ pub fn Inflater::decompress(
     self.acc = 0
     self.held = 0
   }
+  if done {
+    self.mode = Header
+    self.last = false
+  }
   self.remember(out, more~)
   Bytes::from_array(out)
 }
 
 ///|
-/// One block, answering whether it was the stream's last.
-fn one_block(
-  br : BitReader,
-  out : Array[Byte],
-  dict : Array[Byte],
-  bits : Int32,
-  ceiling : Int32,
-) -> Bool raise Refused {
+/// A block's header: what kind of block it is, and for a stored block its
+/// length, for a dynamic one its code tables (§3.2.3).
+fn header(br : BitReader, self : Inflater) -> Mode raise Refused {
   let last = br.bits(1) == 1
-  match br.bits(2) {
-    0 => stored(br, out, ceiling)
-    1 => block(br, out, dict, bits, fixed_litlen, fixed_dist, ceiling)
+  let mode = match br.bits(2) {
+    0 => {
+      // Whatever is left of the current byte is the padding the format put there.
+      br.acc = 0
+      br.held = 0
+      if br.pos + 4 > br.src.length() {
+        raise Truncated(at=br.pos)
+      }
+      let len = br.src[br.pos].to_int() | (br.src[br.pos + 1].to_int() << 8)
+      let nlen = br.src[br.pos + 2].to_int() |
+        (br.src[br.pos + 3].to_int() << 8)
+      if len != (nlen ^ 0xFFFF) {
+        raise Block(at=br.pos, got=3)
+      }
+      br.pos += 4
+      Mode::Stored(len)
+    }
+    1 => Codes(fixed_litlen, fixed_dist)
     2 => {
       let (litlen, dist) = tables(br)
-      block(br, out, dict, bits, litlen, dist, ceiling)
+      Codes(litlen, dist)
     }
     got => raise Block(at=br.pos, got~)
   }
-  last
+  self.last = last
+  mode
 }
 
 ///|
@@ -185,38 +253,6 @@ fn Inflater::remember(self : Inflater, out : Array[Byte], more~ : Bool) -> Unit 
       kept.push(self.dict[k])
     }
     self.dict = kept
-  }
-}
-
-///|
-/// A stored block: the bit stream aligns to a byte, then a length, its
-/// complement, and that many octets verbatim (§3.2.4).
-fn stored(
-  br : BitReader,
-  out : Array[Byte],
-  ceiling : Int32,
-) -> Unit raise Refused {
-  // Whatever is left of the current byte is the padding the format put there.
-  br.acc = 0
-  br.held = 0
-  if br.pos + 4 > br.src.length() {
-    raise Truncated(at=br.pos)
-  }
-  let len = br.src[br.pos].to_int() | (br.src[br.pos + 1].to_int() << 8)
-  let nlen = br.src[br.pos + 2].to_int() | (br.src[br.pos + 3].to_int() << 8)
-  if len != (nlen ^ 0xFFFF) {
-    raise Block(at=br.pos, got=3)
-  }
-  br.pos += 4
-  if br.pos + len > br.src.length() {
-    raise Truncated(at=br.pos)
-  }
-  if ceiling >= 0 && out.length() + len > ceiling {
-    raise Exceeded(limit=ceiling, got=out.length() + len)
-  }
-  for _ in 0..<len {
-    out.push(br.src[br.pos])
-    br.pos += 1
   }
 }
 
@@ -270,11 +306,13 @@ fn tables(br : BitReader) -> (Huffman, Huffman) raise Refused {
 }
 
 ///|
-/// The body of a compressed block, under whichever pair of code tables.
+/// One symbol of a compressed block, under whichever pair of code tables,
+/// answering whether it was the block's end. A symbol that runs out of octets
+/// halfway writes nothing, so reading it again from its start is exact.
 ///
-/// `dict` is the window the previous messages left behind: a match may reach
-/// into it, which is what context takeover is for.
-fn block(
+/// `dict` is the window the previous messages and fragments left behind: a
+/// match may reach into it, which is what context takeover is for.
+fn symbol(
   br : BitReader,
   out : Array[Byte],
   dict : Array[Byte],
@@ -282,45 +320,44 @@ fn block(
   litlen : Huffman,
   dist : Huffman,
   ceiling : Int32,
-) -> Unit raise Refused {
-  let mut open = true
-  while open {
-    if ceiling >= 0 && out.length() > ceiling {
-      raise Exceeded(limit=ceiling, got=out.length())
-    }
-    let sym = litlen.read(br)
-    if sym < 256 {
-      out.push(sym.to_byte())
-    } else if sym == 256 {
-      open = false
-    } else {
-      let index = sym - 257
-      if index >= 29 {
-        raise Code(at=br.pos)
-      }
-      let len = length_base[index] + br.bits(length_extra[index])
-      let dcode = dist.read(br)
-      if dcode >= 30 {
-        raise Code(at=br.pos)
-      }
-      let back = dist_base[dcode] + br.bits(dist_extra[dcode])
-      if back > 1 << bits || back > out.length() + dict.length() {
-        raise Distance(at=br.pos, got=back)
-      }
-      if ceiling >= 0 && out.length() + len > ceiling {
-        raise Exceeded(limit=ceiling, got=out.length() + len)
-      }
-      // A byte at a time on purpose: a match may overlap itself, and the octets
-      // it copies are the ones this loop is writing.
-      for _ in 0..<len {
-        let at = out.length()
-        let value = if back <= at {
-          out[at - back].to_int()
-        } else {
-          dict[dict.length() - (back - at)].to_int()
-        }
-        out.push(value.to_byte())
-      }
-    }
+) -> Bool raise Refused {
+  if ceiling >= 0 && out.length() > ceiling {
+    raise Exceeded(limit=ceiling, got=out.length())
   }
+  let sym = litlen.read(br)
+  if sym < 256 {
+    out.push(sym.to_byte())
+    return false
+  }
+  if sym == 256 {
+    return true
+  }
+  let index = sym - 257
+  if index >= 29 {
+    raise Code(at=br.pos)
+  }
+  let len = length_base[index] + br.bits(length_extra[index])
+  let dcode = dist.read(br)
+  if dcode >= 30 {
+    raise Code(at=br.pos)
+  }
+  let back = dist_base[dcode] + br.bits(dist_extra[dcode])
+  if back > 1 << bits || back > out.length() + dict.length() {
+    raise Distance(at=br.pos, got=back)
+  }
+  if ceiling >= 0 && out.length() + len > ceiling {
+    raise Exceeded(limit=ceiling, got=out.length() + len)
+  }
+  // A byte at a time on purpose: a match may overlap itself, and the octets it
+  // copies are the ones this loop is writing.
+  for _ in 0..<len {
+    let at = out.length()
+    let value = if back <= at {
+      out[at - back].to_int()
+    } else {
+      dict[dict.length() - (back - at)].to_int()
+    }
+    out.push(value.to_byte())
+  }
+  false
 }
