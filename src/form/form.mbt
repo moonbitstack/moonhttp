@@ -25,7 +25,7 @@ pub fn parse(
       let query = @moonurl.Query::decode(body, limits=bound) catch {
         Pairs(limit~) => raise Parts(limit~)
         Pair(limit~, got~) => raise Part(limit~, got~)
-        Port(_) | Host(_) => abort("Query::decode refuses only by its limits")
+        _ => abort("Query::decode refuses only by its limits")
       }
       let fields = query
         .entries()
