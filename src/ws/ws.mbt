@@ -461,7 +461,7 @@ pub fn Reader::feed(self : Reader, frame : Frame) -> Step raise Refused {
     Close => {
       let got = status(frame.payload[:])
       if frame.payload.length() >= 2 && !allowed(got) {
-        raise Payload(
+        raise Protocol(
           "a close status §7.4.1 does not allow on the wire: \{got}",
         )
       }

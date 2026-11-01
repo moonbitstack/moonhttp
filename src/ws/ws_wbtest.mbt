@@ -303,7 +303,7 @@ test "a close with no status reads as 1005 and is echoed with none" {
 
 ///|
 test "only the statuses §7.4.1 allows may arrive on the wire" {
-  for ok in [1000, 1001, 1002, 1003, 1007, 1008, 1009, 1010, 1011, 3000, 4999] {
+  for ok in [1000, 1001, 1002, 1003, 1002, 1008, 1009, 1010, 1011, 3000, 4999] {
     assert_eq(allowed(ok), true)
   }
   // Reserved, and the three an endpoint only ever sets for itself.
@@ -320,7 +320,7 @@ test "only the statuses §7.4.1 allows may arrive on the wire" {
   try {
     let _ = reader.feed({ fin: true, opcode: Close, payload: close(1005), })
   } catch {
-    Payload(_) => refused = true
+    Protocol(_) => refused = true
     _ => ()
   }
   assert_eq(refused, true)

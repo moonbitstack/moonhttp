@@ -76,7 +76,7 @@ jobs:
           python3 scripts/gen_docs.py
           git diff --exit-code
 
-  # The permessage-deflate conformance run: Autobahn's fuzzingclient, cases 12.*
+  # The conformance run: Autobahn's fuzzingclient, cases 7.*, 12.*
   # and 13.*, against the endpoint `src/examples/16-ws-echo` builds. It is a job of
   # its own because it needs Docker and a socket, and because a failure here is a
   # protocol failure rather than a build one.
@@ -99,7 +99,7 @@ jobs:
           moon version --all
           moon update
 
-      - name: autobahn, cases 12.* and 13.*
+      - name: autobahn, cases 7.*, 12.* and 13.*
         run: sh scripts/autobahn/run.sh
 
       - name: the report

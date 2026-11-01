@@ -1,6 +1,6 @@
 name = "moonbitstack/moonhttp"
 
-version = "0.15.3"
+version = "0.15.4"
 
 readme = "README.md"
 

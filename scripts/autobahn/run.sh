@@ -1,5 +1,5 @@
 #!/bin/sh
-# The Autobahn conformance run for RFC 7692: cases 12.* and 13.*, against the echo
+# The Autobahn conformance run for close handling and RFC 7692: cases 7.*, 12.* and 13.*, against the echo
 # endpoint this repo builds. Needs Docker.
 #
 #     sh scripts/autobahn/run.sh
