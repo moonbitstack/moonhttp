@@ -13,8 +13,9 @@ here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 root=$(dirname "$(dirname "$here")")
 cd "$root"
 
-moon build src/examples/16-ws-echo --target native
-./_build/native/debug/build/examples/16-ws-echo/16-ws-echo.exe &
+# Release, or the compressed cases take hours: deflate is an order of magnitude slower in a debug build.
+moon build src/examples/16-ws-echo --target native --release
+./_build/native/release/build/examples/16-ws-echo/16-ws-echo.exe &
 endpoint=$!
 trap 'kill $endpoint 2>/dev/null || true' EXIT
 sleep 1
