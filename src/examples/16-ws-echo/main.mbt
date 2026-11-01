@@ -93,9 +93,15 @@ async fn echo(
     Some(terms) => @pmd.Reader::new(extension=terms)
     None => @pmd.Reader::new()
   }
-  let writer = match agreed {
-    Some(terms) => @pmd.Writer::new(extension=terms)
-    None => @pmd.Writer::new()
+  // No offer agreed means no compression: a compressed frame on such a connection is one its peer
+  // has to fail (RFC 7692 §6).
+  let writer = agreed.map(terms => @pmd.Writer::new(extension=terms))
+  let framed = (opcode : @ws.Opcode, payload : BytesView) => {
+    let (frame, compressed) = match writer {
+      Some(w) => w.frame(opcode, payload)
+      None => ({ fin: true, opcode, payload: payload.to_owned(), }, false)
+    }
+    frame.encode_extension(rsv1=compressed)
   }
   // Bytes that arrived with the handshake belong to the first frame.
   let mut buffer = inbox.to_bytes()
@@ -103,7 +109,8 @@ async fn echo(
   let mut running = true
   while running && status is None {
     let mut progressed = true
-    while progressed && status is None {
+    // Nothing is read past a close: RFC 6455 §5.5.1 ends the conversation there.
+    while progressed && running && status is None {
       progressed = false
       let decoded = @ws.decode_extension(buffer[:], client=true) catch {
         e => {
@@ -128,20 +135,10 @@ async fn echo(
             None => ()
           }
           match step.message {
-            Some(@ws.Message::Text(text)) => {
-              let (frame, compressed) = writer.frame(
-                @ws.Opcode::Text,
-                @utf8.encode(text)[:],
-              )
-              out.write_bytes(frame.encode_extension(rsv1=compressed))
-            }
-            Some(@ws.Message::Binary(data)) => {
-              let (frame, compressed) = writer.frame(
-                @ws.Opcode::Binary,
-                data[:],
-              )
-              out.write_bytes(frame.encode_extension(rsv1=compressed))
-            }
+            Some(@ws.Message::Text(text)) =>
+              out.write_bytes(framed(@ws.Opcode::Text, @utf8.encode(text)[:]))
+            Some(@ws.Message::Binary(data)) =>
+              out.write_bytes(framed(@ws.Opcode::Binary, data[:]))
             Some(@ws.Message::Close(..)) => running = false
             None => ()
           }
