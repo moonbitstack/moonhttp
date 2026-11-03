@@ -143,7 +143,7 @@ priv struct Huffman {
 /// The widest table this decoder builds. Nine bits cover the fixed code whole, and
 /// capping a dynamic one here keeps the table under two kilobytes while leaving its
 /// longer codes to the exact path.
-let table_bits : Int32 = 9
+let table_bits : Int32 = 12
 
 ///|
 /// Build a code from the width assigned to each symbol. A width of zero means
