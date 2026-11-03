@@ -1,6 +1,6 @@
 name = "moonbitstack/moonhttp"
 
-version = "0.15.4"
+version = "0.15.5"
 
 readme = "README.md"
 
@@ -10,13 +10,43 @@ license = "Apache-2.0"
 
 keywords = [
   "http",
+  "http1",
   "http2",
-  "etag",
   "http3",
-  "websocket",
   "hpack",
   "qpack",
+  "huffman",
+  "websocket",
+  "ws",
+  "permessage-deflate",
+  "sse",
+  "server-sent-events",
+  "eventsource",
+  "multipart",
+  "form",
+  "urlencoded",
+  "cookie",
+  "cookies",
+  "etag",
+  "conditional-requests",
+  "range-requests",
+  "cache-control",
+  "caching",
+  "headers",
+  "h2c",
+  "upgrade",
   "protocol",
+  "sans-io",
+  "rfc9110",
+  "rfc9111",
+  "rfc9112",
+  "rfc9113",
+  "rfc9114",
+  "rfc7541",
+  "rfc9204",
+  "rfc6455",
+  "rfc7692",
+  "rfc6265",
   "moonbit",
 ]
 
