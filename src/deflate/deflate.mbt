@@ -178,7 +178,7 @@ pub fn Deflater::compress(
             if len > best_len {
               best_len = len
               best_dist = dist
-              if len >= cap {
+              if len >= cap || len >= nice {
                 break
               }
             }
@@ -258,9 +258,15 @@ pub fn Deflater::compress(
 }
 
 ///|
-/// How deep the match finder looks at each position. Zlib's own level 6 walks
-/// 128 links, and the deeper chains buy little on the lengths a message carries.
-let chain : Int32 = 128
+/// How deep the match finder looks at each position. A message repeats itself in
+/// short runs, and the first few links hold the recent ones, so a shallow chain
+/// keeps most of the ratio and spends a fraction of the search.
+let chain : Int32 = 4
+
+///|
+/// The length at which a match is good enough to stop looking: the deeper links
+/// cannot beat it by enough to pay for the walk.
+let nice : Int32 = 32
 
 ///|
 /// Whether a message is worth Huffman-coding: a cheap probe over up to 8192 sample

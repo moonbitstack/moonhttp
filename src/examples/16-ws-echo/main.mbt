@@ -105,6 +105,10 @@ async fn echo(
   }
   // Bytes that arrived with the handshake belong to the first frame.
   let mut buffer = inbox.to_bytes()
+  // Where the first unconsumed frame starts. Keeping an offset rather than
+  // reslicing the buffer on every frame is what keeps a hundred and thirty
+  // megabytes of messages from being copied once per frame.
+  let mut head = 0
   let mut status : Int32? = None
   let mut running = true
   while running && status is None {
@@ -112,7 +116,7 @@ async fn echo(
     // Nothing is read past a close: RFC 6455 §5.5.1 ends the conversation there.
     while progressed && running && status is None {
       progressed = false
-      let decoded = @ws.decode_extension(buffer[:], client=true) catch {
+      let decoded = @ws.decode_extension(buffer[head:], client=true) catch {
         e => {
           status = Some(e.status())
           None
@@ -122,7 +126,7 @@ async fn echo(
         None => ()
         Some((frame, used, compressed)) => {
           progressed = true
-          buffer = buffer[used:].to_owned()
+          head = head + used
           let step = reader.feed(frame, compressed~) catch {
             e => {
               status = Some(e.status())
@@ -149,9 +153,18 @@ async fn echo(
       }
     }
     if status is None && running {
-      match conn.read_some(max_len=65536) {
+      match conn.read_some(max_len=262144) {
         None => running = false
-        Some(bytes) => buffer = buffer + bytes
+        Some(bytes) =>
+          // Nothing is left over: the read is the whole buffer. Otherwise the
+          // unconsumed tail moves down and the read joins it.
+          if head >= buffer.length() {
+            buffer = bytes
+            head = 0
+          } else {
+            buffer = buffer[head:].to_owned() + bytes
+            head = 0
+          }
       }
     }
   }

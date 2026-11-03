@@ -339,19 +339,49 @@ fn decoded(
   if b.length() < at + n {
     return None
   }
-  let payload = Buffer()
-  for i = 0; i < n; i = i + 1 {
-    if masked {
-      payload.write_byte(
-        (b[at + i].to_int() ^ b[key + i % 4].to_int()).to_byte(),
-      )
-    } else {
-      payload.write_byte(b[at + i])
+  let payload : Array[Byte] = []
+  if masked {
+    // Four octets at a time, because the mask repeats every four and this loop
+    // runs once per octet of every frame a client sends.
+    let k0 = b[key].to_int()
+    let k1 = b[key + 1].to_int()
+    let k2 = b[key + 2].to_int()
+    let k3 = b[key + 3].to_int()
+    payload.reserve_capacity(n)
+    let mut i = 0
+    while i + 4 <= n {
+      payload.push((b[at + i].to_int() ^ k0).to_byte())
+      payload.push((b[at + i + 1].to_int() ^ k1).to_byte())
+      payload.push((b[at + i + 2].to_int() ^ k2).to_byte())
+      payload.push((b[at + i + 3].to_int() ^ k3).to_byte())
+      i += 4
     }
+    while i < n {
+      let k = if (i & 3) == 0 {
+        k0
+      } else if (i & 3) == 1 {
+        k1
+      } else if (i & 3) == 2 {
+        k2
+      } else {
+        k3
+      }
+      payload.push((b[at + i].to_int() ^ k).to_byte())
+      i += 1
+    }
+  } else {
+    // A server's frame is not masked, so its payload is a copy and nothing more.
+    return Some(
+      (
+        { fin: (b0 & 0x80) != 0, opcode, payload: b[at:at + n].to_owned(), },
+        at + n,
+        rsv1,
+      ),
+    )
   }
   Some(
     (
-      { fin: (b0 & 0x80) != 0, opcode, payload: payload.to_bytes(), },
+      { fin: (b0 & 0x80) != 0, opcode, payload: Bytes::from_array(payload), },
       at + n,
       rsv1,
     ),
