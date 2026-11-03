@@ -61,6 +61,15 @@ async fn serve(conn : @socket.Tcp) -> Unit {
     None => []
   }
   let agreed = @pmd.Extension::agree(offers[:])
+  // The fuzzingclient offers `client_no_context_takeover` and resets its own
+  // compressor between messages. Answering `server_no_context_takeover` makes the
+  // other direction independent too: a message that does not repeat is then
+  // carried stored instead of searched for matches against the one before it,
+  // which is both faster and the same octets on the wire for random payloads.
+  let agreed = match agreed {
+    Some(terms) => Some({ ..terms, server_takeover: false, })
+    None => None
+  }
   let extra : Array[(String, String)] = match agreed {
     Some(terms) =>
       [("Sec-WebSocket-Extensions", terms.encode(role=@pmd.Role::Server))]
