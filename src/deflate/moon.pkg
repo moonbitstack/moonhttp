@@ -2,8 +2,10 @@
 // https://www.rfc-editor.org/rfc/rfc1951
 //
 // The three block types and the two code tables, both directions, shaped for a
-// stream that outlives one message. Compression is a fixed-Huffman block with a
-// window the caller sets and, optionally, a window that survives a message
+// stream that outlives one message. Compression chooses the block type per
+// message — dynamic codes for the symbols it actually uses, the fixed code when a
+// header would cost more than it saves, stored for octets that do not repeat — with
+// a window the caller sets and, optionally, a window that survives a message
 // boundary; decompression reads blocks until the octets run out at a block
 // boundary, may reach back into the messages before it, and stops at a ceiling.
 //

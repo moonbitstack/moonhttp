@@ -18,9 +18,10 @@
 /// repetitions; reset, each message stands alone and the receiver may drop what
 /// it held.
 ///
-/// One fixed-Huffman block per message, the shape RFC 7692 §7.2.3.1 shows. A
-/// dynamic block carries its own code lengths, and on the short messages a
-/// WebSocket carries those cost more than they save.
+/// The block type is chosen per message: a dynamic block carries its own code
+/// lengths and usually wins on anything past a few hundred symbols, and the fixed
+/// block — the shape RFC 7692 §7.2.3.1 prints — is what a short message, or one
+/// that is mostly a single long match, actually costs less with.
 pub struct Deflater {
   bits : Int32
   takeover : Bool
@@ -129,8 +130,19 @@ pub fn Deflater::compress(
       at += chunk
     }
   } else {
-    w.bits(0, 1) // BFINAL: a message is not the end of the stream
-    w.bits(1, 2) // BTYPE 01: the fixed Huffman codes
+    // The parse first, as tokens, because a block's code lengths come from how often
+    // each symbol appears and that is only known once the whole message has been
+    // walked. A token is a literal when `lens` holds zero, with its value in `vals`;
+    // otherwise it is a match length, with its distance there.
+    let lens : Array[Int32] = []
+    let vals : Array[Int32] = []
+    let lit_freq = Array::make(286, 0)
+    let dist_freq = Array::make(30, 0)
+    // What the fixed code would spend, counted during the parse so the choice below
+    // costs no second walk.
+    let mut fixed_bits = 0
+    lens.reserve_capacity(n)
+    vals.reserve_capacity(n)
     if total > 0 {
       let head = Array::make(1 << 15, -1)
       let prev = Array::make(total, -1)
@@ -187,10 +199,20 @@ pub fn Deflater::compress(
           }
         }
         let taken = if best_len >= min_match {
-          w.emit_match(best_len, best_dist)
+          let ls = len_sym.unsafe_get(best_len)
+          let ds = dist_symbol(best_dist)
+          lit_freq.unsafe_set(ls, lit_freq.unsafe_get(ls) + 1)
+          dist_freq.unsafe_set(ds, dist_freq.unsafe_get(ds) + 1)
+          fixed_bits += (fixed_rev.unsafe_get(ls) & 0xF) + 5
+          lens.push(best_len)
+          vals.push(best_dist)
           best_len
         } else {
-          w.emit(all.unsafe_get(i))
+          let value = all.unsafe_get(i)
+          lit_freq.unsafe_set(value, lit_freq.unsafe_get(value) + 1)
+          fixed_bits += fixed_rev.unsafe_get(value) & 0xF
+          lens.push(0)
+          vals.push(value)
           1
         }
         // The position already hashed for the search goes into the chain without
@@ -218,7 +240,59 @@ pub fn Deflater::compress(
         i = stop
       }
     }
-    w.emit(256) // end of block
+    lit_freq.unsafe_set(256, lit_freq.unsafe_get(256) + 1)
+    fixed_bits += 7
+    // A block shorter than a few hundred symbols cannot pay for a header of its own,
+    // so the comparison is not even made; past that, whichever is cheaper wins, and
+    // the fixed code is what a short message and a single long match both come back
+    // to. This is also what keeps the exact octets RFC 7692 §7.2.3.1 prints for
+    // "Hello": five octets never reach the comparison.
+    let mut plan : Plan? = None
+    if lens.length() >= 256 {
+      let candidate = build_plan(lit_freq, dist_freq)
+      if candidate.data_bits(lit_freq, dist_freq) < fixed_bits {
+        plan = Some(candidate)
+      }
+    }
+    match plan {
+      Some(p) => {
+        w.bits(0, 1) // BFINAL: a message is not the end of the stream
+        w.bits(2, 2) // BTYPE 10: the dynamic Huffman codes
+        w.plan(p)
+        for t in 0..<lens.length() {
+          let l = lens.unsafe_get(t)
+          let value = vals.unsafe_get(t)
+          if l == 0 {
+            w.code(p.lit_code.unsafe_get(value))
+          } else {
+            let (ls, lext, lval) = length_code(l)
+            w.code(p.lit_code.unsafe_get(ls))
+            if lext > 0 {
+              w.bits(lval, lext)
+            }
+            let (ds, dext, dval) = distance_code(value)
+            w.code(p.dist_code.unsafe_get(ds))
+            if dext > 0 {
+              w.bits(dval, dext)
+            }
+          }
+        }
+        w.code(p.lit_code.unsafe_get(256)) // end of block
+      }
+      None => {
+        w.bits(0, 1) // BFINAL: a message is not the end of the stream
+        w.bits(1, 2) // BTYPE 01: the fixed Huffman codes
+        for t in 0..<lens.length() {
+          let l = lens.unsafe_get(t)
+          if l == 0 {
+            w.emit(vals.unsafe_get(t))
+          } else {
+            w.emit_match(l, vals.unsafe_get(t))
+          }
+        }
+        w.emit(256) // end of block
+      }
+    }
   }
   // §7.2.1 steps 2 and 3: an empty stored block, and its tail taken off — or,
   // when this message closes the stream, the same block with `BFINAL` set and the

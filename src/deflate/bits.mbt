@@ -90,23 +90,64 @@ let length_order : FixedArray[Int32] = [
 ]
 
 ///|
+/// The length symbol for every match length, so a symbol lookup is a table read
+/// rather than a walk back down `length_base`.
+let len_sym : Array[Int32] = {
+  let table = Array::make(259, 0)
+  for i in 0..<29 {
+    let top = if i == 28 { 258 } else { length_base[i + 1] - 1 }
+    let mut len = length_base[i]
+    while len <= top {
+      table.unsafe_set(len, 257 + i)
+      len += 1
+    }
+  }
+  table
+}
+
+///|
+/// The distance symbol for every distance a short match uses. Longer distances are
+/// rare enough to walk for, and a table over the whole 32 KiB window would cost
+/// more than the walk saves.
+let dist_sym_small : Array[Int32] = {
+  let table = Array::make(257, 0)
+  for i in 0..<30 {
+    let top = if i == 29 { 256 } else { dist_base[i + 1] - 1 }
+    let mut dist = dist_base[i]
+    while dist <= top && dist <= 256 {
+      table.unsafe_set(dist, i)
+      dist += 1
+    }
+  }
+  table
+}
+
+///|
 /// The length symbol for a match length, with its extra bits and their value.
 fn length_code(len : Int32) -> (Int32, Int32, Int32) {
-  let mut i = 28
-  while i > 0 && length_base[i] > len {
+  let sym = len_sym.unsafe_get(len)
+  let i = sym - 257
+  (sym, length_extra.unsafe_get(i), len - length_base.unsafe_get(i))
+}
+
+///|
+/// The distance symbol for a distance.
+fn dist_symbol(dist : Int32) -> Int32 {
+  if dist <= 256 {
+    return dist_sym_small.unsafe_get(dist)
+  }
+  let mut i = 29
+  while i > 0 && dist_base.unsafe_get(i) > dist {
     i -= 1
   }
-  (257 + i, length_extra[i], len - length_base[i])
+  i
 }
 
 ///|
 /// The distance symbol for a distance, with its extra bits and their value.
 fn distance_code(dist : Int32) -> (Int32, Int32, Int32) {
-  let mut i = 29
-  while i > 0 && dist_base[i] > dist {
-    i -= 1
-  }
-  (i, dist_extra[i], dist - dist_base[i])
+  let i = dist_symbol(dist)
+  (i, dist_extra.unsafe_get(i), dist - dist_base.unsafe_get(i))
 }
 
 ///|
@@ -373,6 +414,23 @@ fn Writer::emit(self : Writer, sym : Int32) -> Unit {
       self.acc = self.acc >> 8
       self.held -= 8
     }
+  }
+}
+
+///|
+/// A symbol of a code the block carries, from a `(reversed << 4) | width` entry.
+///
+/// A dynamic code may be fifteen bits wide and seven may already be held, so this
+/// flushes in a loop rather than the two octets `emit` unrolls: it is the general
+/// case, and the fixed code keeps its own faster path.
+fn Writer::code(self : Writer, packed : Int32) -> Unit {
+  let len = packed & 0xF
+  self.acc = self.acc | (packed >> 4 << self.held)
+  self.held += len
+  while self.held >= 8 {
+    self.out.push((self.acc & 0xFF).to_byte())
+    self.acc = self.acc >> 8
+    self.held -= 8
   }
 }
 
