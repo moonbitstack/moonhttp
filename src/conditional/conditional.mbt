@@ -10,10 +10,11 @@
 /// `weak` is the `W/` in front. Two weak tags mark representations that are
 /// equivalent, not identical — enough for "has this changed", not enough for
 /// "may I splice these two ranges".
+#derive(Eq, Debug)
 pub(all) struct Tag {
   text : String
   weak : Bool
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Tag with Eq::{equal, not_equal}
@@ -27,10 +28,11 @@ pub extend Tag with Debug::{to_repr}
 ///
 /// `*` is not a tag that matches everything. §13.1.1 and §13.1.2 both read it as
 /// "does a representation exist", and answer in opposite directions.
+#derive(Eq, Debug)
 pub(all) enum Tags {
   Any
   These(Array[Tag])
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Tags with Eq::{equal, not_equal}
@@ -41,10 +43,11 @@ pub extend Tags with Debug::{to_repr}
 ///|
 /// Either kind of validator (§8.8). `If-Range` takes one or the other
 /// (§13.1.5); the other four fields each take one kind.
+#derive(Eq, Debug)
 pub(all) enum Validator {
   Marked(Tag)
   Dated(@moondate.Moment)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Validator with Eq::{equal, not_equal}
@@ -54,6 +57,7 @@ pub extend Validator with Debug::{to_repr}
 
 ///|
 /// What §13.2.2 says to do with the request once the preconditions are weighed.
+#derive(Eq, Debug)
 pub(all) enum Verdict {
   /// No precondition failed: carry on with the method.
   Go
@@ -61,7 +65,7 @@ pub(all) enum Verdict {
   Fresh
   /// A precondition failed — 412 (§15.5.13).
   Failed
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Verdict with Eq::{equal, not_equal}
@@ -262,6 +266,7 @@ pub fn Validator::encode(self : Validator) -> String raise @moondate.Refused {
 
 ///|
 /// The five precondition fields of one request (§13.1), already read.
+#derive(Eq, Debug)
 pub(all) struct Ask {
   /// `If-Match` (§13.1.1).
   matching : Tags?
@@ -273,7 +278,7 @@ pub(all) struct Ask {
   unmodified_since : @moondate.Moment?
   /// `If-Range` (§13.1.5).
   ranging : Validator?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Ask with Eq::{equal, not_equal}

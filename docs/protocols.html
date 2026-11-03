@@ -36,10 +36,10 @@
     <svg class="tick tick-tr" width="148" height="56" viewBox="0 0 148 56" aria-hidden="true">
       <path class="a" d="M36 4h112"/><path class="b" d="M72 20h76"/><path class="c" d="M110 36h38"/>
     </svg>
-    <p class="label">Figures · <b>nine plates</b></p>
+    <p class="label">Figures · <b>ten plates</b></p>
     <h1 class="display">The wire,<br>drawn to scale.</h1>
     <p class="lede">A protocol is a shape before it is a rule. Each plate below is one of the shapes this library has to get right: a head, a chunk, a frame, a stream, and the arithmetic a cache does over a clock.</p>
-    <div class="meta"><span>1 cell = 8 bits</span><i>/</i><span>RFC 9112 · 9113 · 9114 · 6455 · 7692 · 9111</span></div>
+    <div class="meta"><span>1 cell = 8 bits</span><i>/</i><span>RFC 9112 · 9113 · 9114 · 6455 · 7692 · 9220 · 9111</span></div>
   </section>
 
   <div class="page" style="padding-top:56px">
@@ -300,6 +300,32 @@
       </div>
     </figure>
 
+    <!-- 10 -->
+    <figure class="fig">
+      <div class="fig-head"><span class="no">FIG. 10</span><h2>What opens a WebSocket over HTTP/3</h2><span class="tag">RFC 9220 §3</span></div>
+      <div class="plate">
+        <div class="plate-top"><span class="label"><b>one request</b>, five pseudo-headers</span><span class="legend">a QPACK field section</span></div>
+        <table class="tbl">
+          <thead><tr><th>Pseudo-header</th><th>Value</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td>:method</td><td>CONNECT</td><td>the method an extended CONNECT borrows</td></tr>
+            <tr><td>:protocol</td><td>websocket</td><td>RFC 8441's one name for a WebSocket</td></tr>
+            <tr><td>:scheme</td><td>https</td><td>required, unlike a classic CONNECT</td></tr>
+            <tr><td>:authority</td><td>example.com</td><td>present and not empty</td></tr>
+            <tr><td>:path</td><td>/chat</td><td>present and not empty</td></tr>
+          </tbody>
+        </table>
+        <figcaption>SETTINGS_ENABLE_CONNECT_PROTOCOL (<code>0x08</code>) must already be 1 before a client sends <code>:protocol</code>. A server answers 2xx to take the upgrade, and 501 for a protocol it does not implement.</figcaption>
+      </div>
+      <div class="fig-notes">
+        <p class="label">What to notice</p>
+        <div>
+          <p>A classic CONNECT is the opposite shape: only <code>:authority</code>, and neither <code>:scheme</code> nor <code>:path</code>. The extended set without <code>:protocol</code>, or <code>:protocol</code> on anything but CONNECT, is a malformed request rather than an upgrade.</p>
+          <p>After the 2xx the stream stops being an HTTP message: the WebSocket frames of FIG. 05 ride its DATA frames, and a stream FIN is the orderly close a dropped TCP connection would have carried.</p>
+        </div>
+      </div>
+    </figure>
+
     <p style="font-family:var(--mono);font-size:11px;color:var(--ink-2);letter-spacing:.04em;padding:4px 0 48px">
       Each plate is drawn from the section named in its header. The calculator runs RFC 9111 §4.2.3 with the same comparison the library uses.
     </p>
@@ -344,7 +370,7 @@
       <svg class="tick-meta" width="56" height="6" viewBox="0 0 56 6" aria-hidden="true"><path class="a" d="M0 3h22"/><path class="b" d="M28 3h14"/><path class="c" d="M48 3h8"/></svg>
       <span>Apache-2.0</span>
       <span>© 2026 Leo Cheng</span>
-      <span>RFC 9110 · 9111 · 9112 · 9113 · 9114 · 6455 · 7692 · 7838</span>
+      <span>RFC 9110 · 9111 · 9112 · 9113 · 9114 · 6455 · 7692 · 9220 · 7838</span>
     </div>
   </div>
 </footer>

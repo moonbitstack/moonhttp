@@ -7,6 +7,7 @@
 ///
 /// This is not end of stream: a peer that simply stops sending has not violated anything,
 /// and the connection closes without a status.
+#derive(Eq, Debug)
 pub(all) suberror Refused {
   /// The peer broke the framing: a set RSV bit with no extension negotiated, a reserved
   /// opcode, a client frame that is not masked, a control frame that is fragmented or
@@ -18,7 +19,7 @@ pub(all) suberror Refused {
   Payload(String)
   /// The peer announced or sent more than this endpoint accepts.
   Exceeded(limit~ : Int32, got~ : Int64)
-} derive(Eq, Debug)
+}
 
 ///|
 /// The §7.4.1 status a violation is closed with: `1002` for framing, `1007` for payload,
@@ -62,6 +63,7 @@ pub let limit : Int32 = 16 * 1024 * 1024
 
 ///|
 /// A frame opcode (RFC 6455 §5.2): the three data opcodes and the three control ones.
+#derive(Eq, Debug)
 pub(all) enum Opcode {
   Continuation
   Text
@@ -69,7 +71,7 @@ pub(all) enum Opcode {
   Close
   Ping
   Pong
-} derive(Eq, Debug)
+}
 
 ///|
 /// The four-bit value on the wire.
@@ -110,11 +112,12 @@ pub fn Opcode::is_control(self : Opcode) -> Bool {
 
 ///|
 /// A frame (RFC 6455 §5.2): its FIN bit, its opcode, and its payload already unmasked.
+#derive(Eq, Debug)
 pub(all) struct Frame {
   fin : Bool
   opcode : Opcode
   payload : Bytes
-} derive(Eq, Debug)
+}
 
 ///|
 /// A frame on the wire (RFC 6455 §5.2).
@@ -365,11 +368,12 @@ fn decoded(
 /// Text carries a `String` rather than bytes because §8.1 makes invalid UTF-8 a `1007`
 /// failure: bytes that would not decode never get this far, so nothing hands an
 /// application a message the peer did not send.
+#derive(Eq, Debug)
 pub(all) enum Message {
   Text(String)
   Binary(Bytes)
   Close(status~ : Int32, reason~ : Bytes)
-} derive(Eq, Debug)
+}
 
 ///|
 /// A close frame's payload (RFC 6455 §5.5.1): the status big-endian, then the reason.
@@ -419,10 +423,11 @@ pub fn allowed(status : Int32) -> Bool {
 /// A ping owes a pong, and a close owes a close (§5.5.1). The reply comes back as a frame
 /// rather than as bytes because a client has to mask what it sends and only the caller
 /// has the randomness to do it with.
+#derive(Eq, Debug)
 pub(all) struct Step {
   message : Message?
   reply : Frame?
-} derive(Eq, Debug)
+}
 
 ///|
 /// The state of one direction: what has been assembled so far, and of what kind.

@@ -17,13 +17,14 @@ pub fn offers(StringView) -> Array[Extension]
 // Errors
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) struct Extension {
   server_takeover : Bool
   client_takeover : Bool
   server_window : Int32
   client_window : Int32
   client_window_named : Bool
-} derive(Eq, @debug.Debug)
+}
 pub fn Extension::accepts(Self, Self) -> Bool
 pub fn Extension::agree(ArrayView[Self], support? : Self) -> Self?
 pub fn Extension::decode(StringView) -> Self?
@@ -44,10 +45,11 @@ pub struct Reader {
 pub fn Reader::feed(Self, @ws.Frame, compressed? : Bool) -> @ws.Step raise @ws.Refused
 pub fn Reader::new(extension? : Extension, role? : Role, limit? : Int32) -> Self
 
+#derive(Eq, @debug.Debug)
 pub(all) enum Role {
   Client
   Server
-} derive(Eq, @debug.Debug)
+}
 pub fn Role::equal(Self, Self) -> Bool
 pub fn Role::not_equal(Self, Self) -> Bool
 pub fn Role::to_repr(Self) -> @debug.Repr

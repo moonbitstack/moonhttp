@@ -1,6 +1,6 @@
 name = "moonbitstack/moonhttp"
 
-version = "0.15.5"
+version = "0.16.0"
 
 readme = "README.md"
 
@@ -46,6 +46,8 @@ keywords = [
   "rfc9204",
   "rfc6455",
   "rfc7692",
+  "rfc9220",
+  "rfc8441",
   "rfc6265",
   "moonbit",
 ]

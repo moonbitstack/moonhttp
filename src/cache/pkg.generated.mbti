@@ -16,6 +16,7 @@ pub fn heuristically_cacheable(Int32) -> Bool
 // Errors
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) struct Control {
   max_age : Int32?
   s_maxage : Int32?
@@ -36,7 +37,7 @@ pub(all) struct Control {
   stale_while_revalidate : Int32?
   stale_if_error : Int32?
   extensions : Array[(String, String?)]
-} derive(Eq, @debug.Debug)
+}
 pub fn Control::decode(StringView) -> Self
 pub fn Control::encode(Self) -> String
 pub fn Control::equal(Self, Self) -> Bool
@@ -44,6 +45,7 @@ pub fn Control::not_equal(Self, Self) -> Bool
 pub fn Control::of(ArrayView[(String, String)]) -> Self
 pub fn Control::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct Entry {
   status : Int32
   control : Control
@@ -56,7 +58,7 @@ pub(all) struct Entry {
   selects : Array[(String, String)]
   sent : @moondate.Moment
   received : @moondate.Moment
-} derive(Eq, @debug.Debug)
+}
 pub fn Entry::aged(Self, now~ : @moondate.Moment) -> (String, String)
 pub fn Entry::conditional(Self) -> Array[(String, String)]
 pub fn Entry::current_age(Self, now~ : @moondate.Moment) -> Int32
@@ -73,19 +75,21 @@ pub fn Entry::to_repr(Self) -> @debug.Repr
 pub fn Entry::vary_matches(Self, ArrayView[(String, String)]) -> Bool
 pub fn Entry::verdict(Self, request~ : Control, presented~ : ArrayView[(String, String)], now~ : @moondate.Moment, shared? : Bool, connected? : Bool) -> Verdict
 
+#derive(Eq, @debug.Debug)
 pub(all) enum Stale {
   Any
   Within(Int32)
-} derive(Eq, @debug.Debug)
+}
 pub fn Stale::equal(Self, Self) -> Bool
 pub fn Stale::not_equal(Self, Self) -> Bool
 pub fn Stale::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum Verdict {
   Serve
   Validate
   Miss
-} derive(Eq, @debug.Debug)
+}
 pub fn Verdict::equal(Self, Self) -> Bool
 pub fn Verdict::not_equal(Self, Self) -> Bool
 pub fn Verdict::to_repr(Self) -> @debug.Repr

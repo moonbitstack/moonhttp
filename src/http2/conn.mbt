@@ -3,10 +3,11 @@
 
 ///|
 /// Which end of a connection a [`Conn`] is.
+#derive(Eq, Debug)
 pub(all) enum Role {
   Server
   Client
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Role with Eq::{not_equal, equal}
@@ -21,6 +22,7 @@ pub extend Role with Debug::{to_repr}
 /// come as `Trailers` before the `End`. `Reset` with `remote=false` is a stream this
 /// side refused, with the RST_STREAM already queued. `Settings` and `Ping` have
 /// already been acknowledged when they are read.
+#derive(Eq, Debug)
 pub(all) enum Event {
   Request(stream~ : Int32, fields~ : Array[@header.Header])
   Response(stream~ : Int32, fields~ : Array[@header.Header])
@@ -45,7 +47,7 @@ pub(all) enum Event {
   NeedData
   // The peer closed the transport.
   Closed
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Event with Eq::{not_equal, equal}

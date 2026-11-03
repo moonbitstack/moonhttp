@@ -8,6 +8,7 @@
 /// Method names are case-sensitive, so `get` is an extension method and not
 /// `Get`. Build a method from its name with `Method::of`, which picks the
 /// constructor: `Other("GET")` written by hand is not equal to `Get`.
+#derive(Eq, Debug)
 pub(all) enum Method {
   Get
   Head
@@ -19,7 +20,7 @@ pub(all) enum Method {
   Trace
   Patch
   Other(String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Method with Eq::{equal, not_equal}
@@ -29,10 +30,11 @@ pub extend Method with Debug::{to_repr}
 
 ///|
 /// Why a name is not a method.
+#derive(Eq, Debug)
 pub(all) suberror Refused {
   /// Empty, or holding a character outside `tchar` (RFC 9110 §5.6.2).
   Token(String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Refused with Eq::{equal, not_equal}

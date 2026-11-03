@@ -7,6 +7,7 @@
 /// `None` is the RFC's "unlimited". The preset is [`settings`]; [`initial`] is what
 /// both ends assume before any SETTINGS frame, and so what the peer's settings start
 /// from. Build others with [`Settings::new`] or `{ ..settings, max_frame_size: n }`.
+#derive(Eq, Debug)
 pub(all) struct Settings {
   header_table_size : Int32
   enable_push : Bool
@@ -15,7 +16,7 @@ pub(all) struct Settings {
   max_frame_size : Int32
   max_header_list_size : Int32?
   enable_connect_protocol : Bool
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Settings with Eq::{not_equal, equal}

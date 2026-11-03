@@ -179,11 +179,12 @@ pub let error_http_1_1_required : Int32 = 0xD
 /// The stream-priority block shared by PRIORITY frames and the optional priority
 /// section of HEADERS (RFC 9113 §5.3.2). `weight` is the raw wire byte (`0..255`);
 /// the effective priority weight is `weight + 1` (§6.3).
+#derive(Eq)
 pub(all) struct Priority {
   exclusive : Bool
   stream_dependency : Int32
   weight : Int32
-} derive(Eq)
+}
 
 ///|
 /// Why a frame or a connection was refused.
@@ -193,13 +194,14 @@ pub(all) struct Priority {
 /// decode. A [`Conn`] raises only the last two kinds: `Connection` when the peer broke
 /// the connection, with the GOAWAY that says so already queued, and `Order` when this
 /// side sent something the protocol does not allow now.
+#derive(Eq)
 pub(all) suberror Refused {
   Incomplete
   FrameSizeError(String)
   ProtocolError(String)
   Connection(code~ : Int32, String)
   Order(String)
-} derive(Eq)
+}
 
 ///|
 /// Frame errors print as the wire fault they are, so a log line names the frame
@@ -220,6 +222,7 @@ pub impl Show for Refused with fn output(self, logger) {
 /// payload with padding already stripped; `padding` is the number of padding
 /// bytes to (re)emit. `Unknown` preserves extension/unrecognised frames verbatim
 /// so a reader can forward or ignore them (RFC 9113 §4.1).
+#derive(Eq)
 pub(all) enum Frame {
   Data(stream_id~ : Int32, data~ : Bytes, end_stream~ : Bool, padding~ : Int32)
   Headers(
@@ -245,7 +248,7 @@ pub(all) enum Frame {
   WindowUpdate(stream_id~ : Int32, increment~ : Int32)
   Continuation(stream_id~ : Int32, fragment~ : Bytes, end_headers~ : Bool)
   Unknown(ftype~ : Int32, flags~ : Int32, stream_id~ : Int32, payload~ : Bytes)
-} derive(Eq)
+}
 
 // -- big-endian primitives --------------------------------------------------
 
@@ -312,12 +315,13 @@ fn parse_priority(payload : Bytes, off : Int32) -> Priority {
 ///|
 /// The fixed 9-octet frame header (RFC 9113 §4.1): a 24-bit payload length, an
 /// 8-bit type, 8-bit flags, a reserved bit, and a 31-bit stream identifier.
+#derive(Eq)
 pub(all) struct FrameHeader {
   length : Int32
   ftype : Int32
   flags : Int32
   stream_id : Int32
-} derive(Eq)
+}
 
 ///|
 /// Encode a `FrameHeader` to its 9 wire octets.

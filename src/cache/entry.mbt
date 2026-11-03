@@ -9,6 +9,7 @@
 /// which is why this type exists at all. The octets are the caller's, and this
 /// package never sees them: where a cache keeps a body and how it evicts one is a
 /// store, and there is no store here.
+#derive(Eq, Debug)
 pub(all) struct Entry {
   status : Int32
   control : Control
@@ -33,7 +34,7 @@ pub(all) struct Entry {
   sent : @moondate.Moment
   /// When the response arrived — `response_time` in §4.2.3.
   received : @moondate.Moment
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Entry with Eq::{equal, not_equal}
@@ -44,6 +45,7 @@ pub extend Entry with Debug::{to_repr}
 ///|
 /// What a cache may do with a stored response for a request it has been given
 /// (§4).
+#derive(Eq, Debug)
 pub(all) enum Verdict {
   /// Answer from the store, with an `Age` field (§4).
   Serve
@@ -52,7 +54,7 @@ pub(all) enum Verdict {
   Validate
   /// The stored response cannot answer this request: fetch it, or fail it.
   Miss
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Verdict with Eq::{equal, not_equal}

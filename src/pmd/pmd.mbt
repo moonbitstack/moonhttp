@@ -13,10 +13,11 @@ pub let name : String = "permessage-deflate"
 /// compresses with and what the client decompresses with, and says nothing about
 /// the client's own compressor. One enum keeps that straight in one place instead
 /// of at every call site.
+#derive(Eq, Debug)
 pub(all) enum Role {
   Client
   Server
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Role with Eq::{equal, not_equal}
@@ -38,6 +39,7 @@ pub extend Role with Debug::{to_repr}
 /// set of agreed terms. That is also why `client_window_named` is here: an offer
 /// may name `client_max_window_bits` with no value, and a response may only carry
 /// the parameter when the offer did (§7.1.2.2).
+#derive(Eq, Debug)
 pub(all) struct Extension {
   /// The server's compressor keeps its window between messages.
   server_takeover : Bool
@@ -49,7 +51,7 @@ pub(all) struct Extension {
   client_window : Int32
   /// Whether `client_max_window_bits` is named at all.
   client_window_named : Bool
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Extension with Eq::{equal, not_equal}

@@ -3,10 +3,11 @@
 
 ///|
 /// Which end of a connection a [`Conn`] is.
+#derive(Eq, Debug)
 pub(all) enum Role {
   Server
   Client
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Role with Eq::{not_equal, equal}
@@ -23,6 +24,7 @@ pub extend Role with Debug::{to_repr}
 /// `Connection: close` ends in `MustClose` rather than `Done`. A client that asked
 /// to upgrade waits in `MightSwitch` until the server says yes, which is
 /// `Switched` for both, or no, which puts it back to `Done`.
+#derive(Eq, Debug)
 pub(all) enum State {
   Idle
   SendResponse
@@ -33,7 +35,7 @@ pub(all) enum State {
   MightSwitch
   Switched
   Error
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend State with Eq::{not_equal, equal}
@@ -49,6 +51,7 @@ pub extend State with Debug::{to_repr}
 /// only ever read: the first asks for more octets, the second says the next
 /// message waits for [`Conn::start_next`] or, after a switch, belongs to another
 /// protocol.
+#derive(Eq, Debug)
 pub(all) enum Event {
   Request(Request)
   Response(Response)
@@ -61,7 +64,7 @@ pub(all) enum Event {
   Paused
   // Read, the peer closed its side; sent, this side is closing its own.
   Closed
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Event with Eq::{not_equal, equal}

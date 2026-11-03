@@ -7,12 +7,13 @@
 ///
 /// The directive may be written with no argument, which is what "any age at all"
 /// needs a word for.
+#derive(Eq, Debug)
 pub(all) enum Stale {
   /// No argument: a response of any age will do.
   Any
   /// At most this many seconds past the freshness lifetime.
   Within(Int32)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Stale with Eq::{equal, not_equal}
@@ -33,6 +34,7 @@ pub extend Stale with Debug::{to_repr}
 /// Unknown directives are kept in `extensions` rather than dropped: §5.2.3 says to
 /// ignore them, and a proxy that has to pass the field on unchanged needs them to
 /// still be there.
+#derive(Eq, Debug)
 pub(all) struct Control {
   /// `max-age` (§5.2.1.1, §5.2.2.1).
   max_age : Int32?
@@ -76,7 +78,7 @@ pub(all) struct Control {
   /// Directives this reader did not recognize, in the order they appeared, with
   /// the argument each had.
   extensions : Array[(String, String?)]
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Control with Eq::{equal, not_equal}

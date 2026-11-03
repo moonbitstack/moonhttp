@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Guide — moonhttp</title>
-<meta name="description" content="Fourteen steps through moonhttp: a request head, an answer, event streams, cookies, forms, ranges, conditional requests, cache decisions, redirects, WebSocket frames and compression.">
+<meta name="description" content="Fifteen steps through moonhttp: a request head, an answer, event streams, cookies, forms, ranges, conditional requests, cache decisions, redirects, WebSocket frames and compression, and the same WebSocket over HTTP/3.">
 <meta name="theme-color" content="#e8f4f8" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0d232d" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
@@ -36,7 +36,7 @@
     <svg class="tick tick-tr" width="148" height="56" viewBox="0 0 148 56" aria-hidden="true">
       <path class="a" d="M36 4h112"/><path class="b" d="M72 20h76"/><path class="c" d="M110 36h38"/>
     </svg>
-    <p class="label">Guide · <b>fourteen steps</b></p>
+    <p class="label">Guide · <b>fifteen steps</b></p>
     <h1 class="display">From octets<br>to decisions.</h1>
     <p class="lede">One message at a time, in the order it travels: a head, an answer, the fields around it, and then the decisions a cache or a client makes before anything is sent. Every output shown here came from running the code.</p>
     <div class="meta"><span>20 minutes</span><i>/</i><span>MoonBit</span><i>/</i><span>no sockets</span></div>
@@ -325,8 +325,29 @@ println(terms.encode(role=@pmd.Role::Server))</pre>
         <p>Agreeing to the extension means every message may be compressed, so <code>threshold</code> exists for the caller who would rather not pay for a message under sixty-four octets. On the reading side, <code>limit</code> caps what one message may expand to — the one place a peer can ask for memory it did not pay for.</p>
       </section>
 
+      <section class="step" id="connect3">
+        <span class="step-no">14 — WEBSOCKET OVER HTTP/3</span>
+        <h2>The same upgrade, without an Upgrade</h2>
+        <p>HTTP/3 has no <code>Upgrade</code> header to spend, so a WebSocket is bootstrapped as an extended CONNECT: a request whose <code>:method</code> is <code>CONNECT</code>, whose <code>:protocol</code> is <code>websocket</code>, and which still names a scheme, an authority and a path. A server says it will take one by sending <code>SETTINGS_ENABLE_CONNECT_PROTOCOL</code>; until that arrives a client must not send <code>:protocol</code> at all.</p>
+        <div class="code">
+          <div class="code-top"><span>moonbit</span><button>copy</button></div>
+          <pre>let settings = @http3.Settings::new(
+  4096, 16384, 100, enable_connect_protocol=true,
+)
+let wire = @http3.websocket_request(
+  "https", "example.com", "/chat",
+  [@header.Header::of("sec-websocket-version", "13"),
+   @header.Header::of("sec-websocket-key", key)],
+)
+// On the server, after reading the request stream:
+let answer = @http3.websocket_response(request, settings=settings)</pre>
+        </div>
+        <div class="out">200 when the upgrade is taken · 501 for a protocol it does not implement</div>
+        <p>What follows a 200 is no longer an HTTP message stream: WebSocket frames ride its DATA frames, and the stream's <code>FIN</code> is the orderly close a TCP connection would have carried. The RFC 7692 parameters and the frame layer above are the same ones HTTP/1.1 and HTTP/2 use — only the bootstrap differs.</p>
+      </section>
+
       <section class="step" id="bounds">
-        <span class="step-no">14 — BOUNDS</span>
+        <span class="step-no">15 — BOUNDS</span>
         <h2>Every bound is an argument</h2>
         <p>Nothing here grows without a limit, and no limit is hidden. Each one has the default the mainstream uses, so a caller who does not care gets a defensible answer and a caller who does care passes a value.</p>
         <table class="tbl">
@@ -388,7 +409,7 @@ println(terms.encode(role=@pmd.Role::Server))</pre>
       <svg class="tick-meta" width="56" height="6" viewBox="0 0 56 6" aria-hidden="true"><path class="a" d="M0 3h22"/><path class="b" d="M28 3h14"/><path class="c" d="M48 3h8"/></svg>
       <span>Apache-2.0</span>
       <span>© 2026 Leo Cheng</span>
-      <span>RFC 9110 · 9111 · 9112 · 9113 · 9114 · 6455 · 7692 · 7838</span>
+      <span>RFC 9110 · 9111 · 9112 · 9113 · 9114 · 6455 · 7692 · 9220 · 7838</span>
     </div>
   </div>
 </footer>

@@ -6,11 +6,12 @@
 ///
 /// Each one is a connection error of its own kind in §6, because after it the two ends
 /// no longer agree about the dynamic table and nothing further can be read.
+#derive(Eq, Debug)
 pub(all) suberror Refused {
   Malformed(String)
   Index(got~ : Int32)
   Exceeded(limit~ : Int32, got~ : Int32)
-} derive(Eq, Debug)
+}
 
 ///|
 /// A refusal prints as the fault it is.
@@ -827,6 +828,7 @@ pub fn encode_with(
 
 ///|
 /// An encoder-stream instruction (RFC 9204 §4.3).
+#derive(Eq, Debug)
 pub(all) enum Change {
   /// Set Dynamic Table Capacity (§4.3.1): `001` + capacity (5-bit prefix).
   SetCapacity(Int32)
@@ -838,10 +840,11 @@ pub(all) enum Change {
   InsertLiteral(name~ : Bytes, value~ : Bytes)
   /// Duplicate (§4.3.4): `000` + index (5-bit prefix).
   Duplicate(index~ : Int32)
-} derive(Eq, Debug)
+}
 
 ///|
 /// A decoder-stream instruction (RFC 9204 §4.4).
+#derive(Eq, Debug)
 pub(all) enum Ack {
   /// Section Acknowledgement (§4.4.1): `1` + stream id (7-bit prefix).
   Section(stream_id~ : Int32)
@@ -849,7 +852,7 @@ pub(all) enum Ack {
   Cancel(stream_id~ : Int32)
   /// Insert Count Increment (§4.4.3): `00` + increment (6-bit prefix).
   Increment(increment~ : Int32)
-} derive(Eq, Debug)
+}
 
 ///|
 /// Encode an encoder-stream instruction (RFC 9204 §4.3). `huffman` chooses whether the

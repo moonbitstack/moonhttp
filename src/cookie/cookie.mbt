@@ -8,11 +8,12 @@
 /// navigation, and `Unrestricted` sends it everywhere. `Unrestricted` is the wire
 /// value `None`, spelled differently here because `None` is the empty option; a
 /// browser honours it only on a `Secure` cookie.
+#derive(Eq, Debug)
 pub(all) enum SameSite {
   Strict
   Lax
   Unrestricted
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend SameSite with Eq::{equal, not_equal}
@@ -49,6 +50,7 @@ pub fn SameSite::of(text : StringView) -> SameSite? {
 /// An attribute left `None` is left out of the header, and means what leaving it
 /// out means: no `Expires` and no `Max-Age` is a session cookie, no `Domain` is
 /// the origin host alone, no `Path` is the request's own directory.
+#derive(Eq, Debug)
 pub(all) struct Cookie {
   name : String
   value : String
@@ -62,7 +64,7 @@ pub(all) struct Cookie {
   secure : Bool
   http_only : Bool
   same_site : SameSite?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Cookie with Eq::{equal, not_equal}

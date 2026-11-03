@@ -33,6 +33,12 @@ let terms = @pmd.Extension::agree(@pmd.offers(offer[:])[:]).unwrap()
 let (frame, compressed) = @pmd.Writer::new(extension=terms).frame(@ws.Opcode::Text, body[:])
 frame.encode_extension(rsv1=compressed)  // one deflate segment, tail stripped
 
+// The same WebSocket over HTTP/3: the extended CONNECT of RFC 9220, allowed by one
+// setting the server sends, and answered with 200 or 501.
+let wire = @http3.websocket_request("https", "example.com", "/chat", headers)
+@http3.Upgrade::of(request, settings=@http3.Settings::new(4096, 16384, 100, enable_connect_protocol=true))
+// Accept | Unsupported("...") | Refused("...")
+
 // A stored response, and what may be done with it.
 let stored = @cache.Entry::read(status=200, headers, request, sent~, received~)
 stored.verdict(request=@cache.control, presented=headers, now~)  // Serve | Validate | Miss
@@ -63,7 +69,7 @@ The documentation is a site of four pages: a
 [guide](https://moonbitstack.github.io/moonhttp/guide.html) that takes the
 library one message at a time, the
 [API reference](https://moonbitstack.github.io/moonhttp/api.html) generated from
-the sources' doc comments, and [nine figures](https://moonbitstack.github.io/moonhttp/protocols.html)
+the sources' doc comments, and [ten figures](https://moonbitstack.github.io/moonhttp/protocols.html)
 that draw the byte layouts — a frame header, a chunked body, the DEFLATE stream a
 WebSocket keeps open.
 
@@ -89,7 +95,7 @@ WebSocket keeps open.
 | `qpack` | HTTP/3 header compression: both tables, the field lines, both instruction streams | RFC 9204 |
 | `http1` | HTTP/1.1 messages: the request and status lines, field lines, body framing and the chunked coding; `Conn`, a whole connection for either end on h11's state machine, octets in and events out | RFC 9112 |
 | `http2` | HTTP/2 framing: the nine-octet header, all ten frame types, the connection preface; `Conn`, a whole connection for either end after python-hyper h2, with stream states, flow control, settings, push and field validation | RFC 9113, RFC 8441 |
-| `http3` | HTTP/3 frames, their placement rules, settings, stream types and connection | RFC 9114 |
+| `http3` | HTTP/3 frames, their placement rules, settings, stream types and connection; and WebSocket over HTTP/3 as the extended CONNECT RFC 9220 defines | RFC 9114, RFC 9220 |
 
 ## One vocabulary
 
@@ -202,6 +208,13 @@ placement rule of §7.2 is checked on each of the three stream kinds, the
 settings and the unidirectional stream types round-trip, and a request stream
 decodes into its pseudo-headers, its fields and its body.
 
+The extended CONNECT of RFC 9220 is measured beside it. The connect switch is
+written only when it is on and survives the control stream; the client's request
+carries the five pseudo-headers and parses back into them; a classic CONNECT
+names only an authority, and one with `:scheme` and `:path` but no `:protocol`
+is malformed; and a server answers a WebSocket with 200, an unknown `:protocol`
+with 501, and a request that used `:protocol` before the setting with a refusal.
+
 `qpack` is measured against the instruction vectors of RFC 9204 Appendix B and,
 section by section, against every representation §4.5 defines — indexed and
 post-base, relative and absolute, with a name reference and with a literal name.
@@ -218,6 +231,13 @@ down to nine bits, and four messages that only decode if the window of the first
 survives into the last. The other direction is checked by giving what it writes to
 another DEFLATE implementation to read. Every split of a compressed message is
 read as two pieces, which is what a message arriving in fragments is.
+
+A message that does not repeat is carried in stored blocks, which is the format's
+own answer for incompressible octets and what keeps a stream of random 128 KiB
+messages linear rather than coded octet by coded octet. What it does write as
+codes is decoded through a small table rather than a bit at a time, and the fixed
+codes are reversed once rather than per symbol, so the two directions stay close
+in cost at the lengths a WebSocket carries.
 
 `pmd` is measured on §7.1's four parameters — read, written and negotiated, each
 with the values the grammar forbids — and then against Autobahn, whose 12.x and

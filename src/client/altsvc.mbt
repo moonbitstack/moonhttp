@@ -14,6 +14,7 @@ pub let lifespan : Int32 = 24 * 60 * 60
 /// authoritative for the *origin*, not for itself: a connection to it still
 /// presents the origin's name in TLS and its `Host`, which is what makes an
 /// alternative a redirection rather than a different site.
+#derive(Eq, Debug)
 pub(all) struct Alternative {
   /// The ALPN protocol name, as RFC 7301 defines it, percent-decoded.
   protocol : String
@@ -27,7 +28,7 @@ pub(all) struct Alternative {
   lifespan : Int32
   /// Whether the advertisement outlives a change of network, from `persist=1`.
   persist : Bool
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Alternative with Eq::{equal, not_equal}

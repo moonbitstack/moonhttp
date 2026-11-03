@@ -7,6 +7,7 @@
 /// A field left `None` is left out of the frame. `data` carrying newlines goes
 /// out as several `data:` lines and comes back joined, which is the format's own
 /// rule and the reason a payload with a blank line in it cannot be sent as one.
+#derive(Eq, Debug)
 pub(all) struct Event {
   data : String
   /// The type an `addEventListener` binds to. Absent means `message`.
@@ -18,7 +19,7 @@ pub(all) struct Event {
   /// A `:`-prefixed line. It dispatches nothing and exists to keep a connection
   /// warm through a proxy that would otherwise close it.
   comment : String?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Event with Eq::{equal, not_equal}

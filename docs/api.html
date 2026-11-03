@@ -58,7 +58,7 @@
 <a href="#http1"><span>17</span>http1</a>
 <a href="#http2"><span>18</span>http2</a>
 <a href="#http3"><span>19</span>http3</a>
-</nav><p class="count" id="hits">359 entries</p></aside>
+</nav><p class="count" id="hits">369 entries</p></aside>
 <div class="ref">
 <section class="pkg" id="form">
 <div class="pkg-head"><span class="no">01</span><h2><span class="at">@</span>form</h2><span class="spec">WHATWG</span></div>
@@ -77,11 +77,11 @@
   <span class="ty">From</span>(<span class="ty">Int64</span>)
 `-suffix`: the last so many octets.
   <span class="ty">Last</span>(<span class="ty">Int64</span>)
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">One range as a client asked for it, before it is measured against a length (RFC 9110 §14.1.1).  The three shapes are the grammar&#x27;s: an int-range with both ends, an int-range with only a first position, and a suffix-range. They stay separate because they mean different things — <code>From(0)</code> asks for everything, while <code>Last(0)</code> asks for nothing and is unsatisfiable.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="struct"><span class="kind">struct</span><div><pre class="sig"><span class="k">struct</span> <span class="ty">Part</span> {
   at : <span class="ty">Int64</span>
   last : <span class="ty">Int64</span>
-} derive(<span class="ty">Eq</span>, <span class="ty">Compare</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">One range measured against a representation: the first and last octet, both inclusive (RFC 9110 §14.1.2).  Inclusive because the field is, and converting at the edge is where off-by-one errors come from. [<code>Part::length</code>] gives the count for a caller who wants one.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Part</span>::length(self : <span class="ty">Part</span>) <span class="op">-&gt;</span> <span class="ty">Int64</span></pre><p class="item-doc">How many octets this part covers.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> decode(value : <span class="ty">StringView</span>, unit~ : <span class="ty">String</span> = unit) <span class="op">-&gt;</span> <span class="ty">Array</span>[<span class="ty">Spec</span>]<span class="op">?</span></pre><p class="item-doc">Read a <code>Range</code> field value (RFC 9110 §14.2).  <code>None</code> means the field is to be ignored, which §14.2 requires for a unit the server does not implement and for a value that does not parse. Ignoring it is not an error: the answer is the whole representation, with status 200.  An empty range-set is not a range request either — <code>bytes=</code> names no range, and serving everything is the right reading of it.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> encode(specs : <span class="ty">ArrayView</span>[<span class="ty">Spec</span>], unit~ : <span class="ty">String</span> = unit) <span class="op">-&gt;</span> <span class="ty">String</span></pre><p class="item-doc">Write a <code>Range</code> field value (RFC 9110 §14.2).</p></div></div>
@@ -90,7 +90,7 @@
   unit : <span class="ty">String</span>
   part : <span class="ty">Part</span><span class="op">?</span>
   complete : <span class="ty">Int64</span><span class="op">?</span>
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">A <code>Content-Range</code> field value (RFC 9110 §14.4): where a part sits in the whole, or — in a 416 — only how big the whole is.  <code>part</code> is absent in the <code>*/complete</code> form a 416 carries. <code>complete</code> is absent in the <code>part/*</code> form, which says the total length was not known when the field was written.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Content</span>::new( part : <span class="ty">Part</span>, complete<span class="op">?</span> : <span class="ty">Int64</span>, unit~ : <span class="ty">String</span> = unit) <span class="op">-&gt;</span> <span class="ty">Content</span></pre><p class="item-doc">The <code>Content-Range</code> of a part that was served (RFC 9110 §14.4).  <code>complete</code> is the length of the whole representation. Leaving it out writes <code>*</code>, which §14.4 reserves for a sender that does not know the total — a generated response being streamed, say. Give it when it is known: a client recombining parts needs it.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> unsatisfied(complete : <span class="ty">Int64</span>, unit~ : <span class="ty">String</span> = unit) <span class="op">-&gt;</span> <span class="ty">Content</span></pre><p class="item-doc">The <code>Content-Range</code> a 416 carries: <code>bytes */1234</code> (RFC 9110 §14.4).  It names no part because there is none to name; the number is what the client needs in order to ask again for something that exists.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Content</span>::encode(self : <span class="ty">Content</span>) <span class="op">-&gt;</span> <span class="ty">String</span></pre><p class="item-doc">Write a <code>Content-Range</code> field value (RFC 9110 §14.4).</p></div></div>
@@ -105,15 +105,15 @@
 <div class="item" data-k="struct"><span class="kind">struct</span><div><pre class="sig"><span class="k">struct</span> <span class="ty">Tag</span> {
   text : <span class="ty">String</span>
   weak : <span class="ty">Bool</span>
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">An entity-tag (RFC 9110 §8.8.3).  <code>text</code> is what is inside the quotes; keeping them would put the field&#x27;s syntax inside the value.  <code>weak</code> is the <code>W/</code> in front. Two weak tags mark representations that are equivalent, not identical — enough for &quot;has this changed&quot;, not enough for &quot;may I splice these two ranges&quot;.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="enum"><span class="kind">enum</span><div><pre class="sig">enum <span class="ty">Tags</span> {
   <span class="ty">Any</span>
   <span class="ty">These</span>(<span class="ty">Array</span>[<span class="ty">Tag</span>])
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">What a precondition field names (§13.1.1): every representation, or these tags.  <code>*</code> is not a tag that matches everything. §13.1.1 and §13.1.2 both read it as &quot;does a representation exist&quot;, and answer in opposite directions.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="enum"><span class="kind">enum</span><div><pre class="sig">enum <span class="ty">Validator</span> {
   <span class="ty">Marked</span>(<span class="ty">Tag</span>)
   <span class="ty">Dated</span>(@moondate.<span class="ty">Moment</span>)
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">Either kind of validator (§8.8). <code>If-Range</code> takes one or the other (§13.1.5); the other four fields each take one kind.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="enum"><span class="kind">enum</span><div><pre class="sig">enum <span class="ty">Verdict</span> {
 <span class="ty">No</span> precondition failed: carry on with the method.
   <span class="ty">Go</span>
@@ -121,7 +121,7 @@
   <span class="ty">Fresh</span>
 <span class="ty">A</span> precondition failed — 412 (§15.5.13).
   <span class="ty">Failed</span>
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">What §13.2.2 says to do with the request once the preconditions are weighed.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Tag</span>::new(text : <span class="ty">String</span>, weak~ : <span class="ty">Bool</span> = false) <span class="op">-&gt;</span> <span class="ty">Tag</span></pre><p class="item-doc">A tag with this text.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Tag</span>::same(self : <span class="ty">Tag</span>, other : <span class="ty">Tag</span>) <span class="op">-&gt;</span> <span class="ty">Bool</span></pre><p class="item-doc">Strong comparison (§8.8.3.2): neither is weak and the texts match.  <code>If-Match</code> and <code>If-Range</code> use this one — both are about replacing or splicing octets, which a weak tag does not promise.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Tag</span>::alike(self : <span class="ty">Tag</span>, other : <span class="ty">Tag</span>) <span class="op">-&gt;</span> <span class="ty">Bool</span></pre><p class="item-doc">Weak comparison (§8.8.3.2): the texts match, weakness ignored.  <code>If-None-Match</code> uses this one — a weak tag can answer &quot;has it changed&quot;.</p></div></div>
@@ -144,7 +144,7 @@
   unmodified_since : @moondate.<span class="ty">Moment</span><span class="op">?</span>
 `<span class="ty">If</span>-<span class="ty">Range</span>` (§13.1.5).
   ranging : <span class="ty">Validator</span><span class="op">?</span>
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">The five precondition fields of one request (§13.1), already read.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="let"><span class="kind">let</span><div><pre class="sig"><span class="k">let</span> ask : <span class="ty">Ask</span> =</pre><p class="item-doc">A request that carried no preconditions at all.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Ask</span>::new( matching<span class="op">?</span> : <span class="ty">Tags</span>, none_matching<span class="op">?</span> : <span class="ty">Tags</span>, modified_since<span class="op">?</span> : @moondate.<span class="ty">Moment</span>, unmodified_since<span class="op">?</span> : @moondate.<span class="ty">Moment</span>, ranging<span class="op">?</span> : <span class="ty">Validator</span>) <span class="op">-&gt;</span> <span class="ty">Ask</span></pre><p class="item-doc">The preconditions a request carried, named one at a time.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Ask</span>::read(headers : <span class="ty">ArrayView</span>[(<span class="ty">String</span>, <span class="ty">String</span>)]) <span class="op">-&gt;</span> <span class="ty">Ask</span></pre><p class="item-doc">Pull the five fields out of a request&#x27;s headers.  Names match without regard to case (§5.1). Two lines of one list-valued field are one list (§5.3), so the tag fields are joined before reading; the date fields are not lists, so a repeat is ignored.  A field present but unreadable comes back absent, per §13.1.3 and §13.1.4.</p></div></div>
@@ -158,7 +158,7 @@
   <span class="ty">Strict</span>
   <span class="ty">Lax</span>
   <span class="ty">Unrestricted</span>
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">How far a cross-site request may carry a cookie.  <code>Strict</code> sends it only on a same-site request, <code>Lax</code> also on a top-level navigation, and <code>Unrestricted</code> sends it everywhere. <code>Unrestricted</code> is the wire value <code>None</code>, spelled differently here because <code>None</code> is the empty option; a browser honours it only on a <code>Secure</code> cookie.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">SameSite</span>::code(self : <span class="ty">SameSite</span>) <span class="op">-&gt;</span> <span class="ty">String</span></pre><p class="item-doc">The attribute&#x27;s wire spelling.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">SameSite</span>::of(text : <span class="ty">StringView</span>) <span class="op">-&gt;</span> <span class="ty">SameSite</span><span class="op">?</span></pre><p class="item-doc">The attribute a spelling names, or <code>None</code> for one no revision defines.  The comparison ignores case, as §5.2 says to do with every attribute value.</p></div></div>
 <div class="item" data-k="struct"><span class="kind">struct</span><div><pre class="sig"><span class="k">struct</span> <span class="ty">Cookie</span> {
@@ -174,7 +174,7 @@
   secure : <span class="ty">Bool</span>
   http_only : <span class="ty">Bool</span>
   same_site : <span class="ty">SameSite</span><span class="op">?</span>
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">One cookie, as <code>Set-Cookie</code> states it.  An attribute left <code>None</code> is left out of the header, and means what leaving it out means: no <code>Expires</code> and no <code>Max-Age</code> is a session cookie, no <code>Domain</code> is the origin host alone, no <code>Path</code> is the request&#x27;s own directory.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Cookie</span>::new( name : <span class="ty">String</span>, value : <span class="ty">String</span>, expires<span class="op">?</span> : @moondate.<span class="ty">Moment</span>, max_age<span class="op">?</span> : <span class="ty">Int32</span>, domain<span class="op">?</span> : <span class="ty">String</span>, path~ : <span class="ty">String</span><span class="op">?</span> = <span class="ty">Some</span>(&quot;/&quot;), secure~ : <span class="ty">Bool</span> = false, http_only~ : <span class="ty">Bool</span> = false, same_site~ : <span class="ty">SameSite</span><span class="op">?</span> = <span class="ty">Some</span>(<span class="ty">Lax</span>)) <span class="op">-&gt;</span> <span class="ty">Cookie</span></pre><p class="item-doc">A cookie by name, with the defaults a server usually wants.  <code>path</code> defaults to <code>/</code>, so the cookie covers the whole site, and <code>same_site</code> to <code>Lax</code>, which is what a browser assumes of a cookie that does not say — and what stops a cross-site form post from carrying a session. Passing <code>None</code> for either leaves the attribute out.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Cookie</span>::encode(self : <span class="ty">Cookie</span>) <span class="op">-&gt;</span> <span class="ty">String</span></pre><p class="item-doc">The <code>Set-Cookie</code> field value this cookie is sent as.  Attributes come in RFC 6265 §4.1.1&#x27;s order, which is the order a browser and a log reader expect. The octets a name, value, domain or path may not carry are dropped rather than escaped: what a reader gets back is then the text that was set, and a <code>\r\n</code> smuggled into a value cannot open a header of its own.  An <code>expires</code> that is a time with no date aborts: a cookie cannot die at a clock reading, and a caller that built one has made a mistake rather than met a condition.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Cookie</span>::decode(raw : <span class="ty">StringView</span>) <span class="op">-&gt;</span> <span class="ty">Cookie</span><span class="op">?</span></pre><p class="item-doc">The cookie a <code>Set-Cookie</code> field value states, or <code>None</code> when it states none — an empty field, or one whose first pair has no <code>=</code>.  Everything §5.2 says to ignore is ignored rather than refused: an attribute no revision defines, an <code>Expires</code> that is not a date, a <code>Max-Age</code> that is not a number. A server sends what it sends, and a client that refused the header would lose the cookie over an attribute it does not even use.</p></div></div>
@@ -190,7 +190,7 @@
   <span class="ty">Any</span>
 <span class="ty">At</span> most this many seconds past the freshness lifetime.
   <span class="ty">Within</span>(<span class="ty">Int32</span>)
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc"><code>max-stale</code>: how far past its freshness lifetime a client will still take a response (RFC 9111 §5.2.1.2).  The directive may be written with no argument, which is what &quot;any age at all&quot; needs a word for.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="struct"><span class="kind">struct</span><div><pre class="sig"><span class="k">struct</span> <span class="ty">Control</span> {
 `max-age` (§5.2.1.1, §5.2.2.1).
   max_age : <span class="ty">Int32</span><span class="op">?</span>
@@ -234,7 +234,7 @@ stale for this long while the response is refreshed in the background.
 <span class="ty">Directives</span> this reader did not recognize, in the order they appeared, with
 the argument each had.
   extensions : <span class="ty">Array</span>[(<span class="ty">String</span>, <span class="ty">String</span><span class="op">?</span>)]
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">A <code>Cache-Control</code> field, both sides of the exchange, as directives (RFC 9111 §5.2).  One struct for the request and the response because the field is one field: which directives mean anything depends on which side wrote it, and the same name can mean two different things — a response&#x27;s <code>max-age</code> is a freshness lifetime, a request&#x27;s is a ceiling on the age the client will accept. A reader therefore reads both and a decision picks out what it needs.  Unknown directives are kept in <code>extensions</code> rather than dropped: §5.2.3 says to ignore them, and a proxy that has to pass the field on unchanged needs them to still be there.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="let"><span class="kind">let</span><div><pre class="sig"><span class="k">let</span> control : <span class="ty">Control</span> =</pre><p class="item-doc">A <code>Cache-Control</code> with nothing in it, which is what a message without the field carries.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Control</span>::decode(value : <span class="ty">StringView</span>) <span class="op">-&gt;</span> <span class="ty">Control</span></pre><p class="item-doc">The directives of one <code>Cache-Control</code> value (§5.2).  Names match without regard to case, and an argument may be a token or a quoted string — §5.2 says a recipient ought to accept either even where generation favours one. An unknown directive is kept, and so is one whose argument does not parse: a cache ignores what it cannot read, and §4.2.1 leans towards treating invalid freshness information as stale, which is what a missing <code>max-age</code> leaves.  A directive repeated is read from its first occurrence, which §4.2.1 allows as an alternative to calling the response stale.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Control</span>::encode(self : <span class="ty">Control</span>) <span class="op">-&gt;</span> <span class="ty">String</span></pre><p class="item-doc">The field&#x27;s directives as one value, with the directives it carries written in the order §5.2 lists them and nothing written twice.</p></div></div>
@@ -263,7 +263,7 @@ what a later request has to match.
   sent : @moondate.<span class="ty">Moment</span>
 <span class="ty">When</span> the response arrived — `response_time` in §4.2.3.
   received : @moondate.<span class="ty">Moment</span>
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">What a cache holds of a response, read off the fields that decide what may be done with it (RFC 9111 §3 to §4).  A stored response is not the message; it is the fields a decision is made from, which is why this type exists at all. The octets are the caller&#x27;s, and this package never sees them: where a cache keeps a body and how it evicts one is a store, and there is no store here.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="enum"><span class="kind">enum</span><div><pre class="sig">enum <span class="ty">Verdict</span> {
 <span class="ty">Answer</span> from the store, with an `<span class="ty">Age</span>` field (§4).
   <span class="ty">Serve</span>
@@ -272,7 +272,7 @@ the validators from `<span class="ty">Entry</span>::conditional` (§4.3.1).
   <span class="ty">Validate</span>
 <span class="ty">The</span> stored response cannot answer this request: fetch it, or fail it.
   <span class="ty">Miss</span>
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">What a cache may do with a stored response for a request it has been given (§4).</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> heuristically_cacheable(status : <span class="ty">Int32</span>) <span class="op">-&gt;</span> <span class="ty">Bool</span></pre><p class="item-doc">The status codes §4.2.2 calls heuristically cacheable — &quot;cacheable by default&quot; in the older specs — with the meaning RFC 9110 §15.1 gives each.  They are the ones an origin is assumed to have meant as reusable when it said nothing: a 200 or a 404, not a 302 that might have been meant as temporary routing.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Entry</span>::read( status~ : <span class="ty">Int32</span>, headers~ : <span class="ty">ArrayView</span>[(<span class="ty">String</span>, <span class="ty">String</span>)], request~ : <span class="ty">ArrayView</span>[(<span class="ty">String</span>, <span class="ty">String</span>)], sent~ : @moondate.<span class="ty">Moment</span>, received~ : @moondate.<span class="ty">Moment</span>) <span class="op">-&gt;</span> <span class="ty">Entry</span></pre><p class="item-doc">Read the fields that decide what may be done with a response.  <code>request</code> is the header list that produced it, which <code>Vary</code> makes part of the stored state: what a later request must match is what this one sent in the fields the response nominated (§4.1).</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Entry</span>::lifetime(self : <span class="ty">Entry</span>, shared~ : <span class="ty">Bool</span> = false) <span class="op">-&gt;</span> <span class="ty">Int32</span><span class="op">?</span></pre><p class="item-doc">The freshness lifetime in seconds, as §4.2.1 computes it, or <code>None</code> when the response carries no explicit expiration time.  The rules are tried in the order the section gives them: <code>s-maxage</code> for a shared cache, then <code>max-age</code>, then <code>Expires</code> minus <code>Date</code>. <code>Date</code> is the time the message was received when the origin did not send one (§6.6.1 of RFC 9110).</p></div></div>
@@ -304,7 +304,7 @@ field does not say.
   lifespan : <span class="ty">Int32</span>
 <span class="ty">Whether</span> the advertisement outlives a change of network, from `persist=1`.
   persist : <span class="ty">Bool</span>
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">An alternative service: one way to reach an origin that is not its own host and port (RFC 7838 §2).  It is identified by the ALPN protocol, a host and a port — and it is authoritative for the *origin*, not for itself: a connection to it still presents the origin&#x27;s name in TLS and its <code>Host</code>, which is what makes an alternative a redirection rather than a different site.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> altsvc(value : <span class="ty">StringView</span>) <span class="op">-&gt;</span> <span class="ty">Array</span>[<span class="ty">Alternative</span>]<span class="op">?</span></pre><p class="item-doc">The alternatives one <code>Alt-Svc</code> field names, in the order the server prefers them, or <code>None</code> for <code>clear</code> — which says the origin wants every alternative it ever advertised forgotten, including any in the same field (§3).  A member this reader cannot make sense of is dropped rather than refusing the field: the others are still what the origin said, and an unreadable one is no reason to stop using the ones that read.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Alternative</span>::encode(self : <span class="ty">Alternative</span>) <span class="op">-&gt;</span> <span class="ty">String</span></pre><p class="item-doc">The field value for this alternative, in the form §3 prints.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Alternative</span>::fresh( self : <span class="ty">Alternative</span>, issued~ : @moondate.<span class="ty">Moment</span>, now~ : @moondate.<span class="ty">Moment</span>) <span class="op">-&gt;</span> <span class="ty">Bool</span></pre><p class="item-doc">Whether the advertisement is still fresh (§2.2, §3.1): a day from when the response carrying it was generated, or for as long as <code>ma</code> says.  Alt-Svc has a freshness lifetime of its own, which a response&#x27;s <code>Cache-Control</code> does not touch: the section is explicit that a cached response&#x27;s lifetime says nothing about how long its alternatives live.</p></div></div>
@@ -321,7 +321,7 @@ field does not say.
 <span class="ty">Field</span> names to drop before sending, lowercased. <span class="ty">Empty</span> when the origin did
 not change.
   strip : <span class="ty">Array</span>[<span class="ty">String</span>]
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">What following a redirect comes to (RFC 9110 §15.4).  The four answers a client needs, in one place: where to go, with which method, with or without the body that was sent, and which of the fields it was going to send must be dropped on the way.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="suberror"><span class="kind">suberror</span><div><pre class="sig">suberror <span class="ty">Refused</span> {
 <span class="ty">The</span> status is not one a client follows: a 304, a 300 it would have to choose
 from, or something that is not a 3xx at all.
@@ -334,7 +334,7 @@ from, or something that is not a 3xx at all.
   <span class="ty">TooMany</span>(limit~ : <span class="ty">Int32</span>, got~ : <span class="ty">Int32</span>)
 <span class="ty">The</span> method and the body both have to be resent, and the body cannot be.
   <span class="ty">Replay</span>(<span class="ty">String</span>)
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">Why a redirect was not followed.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> follow( status~ : <span class="ty">Int32</span>, location~ : <span class="ty">String</span>, from~ : @moonurl.<span class="ty">Url</span>, verb~ : @method.<span class="ty">Method</span>, visited~ : <span class="ty">ArrayView</span>[@moonurl.<span class="ty">Url</span>], body~ : <span class="ty">Bool</span> = false, replay~ : <span class="ty">Bool</span> = true, limit~ : <span class="ty">Int32</span> = hops) <span class="op">-&gt;</span> <span class="ty">Follow</span> raise <span class="ty">Refused</span></pre><p class="item-doc">Where a 3xx sends the next request, and how that request differs from the one that was redirected (RFC 9110 §15.4).  <code>visited</code> is the chain so far, oldest first, and answers two questions at once: whether this redirect goes somewhere the chain has already been — a loop — and whether the chain is longer than <code>hops</code>. A caller with no chain to speak of passes the request it just sent.  The method rewrite is the part that gets argued about. §15.4.2 and §15.4.3 make changing a <code>POST</code> to a <code>GET</code> a MAY, for historical reasons, and every browser takes it; §15.4.4 makes it a MUST for a 303, and §15.4.8 and §15.4.9 forbid it for a 307 and a 308, which exist precisely to keep the method and the body. So this does what the browsers do, and <code>replay</code> is how a caller whose body was a stream rather than bytes says it cannot send it twice: a 307 that would have to resend one is refused rather than turned into an empty <code>PUT</code>.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> same_origin(a : @moonurl.<span class="ty">Url</span>, b : @moonurl.<span class="ty">Url</span>) <span class="op">-&gt;</span> <span class="ty">Bool</span></pre><p class="item-doc">Whether two URLs name the same origin (§4.3.1 of RFC 9110): scheme, host and port, with the scheme&#x27;s default port standing in for an absent one.  The comparison is the one §15.4 turns on. <code>https://example.com</code> and <code>https://example.com:443/</code> are one origin; <code>http://example.com</code> and <code>https://example.com</code> are not, and neither is a different host on the same port.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> location(headers : <span class="ty">ArrayView</span>[(<span class="ty">String</span>, <span class="ty">String</span>)]) <span class="op">-&gt;</span> <span class="ty">String</span><span class="op">?</span></pre><p class="item-doc">The <code>Location</code> of a response, if it had a usable one.</p></div></div>
@@ -353,7 +353,7 @@ from, or something that is not a 3xx at all.
 <span class="ty">A</span> `:`-prefixed line. <span class="ty">It</span> dispatches nothing and exists to keep a connection
 warm through a proxy that would otherwise close it.
   comment : <span class="ty">String</span><span class="op">?</span>
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">One event on the wire.  A field left <code>None</code> is left out of the frame. <code>data</code> carrying newlines goes out as several <code>data:</code> lines and comes back joined, which is the format&#x27;s own rule and the reason a payload with a blank line in it cannot be sent as one.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Event</span>::of(data : <span class="ty">String</span>) <span class="op">-&gt;</span> <span class="ty">Event</span></pre><p class="item-doc">An event carrying only data, which is the common case.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Event</span>::new( data~ : <span class="ty">String</span> = &quot;&quot;, kind<span class="op">?</span> : <span class="ty">String</span>, id<span class="op">?</span> : <span class="ty">String</span>, retry<span class="op">?</span> : <span class="ty">Int32</span>, comment<span class="op">?</span> : <span class="ty">String</span>) <span class="op">-&gt;</span> <span class="ty">Event</span></pre><p class="item-doc">An event with whichever fields are wanted.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Event</span>::ping(comment~ : <span class="ty">String</span> = &quot;&quot;) <span class="op">-&gt;</span> <span class="ty">Event</span></pre><p class="item-doc">A comment-only frame: nothing is dispatched and the connection stays warm.</p></div></div>
@@ -376,7 +376,7 @@ frame before the last one finished.
   <span class="ty">Payload</span>(<span class="ty">String</span>)
 <span class="ty">The</span> peer announced or sent more than this endpoint accepts.
   <span class="ty">Exceeded</span>(limit~ : <span class="ty">Int32</span>, got~ : <span class="ty">Int64</span>)
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">A protocol violation, carrying the status the connection must then be failed with (RFC 6455 §7.4.1, §7.1.7).  This is not end of stream: a peer that simply stops sending has not violated anything, and the connection closes without a status.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Refused</span>::status(self : <span class="ty">Refused</span>) <span class="op">-&gt;</span> <span class="ty">Int32</span></pre><p class="item-doc">The §7.4.1 status a violation is closed with: <code>1002</code> for framing, <code>1007</code> for payload, <code>1009</code> for size.</p></div></div>
 <div class="item" data-k="let"><span class="kind">let</span><div><pre class="sig"><span class="k">let</span> limit : <span class="ty">Int32</span> = 16 * 1024 * 1024</pre><p class="item-doc">How many bytes of payload this endpoint accepts, in one frame and in a message reassembled from many.  Sixteen mebibytes is uvicorn&#x27;s <code>--ws-max-size</code>. The ceiling has to bound the reassembled message and not only each fragment, because a message split into enough small frames would otherwise pass every per-frame check and still exhaust memory.</p></div></div>
 <div class="item" data-k="enum"><span class="kind">enum</span><div><pre class="sig">enum <span class="ty">Opcode</span> {
@@ -386,7 +386,7 @@ frame before the last one finished.
   <span class="ty">Close</span>
   <span class="ty">Ping</span>
   <span class="ty">Pong</span>
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">A frame opcode (RFC 6455 §5.2): the three data opcodes and the three control ones.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Opcode</span>::code(self : <span class="ty">Opcode</span>) <span class="op">-&gt;</span> <span class="ty">Int32</span></pre><p class="item-doc">The four-bit value on the wire.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Opcode</span>::of(code : <span class="ty">Int32</span>) <span class="op">-&gt;</span> <span class="ty">Opcode</span><span class="op">?</span></pre><p class="item-doc">The opcode a wire value names, or <code>None</code> when §5.2 reserves it.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Opcode</span>::is_control(self : <span class="ty">Opcode</span>) <span class="op">-&gt;</span> <span class="ty">Bool</span></pre><p class="item-doc">Whether this is a control opcode, which §5.5 holds to tighter rules than a data frame: at most 125 bytes of payload, and never fragmented.</p></div></div>
@@ -394,7 +394,7 @@ frame before the last one finished.
   fin : <span class="ty">Bool</span>
   opcode : <span class="ty">Opcode</span>
   payload : <span class="ty">Bytes</span>
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">A frame (RFC 6455 §5.2): its FIN bit, its opcode, and its payload already unmasked.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Frame</span>::encode(self : <span class="ty">Frame</span>, mask~ : <span class="ty">Bytes</span> = b&quot;&quot;) <span class="op">-&gt;</span> <span class="ty">Bytes</span></pre><p class="item-doc">A frame on the wire (RFC 6455 §5.2).  A four-byte <code>mask</code> sets the MASK bit and masks the payload. A client must mask every frame and a server must mask none (§5.1), and the key has to be unpredictable, so it comes from the caller: this package has no randomness and should not pretend to.  The length takes the shortest of the three forms — seven bits up to 125, sixteen bits under <code>126</code>, sixty-four under <code>127</code>.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Frame</span>::encode_extension( self : <span class="ty">Frame</span>, mask~ : <span class="ty">Bytes</span> = b&quot;&quot;, rsv1~ : <span class="ty">Bool</span> = false) <span class="op">-&gt;</span> <span class="ty">Bytes</span></pre><p class="item-doc">The frame with RSV1 set, for a connection where an extension has claimed the bit (RFC 7692 §6).  The bit is not part of <code>Frame</code> because it is not part of §5.2&#x27;s frame: it means whatever the negotiated extension says it means, and a frame carrying one is only readable by a peer that agreed to that extension.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> check( b0 : <span class="ty">Int32</span>, b1 : <span class="ty">Int32</span>, len : <span class="ty">Int64</span>, client~ : <span class="ty">Bool</span>, limit~ : <span class="ty">Int32</span> = limit) <span class="op">-&gt;</span> <span class="ty">Opcode</span> raise <span class="ty">Refused</span></pre><p class="item-doc">Check a frame&#x27;s first two bytes and its announced length, answering with the opcode.  <code>client</code> says the frames being read came from a client, whose frames must be masked (§5.1); a server&#x27;s must not be, and reading those takes <code>client=false</code>.  Run this before reading the payload. It is the length check that keeps a sixty-four bit length from being truncated into a short allocation, and keeps an honest but enormous one from being allocated at all — the sign bit included, which §5.2 reserves.</p></div></div>
@@ -405,7 +405,7 @@ frame before the last one finished.
   <span class="ty">Text</span>(<span class="ty">String</span>)
   <span class="ty">Binary</span>(<span class="ty">Bytes</span>)
   <span class="ty">Close</span>(status~ : <span class="ty">Int32</span>, reason~ : <span class="ty">Bytes</span>)
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">A complete application message: text with its payload decoded, binary with its bytes, or a close with its status and reason.  Control frames do not surface here — a <code>Reader</code> answers a ping itself — so an application sees what it sent and received and nothing of the protocol&#x27;s upkeep.  Text carries a <code>String</code> rather than bytes because §8.1 makes invalid UTF-8 a <code>1007</code> failure: bytes that would not decode never get this far, so nothing hands an application a message the peer did not send.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> close(status : <span class="ty">Int32</span>, reason~ : <span class="ty">String</span> = &quot;&quot;) <span class="op">-&gt;</span> <span class="ty">Bytes</span></pre><p class="item-doc">A close frame&#x27;s payload (RFC 6455 §5.5.1): the status big-endian, then the reason.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> status(payload : <span class="ty">BytesView</span>) <span class="op">-&gt;</span> <span class="ty">Int32</span></pre><p class="item-doc">The status a close payload carries, or <code>1005</code> when it carries none (§7.1.5).  <code>1005</code> is a local sentinel and must never be sent: a close that came with no status is echoed with no status, not with this number.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> reason(payload : <span class="ty">BytesView</span>) <span class="op">-&gt;</span> <span class="ty">Bytes</span></pre><p class="item-doc">The reason a close payload carries — everything after the two status bytes.</p></div></div>
@@ -413,7 +413,7 @@ frame before the last one finished.
 <div class="item" data-k="struct"><span class="kind">struct</span><div><pre class="sig"><span class="k">struct</span> <span class="ty">Step</span> {
   message : <span class="ty">Message</span><span class="op">?</span>
   reply : <span class="ty">Frame</span><span class="op">?</span>
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">What a frame made of the connection: a message when it finished one, and a frame to send back when the protocol owes one.  A ping owes a pong, and a close owes a close (§5.5.1). The reply comes back as a frame rather than as bytes because a client has to mask what it sends and only the caller has the randomness to do it with.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="struct"><span class="kind">struct</span><div><pre class="sig"><span class="k">struct</span> <span class="ty">Reader</span> {
   payload : <span class="ty">Buffer</span>
   mut kind : <span class="ty">Opcode</span><span class="op">?</span>
@@ -430,7 +430,7 @@ frame before the last one finished.
 <div class="item" data-k="enum"><span class="kind">enum</span><div><pre class="sig">enum <span class="ty">Role</span> {
   <span class="ty">Client</span>
   <span class="ty">Server</span>
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">Which end of the connection is asking, which decides whose window and whose takeover flag apply (§7.1).  Every parameter is directional: <code>server_max_window_bits</code> limits what the server compresses with and what the client decompresses with, and says nothing about the client&#x27;s own compressor. One enum keeps that straight in one place instead of at every call site.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="struct"><span class="kind">struct</span><div><pre class="sig"><span class="k">struct</span> <span class="ty">Extension</span> {
 <span class="ty">The</span> server&#x27;s compressor keeps its window between messages.
   server_takeover : <span class="ty">Bool</span>
@@ -442,7 +442,7 @@ frame before the last one finished.
   client_window : <span class="ty">Int32</span>
 <span class="ty">Whether</span> `client_max_window_bits` is named at all.
   client_window_named : <span class="ty">Bool</span>
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">The four parameters of §7.1 as agreed for one connection.  The window sizes are in bits, 8 to 15: the base-two logarithm of the LZ77 sliding window each side compresses with, so 15 is DEFLATE&#x27;s own 32 KiB and 8 is 256 bytes. The takeover flags say whether a compressor may keep its window from one message to the next — kept, a later message can point back into an earlier one; reset, each message stands alone and the receiver need not reserve the memory for it.  An absent parameter means the default, so a struct of defaults is also a valid set of agreed terms. That is also why <code>client_window_named</code> is here: an offer may name <code>client_max_window_bits</code> with no value, and a response may only carry the parameter when the offer did (§7.1.2.2).</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="let"><span class="kind">let</span><div><pre class="sig"><span class="k">let</span> defaults : <span class="ty">Extension</span> =</pre><p class="item-doc">The terms with nothing named: both directions keep a 32 KiB window, which is what a connection that agreed to permessage-deflate and nothing else has.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Extension</span>::new( server_takeover<span class="op">?</span> : <span class="ty">Bool</span>, client_takeover<span class="op">?</span> : <span class="ty">Bool</span>, server_window<span class="op">?</span> : <span class="ty">Int32</span>, client_window<span class="op">?</span> : <span class="ty">Int32</span>, client_window_named<span class="op">?</span> : <span class="ty">Bool</span>) <span class="op">-&gt;</span> <span class="ty">Extension</span></pre><p class="item-doc">Terms with these values, the rest left at their defaults.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Extension</span>::encode(self : <span class="ty">Extension</span>, role~ : <span class="ty">Role</span>) <span class="op">-&gt;</span> <span class="ty">String</span></pre><p class="item-doc">The parameters as one extension value, written for <code>role</code>.  A parameter at its default is left out, because saying nothing is how the format says &quot;the default&quot;. The exception is <code>client_max_window_bits</code> in a client&#x27;s offer, where naming it with no value is the one way to say &quot;I understand this parameter; choose for me&quot;.</p></div></div>
@@ -473,7 +473,10 @@ frame before the last one finished.
 <div class="item" data-k="struct"><span class="kind">struct</span><div><pre class="sig"><span class="k">struct</span> <span class="ty">Deflater</span> {
   bits : <span class="ty">Int32</span>
   takeover : <span class="ty">Bool</span>
-  mut history : <span class="ty">Array</span>[<span class="ty">Byte</span>]
+<span class="ty">The</span> tail of the stream so far, which a later message may point back into.
+<span class="ty">Kept</span> as the last window of octets, so a search reads one array and the
+window never grows past what a distance can reach.
+  mut history : <span class="ty">Bytes</span>
 }</pre><p class="item-doc">The compressing half of RFC 1951, shaped for a message stream rather than a file.  A file has one end, so a compressor can put the last block&#x27;s <code>BFINAL</code> bit up, flush, and be done. A WebSocket does not: RFC 7692 §7.2.1 runs one DEFLATE stream across every message on the connection, ends each message with an empty stored block and strips its four-octet tail, and expects the next message to carry on inside the same stream. So each call here writes blocks with <code>BFINAL</code> clear and ends with that empty block, and the octets a caller gets are the ones that go on the wire — tail already removed.  The window is the compressor&#x27;s memory, and <code>takeover</code> is whether it survives a message boundary. Shared, it buys a second message the first one&#x27;s repetitions; reset, each message stands alone and the receiver may drop what it held.  One fixed-Huffman block per message, the shape RFC 7692 §7.2.3.1 shows. A dynamic block carries its own code lengths, and on the short messages a WebSocket carries those cost more than they save.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Deflater</span>::new(bits~ : <span class="ty">Int32</span> = 15, takeover~ : <span class="ty">Bool</span> = true) <span class="op">-&gt;</span> <span class="ty">Deflater</span></pre><p class="item-doc">A compressor with a window of <code>1 &lt;&lt; bits</code> bytes.  Fifteen bits — the 32 KiB DEFLATE allows — is the default every implementation uses, and a smaller one only exists because an extension may negotiate it down (RFC 7692 §7.1.2). <code>takeover</code> off starts each message with an empty window, which is what <code>*_no_context_takeover</code> asks for.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Deflater</span>::window(self : <span class="ty">Deflater</span>) <span class="op">-&gt;</span> <span class="ty">Int32</span></pre><p class="item-doc">How far back a match may reach, in bytes.</p></div></div>
@@ -491,7 +494,7 @@ frame before the last one finished.
   <span class="ty">Distance</span>(at~ : <span class="ty">Int32</span>, got~ : <span class="ty">Int32</span>)
 <span class="ty">The</span> output passed the ceiling the caller set.
   <span class="ty">Exceeded</span>(limit~ : <span class="ty">Int32</span>, got~ : <span class="ty">Int32</span>)
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">What can go wrong reading a DEFLATE stream.  Every variant names where it happened and what it saw, because a compressed message from elsewhere is the one input a reader here cannot trust: the point of the format is that a small stream can expand to more than the machine has.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="struct"><span class="kind">struct</span><div><pre class="sig"><span class="k">struct</span> <span class="ty">Inflater</span> {
   bits : <span class="ty">Int32</span>
   takeover : <span class="ty">Bool</span>
@@ -531,7 +534,7 @@ frame before the last one finished.
   <span class="ty">Key</span>(<span class="ty">String</span>)
 <span class="ty">The</span> server&#x27;s `<span class="ty">Sec</span>-<span class="ty">WebSocket</span>-<span class="ty">Accept</span>` is not the proof for the key that was sent.
   <span class="ty">Proof</span>(want~ : <span class="ty">String</span>, got~ : <span class="ty">String</span>)
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">Why a handshake was not accepted, so a server can answer with the right status and a client can say what the server got wrong.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> read_request( headers : <span class="ty">ArrayView</span>[(<span class="ty">String</span>, <span class="ty">String</span>)]) <span class="op">-&gt;</span> (<span class="ty">String</span>, <span class="ty">Array</span>[<span class="ty">String</span>]) raise <span class="ty">Refused</span></pre><p class="item-doc">Read a client&#x27;s handshake headers and answer with its key and the subprotocols it offered (RFC 6455 §4.2.1).  Header names are matched without regard to case, and <code>Connection</code> is read as the comma-separated list §4.2.1 allows it to be, because a proxy may have added to it. A version other than 13 is refused, which is what §4.4 asks a server to answer.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> read_response( key : <span class="ty">String</span>, headers : <span class="ty">ArrayView</span>[(<span class="ty">String</span>, <span class="ty">String</span>)]) <span class="op">-&gt;</span> <span class="ty">Unit</span> raise <span class="ty">Refused</span></pre><p class="item-doc">Check a server&#x27;s response headers against the key that was sent (RFC 6455 §4.1).  A client that skips this accepts an upgrade from anything that can write <code>101</code>, which is the case §4.2.2&#x27;s proof exists to rule out.</p></div></div>
 </section>
@@ -549,11 +552,11 @@ frame before the last one finished.
   <span class="ty">Trace</span>
   <span class="ty">Patch</span>
   <span class="ty">Other</span>(<span class="ty">String</span>)
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">A request method (RFC 9110 §9.1). The eight of RFC 9110 and PATCH (RFC 5789) have their own constructors; any other token is <code>Other</code>.  Method names are case-sensitive, so <code>get</code> is an extension method and not <code>Get</code>. Build a method from its name with <code>Method::of</code>, which picks the constructor: <code>Other(&quot;GET&quot;)</code> written by hand is not equal to <code>Get</code>.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="suberror"><span class="kind">suberror</span><div><pre class="sig">suberror <span class="ty">Refused</span> {
 <span class="ty">Empty</span>, or holding a character outside `tchar` (<span class="ty">RFC</span> 9110 §5.6.2).
   <span class="ty">Token</span>(<span class="ty">String</span>)
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">Why a name is not a method.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Method</span>::of(name : <span class="ty">StringView</span>) <span class="op">-&gt;</span> <span class="ty">Method</span> raise <span class="ty">Refused</span></pre><p class="item-doc">The method named <code>name</code>.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Method</span>::name(self : <span class="ty">Method</span>) <span class="op">-&gt;</span> <span class="ty">String</span></pre><p class="item-doc">The name sent on the request line or in <code>:method</code>.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Method</span>::is_safe(self : <span class="ty">Method</span>) <span class="op">-&gt;</span> <span class="ty">Bool</span></pre><p class="item-doc">Whether the method is read-only (RFC 9110 §9.2.1), so a crawler, a prefetch or a cache may send it without the user asking. An extension method is not assumed safe.</p></div></div>
@@ -565,7 +568,7 @@ frame before the last one finished.
 <div class="item" data-k="struct"><span class="kind">struct</span><div><pre class="sig"><span class="k">struct</span> <span class="ty">Header</span> {
   name : <span class="ty">Bytes</span>
   value : <span class="ty">Bytes</span>
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">One header field: a name and a value, as octets (RFC 9110 §5).  Octets and not strings, for two reasons. A field value is a byte sequence that a receiver only later decides how to read, and gRPC&#x27;s <code>-bin</code> metadata is binary by design; decoding either to a <code>String</code> on the way past would lose what was sent.  Both header compressions produce and consume these, so HTTP/2 and HTTP/3 speak of a header list in the same type and nothing has to be converted between them.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Header</span>::of(name : <span class="ty">String</span>, value : <span class="ty">String</span>) <span class="op">-&gt;</span> <span class="ty">Header</span></pre><p class="item-doc">A field from ASCII, which is how a specification writes one and how most code means one. A code point past 0x7f is written as its low octet, so this is for names and values that are ASCII to begin with.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Header</span>::ascii(self : <span class="ty">Header</span>) <span class="op">-&gt;</span> (<span class="ty">String</span>, <span class="ty">String</span>)</pre><p class="item-doc">The field&#x27;s name and value read back as ASCII.  Every octet becomes one code point, so this round-trips what <code>of</code> wrote and turns arbitrary bytes into something printable rather than refusing them; a value that is meant to be UTF-8 is the caller&#x27;s to decode.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Header</span>::cost(self : <span class="ty">Header</span>, overhead~ : <span class="ty">Int32</span> = 32) <span class="op">-&gt;</span> <span class="ty">Int32</span></pre><p class="item-doc">How many octets the field costs a compressor&#x27;s table: its two parts and a fixed overhead for the entry itself (RFC 7541 §4.1, and RFC 9204 §3.2.1 with the same arithmetic).</p></div></div>
@@ -577,7 +580,7 @@ frame before the last one finished.
   <span class="ty">Eos</span>
   <span class="ty">Padding</span>(<span class="ty">String</span>)
   <span class="ty">Malformed</span>(<span class="ty">String</span>)
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">Why a Huffman string was refused: the EOS symbol appeared in the input, the padding is not a run of fewer than eight one-bits, or the bits leave the code space (RFC 7541 §5.2).  All three are what §5.2 calls a decoding error, and a receiver treats them the same way; they are separate here so a log says which.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> encode(input : <span class="ty">BytesView</span>) <span class="op">-&gt;</span> <span class="ty">Bytes</span></pre><p class="item-doc">Huffman-encode <code>input</code> (RFC 7541 §5.2): each octet becomes its code, and the final partial octet is padded with the most-significant bits of the EOS code (all ones). The inverse of <code>decode</code> for valid inputs.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> size(input : <span class="ty">BytesView</span>) <span class="op">-&gt;</span> <span class="ty">Int32</span></pre><p class="item-doc">The number of octets <code>input</code> occupies when Huffman-encoded, without building the output — used to choose the shorter of raw vs. Huffman string literals.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> decode(input : <span class="ty">BytesView</span>) <span class="op">-&gt;</span> <span class="ty">Bytes</span> raise <span class="ty">Refused</span></pre><p class="item-doc">Huffman-decode <code>input</code> (RFC 7541 §5.2). Raises <code>HuffmanError</code> if the input contains the EOS symbol, if the trailing padding is not a run of fewer than 8 one-bits, or if the bit stream leaves the code space. The inverse of <code>encode</code>.</p></div></div>
@@ -589,7 +592,7 @@ frame before the last one finished.
   <span class="ty">Malformed</span>(<span class="ty">String</span>)
   <span class="ty">Index</span>(got~ : <span class="ty">Int32</span>)
   <span class="ty">Exceeded</span>(limit~ : <span class="ty">Int32</span>, got~ : <span class="ty">Int32</span>)
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">Why a header block was refused (RFC 7541 §6).  <code>Malformed</code> and <code>Index</code> are connection errors in HTTP/2 (RFC 9113 §4.3): the two ends&#x27; dynamic tables have gone out of step and nothing after this point can be read. <code>Exceeded</code> is not. The block was decoded to its end, so the table is in step, and only this one field section is refused for being larger than the caller allows.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="let"><span class="kind">let</span><div><pre class="sig"><span class="k">let</span> limit : <span class="ty">Int32</span> = 4096</pre><p class="item-doc">How many octets a dynamic table holds by default.  Four kibibytes is the value HTTP/2 gives <code>SETTINGS_HEADER_TABLE_SIZE</code> before either end has said otherwise (RFC 9113 §6.5.2), so it is what both tables start at.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> entry(index : <span class="ty">Int32</span>) <span class="op">-&gt;</span> @header.<span class="ty">Header</span><span class="op">?</span></pre><p class="item-doc">Look up an HPACK static-table entry by its 1-based RFC index (<code>1..=61</code>), returning <code>(name, value)</code> or <code>None</code> when the index is out of range.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> string(octets : <span class="ty">BytesView</span>, huffman~ : <span class="ty">Bool</span> = true) <span class="op">-&gt;</span> <span class="ty">Bytes</span></pre><p class="item-doc">A string literal (RFC 7541 §5.2): the length as a seven-bit-prefix integer, then the octets, with the <code>H</code> bit saying whether they are Huffman-coded.  <code>huffman</code> takes the shorter of the two forms, which is what an encoder does; <code>false</code> writes the octets as they are, which is what a test with a published block needs.  A tie goes to the coded form, which is what RFC 7541&#x27;s own examples do: it costs nothing and leaves less of the value legible to anything reading the connection.</p></div></div>
@@ -629,7 +632,7 @@ frame before the last one finished.
   <span class="ty">Malformed</span>(<span class="ty">String</span>)
   <span class="ty">Index</span>(got~ : <span class="ty">Int32</span>)
   <span class="ty">Exceeded</span>(limit~ : <span class="ty">Int32</span>, got~ : <span class="ty">Int32</span>)
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">Why a field section or an instruction was refused (RFC 9204 §2.2, §4).  Each one is a connection error of its own kind in §6, because after it the two ends no longer agree about the dynamic table and nothing further can be read.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="let"><span class="kind">let</span><div><pre class="sig"><span class="k">let</span> static_table : <span class="ty">Array</span>[@header.<span class="ty">Header</span>] =</pre><p class="item-doc">The static table as fields, in the index order Appendix A gives them. Unlike HPACK&#x27;s, QPACK&#x27;s static table is indexed from zero (RFC 9204 §3.1).</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> entry(index : <span class="ty">Int32</span>) <span class="op">-&gt;</span> @header.<span class="ty">Header</span><span class="op">?</span></pre><p class="item-doc">The entry at <code>index</code>, or <code>None</code> when the index names nothing.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> find(name : <span class="ty">Bytes</span>, value : <span class="ty">Bytes</span>) <span class="op">-&gt;</span> <span class="ty">Int32</span><span class="op">?</span></pre><p class="item-doc">The index of the first entry whose name and value both match, for an indexed field line; <code>None</code> if no entry matches exactly.</p></div></div>
@@ -669,7 +672,7 @@ then the value string.
   <span class="ty">InsertLiteral</span>(name~ : <span class="ty">Bytes</span>, value~ : <span class="ty">Bytes</span>)
 <span class="ty">Duplicate</span> (§4.3.4): `000` + index (5-bit prefix).
   <span class="ty">Duplicate</span>(index~ : <span class="ty">Int32</span>)
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">An encoder-stream instruction (RFC 9204 §4.3).</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="enum"><span class="kind">enum</span><div><pre class="sig">enum <span class="ty">Ack</span> {
 <span class="ty">Section</span> <span class="ty">Acknowledgement</span> (§4.4.1): `1` + stream id (7-bit prefix).
   <span class="ty">Section</span>(stream_id~ : <span class="ty">Int32</span>)
@@ -677,7 +680,7 @@ then the value string.
   <span class="ty">Cancel</span>(stream_id~ : <span class="ty">Int32</span>)
 <span class="ty">Insert</span> <span class="ty">Count</span> <span class="ty">Increment</span> (§4.4.3): `00` + increment (6-bit prefix).
   <span class="ty">Increment</span>(increment~ : <span class="ty">Int32</span>)
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">A decoder-stream instruction (RFC 9204 §4.4).</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Change</span>::encode(inst : <span class="ty">Change</span>, huffman~ : <span class="ty">Bool</span> = true) <span class="op">-&gt;</span> <span class="ty">Bytes</span></pre><p class="item-doc">Encode an encoder-stream instruction (RFC 9204 §4.3). <code>huffman</code> chooses whether the literal strings of the insert instructions are Huffman-coded.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Change</span>::decode(input : <span class="ty">BytesView</span>) <span class="op">-&gt;</span> (<span class="ty">Change</span>, <span class="ty">Int32</span>)<span class="op">?</span> raise <span class="ty">Refused</span></pre><p class="item-doc">Decode one encoder-stream instruction from the front of <code>input</code> (RFC 9204 §4.3), dispatching on the pattern in the first byte&#x27;s high bits. Returns <code>(instruction, bytes-consumed)</code>, or <code>None</code> when the instruction has not fully arrived.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Ack</span>::encode(inst : <span class="ty">Ack</span>) <span class="op">-&gt;</span> <span class="ty">Bytes</span></pre><p class="item-doc">Encode a decoder-stream instruction (RFC 9204 §4.4).</p></div></div>
@@ -692,7 +695,7 @@ then the value string.
   <span class="ty">Exceeded</span>(limit~ : <span class="ty">Int32</span>, got~ : <span class="ty">Int32</span>)
   <span class="ty">Smuggled</span>(<span class="ty">String</span>)
   <span class="ty">Order</span>(<span class="ty">String</span>)
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">Why a message was refused.  <code>Partial</code> is not a fault: it is the reader saying the bytes have not all arrived, which is the answer a caller feeds more and asks again. <code>Order</code> is this side&#x27;s mistake, an event sent where the exchange does not allow it. Everything else is a peer&#x27;s message that will not become valid by waiting.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Refused</span>::status(self : <span class="ty">Refused</span>) <span class="op">-&gt;</span> <span class="ty">Int32</span></pre><p class="item-doc">The status a refusal deserves, for a server that answers rather than hangs up.  A message too large is 431 when it is the head (RFC 6585 §5) and 413 when it is the body; this is about the head, which is what this package bounds. A framing fault is 400.</p></div></div>
 <div class="item" data-k="enum"><span class="kind">enum</span><div><pre class="sig">enum <span class="ty">Body</span> {
   <span class="ty">Empty</span>
@@ -700,11 +703,11 @@ then the value string.
   <span class="ty">Chunked</span>
   // <span class="ty">Until</span> the connection closes, which only a response may use (§6.3).
   <span class="ty">Closed</span>
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">How a message&#x27;s body is delimited (RFC 9112 §6).  The three ways are not interchangeable and picking the wrong one is how a request gets smuggled past a proxy, so this is read from the headers once and carried rather than re-derived.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="struct"><span class="kind">struct</span><div><pre class="sig"><span class="k">struct</span> <span class="ty">Limits</span> {
   head : <span class="ty">Int32</span>
   fields : <span class="ty">Int32</span>
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">The limits a reader holds a peer to.  The preset is [<code>limits</code>]. Build another with [<code>Limits::new</code>], or update one in place with <code>{ ..limits, head: 8192 }</code>.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="let"><span class="kind">let</span><div><pre class="sig"><span class="k">let</span> limits : <span class="ty">Limits</span> =</pre><p class="item-doc">Sixteen kibibytes of head and a hundred fields.  16 KiB is what h11 caps an incomplete event at and what uvicorn exposes as <code>--h11-max-incomplete-event-size</code>; nginx&#x27;s <code>large_client_header_buffers</code> and Go&#x27;s <code>MaxHeaderBytes</code> land in the same place. A hundred fields is Go&#x27;s <code>http2.Server</code> default and more than any real request carries.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Limits</span>::new( head~ : <span class="ty">Int32</span> = limits.head, fields~ : <span class="ty">Int32</span> = limits.fields) <span class="op">-&gt;</span> <span class="ty">Limits</span></pre><p class="item-doc">Limits by name, every knob with the preset&#x27;s value.</p></div></div>
 <div class="item" data-k="struct"><span class="kind">struct</span><div><pre class="sig"><span class="k">struct</span> <span class="ty">Request</span> {
@@ -716,7 +719,7 @@ then the value string.
   // `<span class="ty">Expect</span>: 100-continue` — the client is waiting to be told to send the body.
   expects : <span class="ty">Bool</span>
   keep_alive : <span class="ty">Bool</span>
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">A request&#x27;s head: the request line and the fields under it.  Field names are lowercased, because HTTP/1.1 says they are case-insensitive and every consumer would otherwise lowercase them again. Values are octets, not text: a field value may carry anything, and gRPC&#x27;s <code>-bin</code> metadata does.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="struct"><span class="kind">struct</span><div><pre class="sig"><span class="k">struct</span> <span class="ty">Response</span> {
   version : <span class="ty">String</span>
   status : <span class="ty">Int32</span>
@@ -724,13 +727,13 @@ then the value string.
   fields : <span class="ty">Array</span>[@header.<span class="ty">Header</span>]
   body : <span class="ty">Body</span>
   keep_alive : <span class="ty">Bool</span>
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">A response&#x27;s head: the status line and the fields under it.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Request</span>::field(self : <span class="ty">Request</span>, name : <span class="ty">String</span>) <span class="op">-&gt;</span> <span class="ty">Bytes</span><span class="op">?</span></pre><p class="item-doc">The value of the first field named <code>name</code>, or <code>None</code>.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Response</span>::field(self : <span class="ty">Response</span>, name : <span class="ty">String</span>) <span class="op">-&gt;</span> <span class="ty">Bytes</span><span class="op">?</span></pre><p class="item-doc">The same, for a response.</p></div></div>
 <div class="item" data-k="enum"><span class="kind">enum</span><div><pre class="sig">enum <span class="ty">Role</span> {
   <span class="ty">Server</span>
   <span class="ty">Client</span>
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">Which end of a connection a [<code>Conn</code>] is.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="enum"><span class="kind">enum</span><div><pre class="sig">enum <span class="ty">State</span> {
   <span class="ty">Idle</span>
   <span class="ty">SendResponse</span>
@@ -741,7 +744,7 @@ then the value string.
   <span class="ty">MightSwitch</span>
   <span class="ty">Switched</span>
   <span class="ty">Error</span>
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">Where one side of a connection is in its half of an exchange.  These are h11&#x27;s states (https://h11.readthedocs.io/en/latest/api.html), one per side, read with [<code>Conn::ours</code>] and [<code>Conn::theirs</code>]. A server that has read a request is <code>SendResponse</code> until it answers. A side whose exchange said <code>Connection: close</code> ends in <code>MustClose</code> rather than <code>Done</code>. A client that asked to upgrade waits in <code>MightSwitch</code> until the server says yes, which is <code>Switched</code> for both, or no, which puts it back to <code>Done</code>.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="enum"><span class="kind">enum</span><div><pre class="sig">enum <span class="ty">Event</span> {
   <span class="ty">Request</span>(<span class="ty">Request</span>)
   <span class="ty">Response</span>(<span class="ty">Response</span>)
@@ -754,7 +757,7 @@ then the value string.
   <span class="ty">Paused</span>
   // <span class="ty">Read</span>, the peer closed its side; sent, this side is closing its own.
   <span class="ty">Closed</span>
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">What a connection reads from its peer, or is given to write.  A message is always a head, any number of <code>Data</code>, then <code>End</code>, even when the body is empty, so a consumer handles one sequence. <code>NeedData</code> and <code>Paused</code> are only ever read: the first asks for more octets, the second says the next message waits for [<code>Conn::start_next</code>] or, after a switch, belongs to another protocol.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Conn</span>::new(role : <span class="ty">Role</span>, limits~ : <span class="ty">Limits</span> = limits) <span class="op">-&gt;</span> <span class="ty">Conn</span></pre><p class="item-doc">A connection at its start, both sides <code>Idle</code>.  <code>limits</code> bounds what the peer may send before a message is complete: its head, a chunk-size line, a trailer section. Bodies are handed over as they arrive and are not bounded here.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Conn</span>::ours(self : <span class="ty">Conn</span>) <span class="op">-&gt;</span> <span class="ty">State</span></pre><p class="item-doc">This side&#x27;s state.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Conn</span>::theirs(self : <span class="ty">Conn</span>) <span class="op">-&gt;</span> <span class="ty">State</span></pre><p class="item-doc">The peer&#x27;s state.</p></div></div>
@@ -778,7 +781,7 @@ then the value string.
   <span class="ty">Piece</span>(<span class="ty">Bytes</span>, <span class="ty">Int32</span>)
   // <span class="ty">The</span> body ended; its trailer fields, and how many octets that took.
   <span class="ty">Done</span>(<span class="ty">Array</span>[@header.<span class="ty">Header</span>], <span class="ty">Int32</span>)
-} derive(<span class="ty">Eq</span>)</pre><p class="item-doc">What a chunked body reader found at the front of <code>data</code>.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> chunked(data : <span class="ty">BytesView</span>) <span class="op">-&gt;</span> <span class="ty">Chunk</span> raise <span class="ty">Refused</span></pre><p class="item-doc">The chunk at the front of <code>data</code>.  Raises [<code>Refused::Partial</code>] while it has not all arrived. A size line longer than sixteen hexadecimal digits is refused rather than accumulated: a size that needs more than sixty-four bits is not a size.</p></div></div>
 </section>
 <section class="pkg" id="http2">
@@ -826,14 +829,14 @@ then the value string.
   exclusive : <span class="ty">Bool</span>
   stream_dependency : <span class="ty">Int32</span>
   weight : <span class="ty">Int32</span>
-} derive(<span class="ty">Eq</span>)</pre><p class="item-doc">The stream-priority block shared by PRIORITY frames and the optional priority section of HEADERS (RFC 9113 §5.3.2). <code>weight</code> is the raw wire byte (<code>0..255</code>); the effective priority weight is <code>weight + 1</code> (§6.3).</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="suberror"><span class="kind">suberror</span><div><pre class="sig">suberror <span class="ty">Refused</span> {
   <span class="ty">Incomplete</span>
   <span class="ty">FrameSizeError</span>(<span class="ty">String</span>)
   <span class="ty">ProtocolError</span>(<span class="ty">String</span>)
   <span class="ty">Connection</span>(code~ : <span class="ty">Int32</span>, <span class="ty">String</span>)
   <span class="ty">Order</span>(<span class="ty">String</span>)
-} derive(<span class="ty">Eq</span>)</pre><p class="item-doc">Why a frame or a connection was refused.  <code>Incomplete</code> is the normal &quot;need more bytes&quot; signal a streaming reader catches to wait for the rest, and <code>FrameSizeError</code> and <code>ProtocolError</code> are frames that do not decode. A [<code>Conn</code>] raises only the last two kinds: <code>Connection</code> when the peer broke the connection, with the GOAWAY that says so already queued, and <code>Order</code> when this side sent something the protocol does not allow now.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="enum"><span class="kind">enum</span><div><pre class="sig">enum <span class="ty">Frame</span> {
   <span class="ty">Data</span>(stream_id~ : <span class="ty">Int32</span>, data~ : <span class="ty">Bytes</span>, end_stream~ : <span class="ty">Bool</span>, padding~ : <span class="ty">Int32</span>)
   <span class="ty">Headers</span>(
@@ -859,13 +862,13 @@ then the value string.
   <span class="ty">WindowUpdate</span>(stream_id~ : <span class="ty">Int32</span>, increment~ : <span class="ty">Int32</span>)
   <span class="ty">Continuation</span>(stream_id~ : <span class="ty">Int32</span>, fragment~ : <span class="ty">Bytes</span>, end_headers~ : <span class="ty">Bool</span>)
   <span class="ty">Unknown</span>(ftype~ : <span class="ty">Int32</span>, flags~ : <span class="ty">Int32</span>, stream_id~ : <span class="ty">Int32</span>, payload~ : <span class="ty">Bytes</span>)
-} derive(<span class="ty">Eq</span>)</pre><p class="item-doc">A decoded HTTP/2 frame (RFC 9113 §6). Each variant carries the semantic payload with padding already stripped; <code>padding</code> is the number of padding bytes to (re)emit. <code>Unknown</code> preserves extension/unrecognised frames verbatim so a reader can forward or ignore them (RFC 9113 §4.1).</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="struct"><span class="kind">struct</span><div><pre class="sig"><span class="k">struct</span> <span class="ty">FrameHeader</span> {
   length : <span class="ty">Int32</span>
   ftype : <span class="ty">Int32</span>
   flags : <span class="ty">Int32</span>
   stream_id : <span class="ty">Int32</span>
-} derive(<span class="ty">Eq</span>)</pre><p class="item-doc">The fixed 9-octet frame header (RFC 9113 §4.1): a 24-bit payload length, an 8-bit type, 8-bit flags, a reserved bit, and a 31-bit stream identifier.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">FrameHeader</span>::encode(self : <span class="ty">FrameHeader</span>) <span class="op">-&gt;</span> <span class="ty">Bytes</span></pre><p class="item-doc">Encode a <code>FrameHeader</code> to its 9 wire octets.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">FrameHeader</span>::decode( data : <span class="ty">Bytes</span>, offset~ : <span class="ty">Int32</span> = 0) <span class="op">-&gt;</span> <span class="ty">FrameHeader</span> raise <span class="ty">Refused</span></pre><p class="item-doc">Decode the 9-octet frame header at <code>offset</code>. Raises <code>Incomplete</code> when fewer than 9 octets are available. The reserved bit is masked off the stream id.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Frame</span>::code(self : <span class="ty">Frame</span>) <span class="op">-&gt;</span> <span class="ty">Int32</span></pre><p class="item-doc">The numeric frame-type code of this frame (RFC 9113 §6).</p></div></div>
@@ -874,7 +877,7 @@ then the value string.
 <div class="item" data-k="enum"><span class="kind">enum</span><div><pre class="sig">enum <span class="ty">Role</span> {
   <span class="ty">Server</span>
   <span class="ty">Client</span>
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">Which end of a connection a [<code>Conn</code>] is.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="enum"><span class="kind">enum</span><div><pre class="sig">enum <span class="ty">Event</span> {
   <span class="ty">Request</span>(stream~ : <span class="ty">Int32</span>, fields~ : <span class="ty">Array</span>[@header.<span class="ty">Header</span>])
   <span class="ty">Response</span>(stream~ : <span class="ty">Int32</span>, fields~ : <span class="ty">Array</span>[@header.<span class="ty">Header</span>])
@@ -899,7 +902,7 @@ then the value string.
   <span class="ty">NeedData</span>
   // <span class="ty">The</span> peer closed the transport.
   <span class="ty">Closed</span>
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">What a connection reads from its peer.  As in <code>http1</code>, a message is a head, any number of <code>Data</code>, then <code>End</code>; trailers come as <code>Trailers</code> before the <code>End</code>. <code>Reset</code> with <code>remote=false</code> is a stream this side refused, with the RST_STREAM already queued. <code>Settings</code> and <code>Ping</code> have already been acknowledged when they are read.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Conn</span>::new(role : <span class="ty">Role</span>, settings~ : <span class="ty">Settings</span> = settings) <span class="op">-&gt;</span> <span class="ty">Conn</span></pre><p class="item-doc">A connection at its start, with its opening frames queued: the client&#x27;s preface and SETTINGS, or the server&#x27;s SETTINGS (§3.4).  <code>settings</code> take effect when the peer acknowledges them; until then both ends go by [<code>initial</code>]. Settings outside what §6.5.2 allows abort, since no peer could accept them.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Conn</span>::receive(self : <span class="ty">Conn</span>, data : <span class="ty">BytesView</span>) <span class="op">-&gt;</span> <span class="ty">Unit</span> raise <span class="ty">Refused</span></pre><p class="item-doc">Octets read from the peer. Empty means the peer closed the transport.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Conn</span>::next(self : <span class="ty">Conn</span>) <span class="op">-&gt;</span> <span class="ty">Event</span> raise <span class="ty">Refused</span></pre><p class="item-doc">The next event from the peer.  A connection error raises <code>Connection</code> with the GOAWAY already queued in [<code>Conn::take</code>], after which the connection is finished. A stream error does not raise: the RST_STREAM is queued and the stream ends with <code>Reset</code>.</p></div></div>
@@ -926,7 +929,7 @@ then the value string.
   max_frame_size : <span class="ty">Int32</span>
   max_header_list_size : <span class="ty">Int32</span><span class="op">?</span>
   enable_connect_protocol : <span class="ty">Bool</span>
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">An endpoint&#x27;s settings (RFC 9113 §6.5.2, RFC 8441 §3).  <code>None</code> is the RFC&#x27;s &quot;unlimited&quot;. The preset is [<code>settings</code>]; [<code>initial</code>] is what both ends assume before any SETTINGS frame, and so what the peer&#x27;s settings start from. Build others with [<code>Settings::new</code>] or <code>{ ..settings, max_frame_size: n }</code>.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="let"><span class="kind">let</span><div><pre class="sig"><span class="k">let</span> initial : <span class="ty">Settings</span> =</pre><p class="item-doc">The value RFC 9113 §6.5.2 gives every setting before an endpoint has said otherwise.</p></div></div>
 <div class="item" data-k="let"><span class="kind">let</span><div><pre class="sig"><span class="k">let</span> settings : <span class="ty">Settings</span> =</pre><p class="item-doc">What a connection advertises unless told otherwise: the RFC&#x27;s values, with a hundred concurrent streams and 64 KiB of header list.  Those two are python-hyper h2&#x27;s own defaults, and a hundred streams is also where nghttp2 and gRPC settle. Left unlimited, every stream a peer opens and never finishes holds memory, and a few octets of HPACK can name one large table entry thousands of times.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Settings</span>::new( header_table_size~ : <span class="ty">Int32</span> = settings.header_table_size, enable_push~ : <span class="ty">Bool</span> = settings.enable_push, max_concurrent_streams~ : <span class="ty">Int32</span><span class="op">?</span> = settings.max_concurrent_streams, initial_window_size~ : <span class="ty">Int32</span> = settings.initial_window_size, max_frame_size~ : <span class="ty">Int32</span> = settings.max_frame_size, max_header_list_size~ : <span class="ty">Int32</span><span class="op">?</span> = settings.max_header_list_size, enable_connect_protocol~ : <span class="ty">Bool</span> = settings.enable_connect_protocol) <span class="op">-&gt;</span> <span class="ty">Settings</span></pre><p class="item-doc">Settings by name, every one with the preset&#x27;s value.</p></div></div>
@@ -936,7 +939,7 @@ then the value string.
 <p class="pkg-desc">HTTP/3 frames, their placement rules, settings, stream types and connection.</p>
 <div class="item" data-k="suberror"><span class="kind">suberror</span><div><pre class="sig">suberror <span class="ty">Refused</span> {
   <span class="ty">Malformed</span>(<span class="ty">String</span>)
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">Why a frame, a stream or a connection was refused.  RFC 9114 §8 gives each case its own connection error; they are one type here because the answer to every one of them is the same — close the connection — and the message says which it was.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="enum"><span class="kind">enum</span><div><pre class="sig">enum <span class="ty">Frame</span> {
   <span class="ty">Data</span>(<span class="ty">Bytes</span>)
   <span class="ty">Headers</span>(<span class="ty">Bytes</span>)
@@ -947,7 +950,7 @@ then the value string.
   <span class="ty">MaxPushId</span>(<span class="ty">UInt64</span>)
   <span class="ty">Reserved</span>(<span class="ty">UInt64</span>, <span class="ty">Bytes</span>)
   <span class="ty">ReservedHttp2</span>(<span class="ty">UInt64</span>)
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">A decoded HTTP/3 frame. <code>Data</code>/<code>Headers</code>/<code>PushPromise</code> carry their opaque payloads; <code>Settings</code> carries the decoded <code>(identifier, value)</code> pairs. <code>Reserved</code> is any unknown or grease frame type (RFC 9114 §7.2.8 / §9), which a receiver ignores; <code>ReservedHttp2</code> is one of the frame types reused from HTTP/2 (0x02, 0x06, 0x08, 0x09), which RFC 9114 §7.2 requires be treated as a connection error.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Frame</span>::encode(frame : <span class="ty">Frame</span>) <span class="op">-&gt;</span> <span class="ty">Bytes</span></pre><p class="item-doc">Encode one HTTP/3 frame: its type, its payload length, then the payload.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> settings(pairs : <span class="ty">Array</span>[(<span class="ty">UInt64</span>, <span class="ty">UInt64</span>)]) <span class="op">-&gt;</span> <span class="ty">Bytes</span></pre><p class="item-doc">Encode a SETTINGS payload: each pair as its identifier varint then its value varint (RFC 9114 §7.2.4).</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> decode(input : <span class="ty">BytesView</span>) <span class="op">-&gt;</span> (<span class="ty">Frame</span>, <span class="ty">Int32</span>)<span class="op">?</span> raise <span class="ty">Refused</span></pre><p class="item-doc">Decode one HTTP/3 frame from the front of <code>input</code>. Returns <code>Some((frame, consumed))</code> on a complete frame, <code>None</code> when more bytes are needed (a partial frame — the type, the length, or the payload has not fully arrived), and raises on a malformed frame (a truncated SETTINGS pair or a required varint field that is absent).</p></div></div>
@@ -957,19 +960,22 @@ then the value string.
   <span class="ty">Control</span>
   <span class="ty">Request</span>
   <span class="ty">Push</span>
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">The stream a frame was received on, for the purpose of frame-placement rules (RFC 9114 §6.2).</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> allowed(frame : <span class="ty">Frame</span>, ctx : <span class="ty">On</span>) <span class="op">-&gt;</span> <span class="ty">Bool</span></pre><p class="item-doc">Whether <code>frame</code> is permitted on a stream of kind <code>ctx</code> (RFC 9114 §7.2).</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> check(frame : <span class="ty">Frame</span>, ctx : <span class="ty">On</span>) <span class="op">-&gt;</span> <span class="ty">Unit</span> raise <span class="ty">Refused</span></pre><p class="item-doc">Raise <code>Refused</code> (H3_FRAME_UNEXPECTED) when <code>frame</code> is not permitted on <code>ctx</code>.</p></div></div>
 <div class="item" data-k="let"><span class="kind">let</span><div><pre class="sig"><span class="k">let</span> qpack_capacity : <span class="ty">UInt64</span> = 0x01</pre><p class="item-doc">SETTINGS_QPACK_MAX_TABLE_CAPACITY (RFC 9204 §5).</p></div></div>
 <div class="item" data-k="let"><span class="kind">let</span><div><pre class="sig"><span class="k">let</span> max_field_section : <span class="ty">UInt64</span> = 0x06</pre><p class="item-doc">SETTINGS_MAX_FIELD_SECTION_SIZE (RFC 9114 §7.2.4.1).</p></div></div>
 <div class="item" data-k="let"><span class="kind">let</span><div><pre class="sig"><span class="k">let</span> blocked_streams : <span class="ty">UInt64</span> = 0x07</pre><p class="item-doc">SETTINGS_QPACK_BLOCKED_STREAMS (RFC 9204 §5).</p></div></div>
+<div class="item" data-k="let"><span class="kind">let</span><div><pre class="sig"><span class="k">let</span> enable_connect : <span class="ty">UInt64</span> = 0x08</pre><p class="item-doc">SETTINGS_ENABLE_CONNECT_PROTOCOL (RFC 9220 §5): a server sends it as 1 to let a client send <code>:protocol</code> on an extended CONNECT, which is how a WebSocket is bootstrapped over HTTP/3. It defaults to 0, so an endpoint that says nothing has not enabled the method.</p></div></div>
 <div class="item" data-k="struct"><span class="kind">struct</span><div><pre class="sig"><span class="k">struct</span> <span class="ty">Settings</span> {
   qpack_max_table_capacity : <span class="ty">UInt64</span>
   max_field_section_size : <span class="ty">UInt64</span>
   qpack_blocked_streams : <span class="ty">UInt64</span>
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">An endpoint&#x27;s HTTP/3 settings.</p></div></div>
-<div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Settings</span>::new( qpack_max_table_capacity : <span class="ty">UInt64</span>, max_field_section_size : <span class="ty">UInt64</span>, qpack_blocked_streams : <span class="ty">UInt64</span>) <span class="op">-&gt;</span> <span class="ty">Settings</span></pre><p class="item-doc">Settings with the given QPACK table capacity, maximum field section size, and blocked-stream limit.</p></div></div>
-<div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Settings</span>::pairs(self : <span class="ty">Settings</span>) <span class="op">-&gt;</span> <span class="ty">Array</span>[(<span class="ty">UInt64</span>, <span class="ty">UInt64</span>)]</pre><p class="item-doc">The <code>(identifier, value)</code> pairs to carry in a SETTINGS frame.</p></div></div>
+<span class="ty">Whether</span> this endpoint lets a peer send `:protocol` (<span class="ty">RFC</span> 9220 §5).
+  enable_connect_protocol : <span class="ty">Bool</span>
+}</pre></div></div>
+<div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Settings</span>::new( qpack_max_table_capacity : <span class="ty">UInt64</span>, max_field_section_size : <span class="ty">UInt64</span>, qpack_blocked_streams : <span class="ty">UInt64</span>, enable_connect_protocol~ : <span class="ty">Bool</span> = false) <span class="op">-&gt;</span> <span class="ty">Settings</span></pre><p class="item-doc">Settings with the given QPACK table capacity, maximum field section size, and blocked-stream limit, and — for a server that will take an extended CONNECT — the connect-protocol switch.</p></div></div>
+<div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Settings</span>::pairs(self : <span class="ty">Settings</span>) <span class="op">-&gt;</span> <span class="ty">Array</span>[(<span class="ty">UInt64</span>, <span class="ty">UInt64</span>)]</pre><p class="item-doc">The <code>(identifier, value)</code> pairs to carry in a SETTINGS frame.  The connect switch is written only when it is on: its registry default is 0, so leaving it out says the same thing, and a settings list that carries only what it changed stays the three QPACK values.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Settings</span>::of_pairs(pairs : <span class="ty">Array</span>[(<span class="ty">UInt64</span>, <span class="ty">UInt64</span>)]) <span class="op">-&gt;</span> <span class="ty">Settings</span></pre><p class="item-doc">Read settings from received <code>(identifier, value)</code> pairs, taking the value for each known identifier (0 when absent) and ignoring unknown ones (RFC 9114 §7.2.4.1 grease tolerance).</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> read_control(input : <span class="ty">BytesView</span>) <span class="op">-&gt;</span> <span class="ty">Settings</span><span class="op">?</span> raise <span class="ty">Refused</span></pre><p class="item-doc">Decode an endpoint&#x27;s control stream (RFC 9114 §6.2.1): its type prefix must be the control stream, and its first frame a SETTINGS frame, whose settings are returned. <code>None</code> if the stream is not a control stream or does not open with SETTINGS. Raises on a malformed frame.</p></div></div>
 <div class="item" data-k="enum"><span class="kind">enum</span><div><pre class="sig">enum <span class="ty">Stream</span> {
@@ -978,7 +984,7 @@ then the value string.
   <span class="ty">EncoderKind</span>
   <span class="ty">DecoderKind</span>
   <span class="ty">ReservedKind</span>(<span class="ty">UInt64</span>)
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">An HTTP/3 unidirectional stream&#x27;s type (RFC 9114 §6.2, RFC 9204 §4.2).</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Stream</span>::encode(stream : <span class="ty">Stream</span>) <span class="op">-&gt;</span> <span class="ty">Bytes</span></pre><p class="item-doc">Encode a unidirectional stream&#x27;s opening bytes: the type varint, plus the push id for a push stream (RFC 9114 §6.2.2).</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Stream</span>::decode(input : <span class="ty">BytesView</span>) <span class="op">-&gt;</span> (<span class="ty">Stream</span>, <span class="ty">Int32</span>)<span class="op">?</span></pre><p class="item-doc">Decode a unidirectional stream&#x27;s opening bytes: the type varint (and a push id for a push stream). Returns the stream kind and bytes consumed, or <code>None</code> on a partial read.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> control(settings : <span class="ty">Array</span>[(<span class="ty">UInt64</span>, <span class="ty">UInt64</span>)]) <span class="op">-&gt;</span> <span class="ty">Bytes</span></pre><p class="item-doc">Encode a control stream (RFC 9114 §6.2.1): the control-stream type, then a SETTINGS frame with <code>settings</code>, which a control stream must send first.</p></div></div>
@@ -989,14 +995,14 @@ then the value string.
 <div class="item" data-k="enum"><span class="kind">enum</span><div><pre class="sig">enum <span class="ty">Role</span> {
   <span class="ty">Client</span>
   <span class="ty">Server</span>
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">Which side of the connection an endpoint is (RFC 9114 §3.1): a server must not receive a push stream, so the role decides whether one is a protocol violation.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="enum"><span class="kind">enum</span><div><pre class="sig">enum <span class="ty">Event</span> {
   <span class="ty">ControlEstablished</span>(<span class="ty">Settings</span>)
   <span class="ty">QpackEncoder</span>
   <span class="ty">QpackDecoder</span>
   <span class="ty">Push</span>(<span class="ty">UInt64</span>)
   <span class="ty">Reserved</span>(<span class="ty">UInt64</span>)
-} derive(<span class="ty">Eq</span>, <span class="ty">Debug</span>)</pre><p class="item-doc">The result of accepting a peer&#x27;s unidirectional stream: the control stream carries the peer&#x27;s SETTINGS, the QPACK streams carry table instructions, a push stream carries its id, and an unrecognized type is reserved/greased.</p></div></div>
+}</pre></div></div>
 <div class="item" data-k="struct"><span class="kind">struct</span><div><pre class="sig"><span class="k">struct</span> <span class="ty">Conn</span> {
   role : <span class="ty">Role</span>
   local_settings : <span class="ty">Settings</span>
@@ -1013,6 +1019,9 @@ then the value string.
   scheme : <span class="ty">String</span>
   authority : <span class="ty">String</span>
   path : <span class="ty">String</span>
+<span class="ty">The</span> `:protocol` of an extended <span class="ty">CONNECT</span> (<span class="ty">RFC</span> 9220 §3), or the empty string on any
+other request. <span class="ty">A</span> <span class="ty">WebSocket</span> upgrade carries `&quot;websocket&quot;` here.
+  protocol : <span class="ty">String</span>
   headers : <span class="ty">Array</span>[@header.<span class="ty">Header</span>]
   body : <span class="ty">Bytes</span>
 }</pre><p class="item-doc">A decoded HTTP/3 request: the pseudo-headers pulled out, the remaining header fields, and the body.</p></div></div>
@@ -1024,6 +1033,23 @@ then the value string.
 }</pre><p class="item-doc">An HTTP/3 response: the status, the header fields, and the body.</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Response</span>::encode(self : <span class="ty">Response</span>) <span class="op">-&gt;</span> <span class="ty">Bytes</span></pre><p class="item-doc">Encode the response as an HTTP/3 response stream (a HEADERS frame with <code>:status</code>, then DATA).</p></div></div>
 <div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> serve( request_bytes : <span class="ty">Bytes</span>, handler : (<span class="ty">Request</span>) <span class="op">-&gt;</span> <span class="ty">Response</span>) <span class="op">-&gt;</span> <span class="ty">Bytes</span> raise <span class="ty">Refused</span></pre><p class="item-doc">Serve one HTTP/3 request stream: decode the request, apply <code>handler</code>, and encode its response stream. A request missing its pseudo-headers is answered with a 400. Raises on a malformed request stream.</p></div></div>
+<div class="item" data-k="let"><span class="kind">let</span><div><pre class="sig"><span class="k">let</span> websocket : <span class="ty">String</span> = &quot;websocket&quot;</pre><p class="item-doc">The <code>:protocol</code> value RFC 8441 §4 gives a WebSocket, which RFC 9220 §3 carries over HTTP/3 unchanged.</p></div></div>
+<div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Settings</span>::connect_protocol(self : <span class="ty">Settings</span>) <span class="op">-&gt;</span> <span class="ty">Bool</span></pre><p class="item-doc">Whether these settings let a peer send <code>:protocol</code> (RFC 9220 §3, RFC 8441 §3).  A server advertises it with SETTINGS_ENABLE_CONNECT_PROTOCOL = 1, and a client must wait for that value before it sends an extended CONNECT; one sent earlier is a connection error, which is what [<code>Upgrade::of</code>] reports on the server side.</p></div></div>
+<div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> connect( scheme : <span class="ty">String</span>, authority : <span class="ty">String</span>, path : <span class="ty">String</span>, protocol : <span class="ty">String</span>, headers : <span class="ty">Array</span>[@header.<span class="ty">Header</span>]) <span class="op">-&gt;</span> <span class="ty">Bytes</span></pre><p class="item-doc">The request stream that opens an extended CONNECT (RFC 9220 §3, RFC 8441 §4): the five pseudo-headers that name the method, the protocol, and the target.  <code>headers</code> are the ordinary fields the protocol asks for — for a WebSocket, <code>sec-websocket-version</code> and <code>sec-websocket-key</code> from RFC 6455 §4.1. The request carries no body; the stream is half-closed once the server answers.</p></div></div>
+<div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> websocket_request( scheme : <span class="ty">String</span>, authority : <span class="ty">String</span>, path : <span class="ty">String</span>, headers : <span class="ty">Array</span>[@header.<span class="ty">Header</span>]) <span class="op">-&gt;</span> <span class="ty">Bytes</span></pre><p class="item-doc">The extended CONNECT a client sends to open a WebSocket: [<code>connect</code>] with the one protocol RFC 8441 names.</p></div></div>
+<div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> is_websocket(request : <span class="ty">Request</span>) <span class="op">-&gt;</span> <span class="ty">Bool</span></pre><p class="item-doc">Whether <code>request</code> is a WebSocket extended CONNECT, without judging whether this endpoint enabled the method.</p></div></div>
+<div class="item" data-k="enum"><span class="kind">enum</span><div><pre class="sig">enum <span class="ty">Upgrade</span> {
+<span class="ty">A</span> <span class="ty">WebSocket</span> upgrade this endpoint accepts.
+  <span class="ty">Accept</span>
+<span class="ty">A</span> `:protocol` this endpoint does not implement, which §3 answers with 501.
+  <span class="ty">Unsupported</span>(<span class="ty">String</span>)
+<span class="ty">A</span> request that cannot be an extended <span class="ty">CONNECT</span> here: the client used `:protocol`
+before this endpoint enabled it, or named the wrong pseudo-headers for one.
+  <span class="ty">Refused</span>(<span class="ty">String</span>)
+}</pre></div></div>
+<div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Upgrade</span>::of(request : <span class="ty">Request</span>, settings~ : <span class="ty">Settings</span>) <span class="op">-&gt;</span> <span class="ty">Upgrade</span></pre><p class="item-doc">Read what <code>request</code> asks for against <code>settings</code> (RFC 9220 §3).  The order of the checks is the order the protocol cares about: a <code>:protocol</code> before the setting was sent is the client&#x27;s error whatever else the request says; then the request has to be an extended CONNECT at all; then its pseudo-headers have to be the non-empty set §4 requires; and only then does the protocol name decide between accepting it and answering 501.</p></div></div>
+<div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> <span class="ty">Upgrade</span>::response( self : <span class="ty">Upgrade</span>, headers~ : <span class="ty">Array</span>[@header.<span class="ty">Header</span>] = []) <span class="op">-&gt;</span> <span class="ty">Response</span></pre><p class="item-doc">The response stream for <code>upgrade</code>: a 200 that turns the stream into WebSocket data, a 501 for a protocol this endpoint does not implement, or a 400 for a request that could not be one at all.  A <code>Refused</code> is really H3_MESSAGE_ERROR, which closes the connection rather than the stream; the 400 is what a server sends when it would rather answer than tear the connection down, and a caller that wants the connection error skips this and closes instead.</p></div></div>
+<div class="item" data-k="fn"><span class="kind">fn</span><div><pre class="sig"><span class="k">fn</span> websocket_response( request : <span class="ty">Request</span>, settings~ : <span class="ty">Settings</span>, headers~ : <span class="ty">Array</span>[@header.<span class="ty">Header</span>] = []) <span class="op">-&gt;</span> <span class="ty">Response</span></pre><p class="item-doc">Answer an extended CONNECT: the verdict, written as the response stream.</p></div></div>
 </section>
 <p class="empty hidden" id="empty">Nothing here matches that.</p>
 </div></div></main>
@@ -1064,7 +1090,7 @@ then the value string.
       <svg class="tick-meta" width="56" height="6" viewBox="0 0 56 6" aria-hidden="true"><path class="a" d="M0 3h22"/><path class="b" d="M28 3h14"/><path class="c" d="M48 3h8"/></svg>
       <span>Apache-2.0</span>
       <span>© 2026 Leo Cheng</span>
-      <span>RFC 9110 · 9111 · 9112 · 9113 · 9114 · 6455 · 7692 · 7838</span>
+      <span>RFC 9110 · 9111 · 9112 · 9113 · 9114 · 6455 · 7692 · 9220 · 7838</span>
     </div>
   </div>
 </footer>

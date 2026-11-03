@@ -16,6 +16,7 @@ pub fn get(StringView, StringView) -> String?
 // Errors
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) struct Cookie {
   name : String
   value : String
@@ -26,7 +27,7 @@ pub(all) struct Cookie {
   secure : Bool
   http_only : Bool
   same_site : SameSite?
-} derive(Eq, @debug.Debug)
+}
 pub fn Cookie::decode(StringView) -> Self?
 pub fn Cookie::encode(Self) -> String
 pub fn Cookie::equal(Self, Self) -> Bool
@@ -34,11 +35,12 @@ pub fn Cookie::new(String, String, expires? : @moondate.Moment, max_age? : Int32
 pub fn Cookie::not_equal(Self, Self) -> Bool
 pub fn Cookie::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum SameSite {
   Strict
   Lax
   Unrestricted
-} derive(Eq, @debug.Debug)
+}
 pub fn SameSite::code(Self) -> String
 pub fn SameSite::equal(Self, Self) -> Bool
 pub fn SameSite::not_equal(Self, Self) -> Bool

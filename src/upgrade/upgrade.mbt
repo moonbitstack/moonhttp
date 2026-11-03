@@ -104,6 +104,7 @@ pub fn response(
 ///|
 /// Why a handshake was not accepted, so a server can answer with the right status and a
 /// client can say what the server got wrong.
+#derive(Eq, Debug)
 pub(all) suberror Refused {
   /// `Upgrade` or `Connection` does not ask for a WebSocket (§4.2.1).
   NotAnUpgrade(String)
@@ -113,7 +114,7 @@ pub(all) suberror Refused {
   Key(String)
   /// The server's `Sec-WebSocket-Accept` is not the proof for the key that was sent.
   Proof(want~ : String, got~ : String)
-} derive(Eq, Debug)
+}
 
 ///|
 /// A refusal prints as the fault it is.

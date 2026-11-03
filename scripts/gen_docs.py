@@ -191,7 +191,7 @@ FOOT = """<footer class="foot">
       <svg class="tick-meta" width="56" height="6" viewBox="0 0 56 6" aria-hidden="true"><path class="a" d="M0 3h22"/><path class="b" d="M28 3h14"/><path class="c" d="M48 3h8"/></svg>
       <span>Apache-2.0</span>
       <span>© 2026 Leo Cheng</span>
-      <span>RFC 9110 · 9111 · 9112 · 9113 · 9114 · 6455 · 7692 · 7838</span>
+      <span>RFC 9110 · 9111 · 9112 · 9113 · 9114 · 6455 · 7692 · 9220 · 7838</span>
     </div>
   </div>
 </footer>

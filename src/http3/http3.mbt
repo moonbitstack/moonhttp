@@ -7,9 +7,10 @@
 /// RFC 9114 §8 gives each case its own connection error; they are one type here because
 /// the answer to every one of them is the same — close the connection — and the message
 /// says which it was.
+#derive(Eq, Debug)
 pub(all) suberror Refused {
   Malformed(String)
-} derive(Eq, Debug)
+}
 
 ///|
 /// A refusal prints as the fault it is.
@@ -63,6 +64,7 @@ let max_push_id : UInt64 = 0x0d
 /// unknown or grease frame type (RFC 9114 §7.2.8 / §9), which a receiver ignores;
 /// `ReservedHttp2` is one of the frame types reused from HTTP/2 (0x02, 0x06, 0x08,
 /// 0x09), which RFC 9114 §7.2 requires be treated as a connection error.
+#derive(Eq, Debug)
 pub(all) enum Frame {
   Data(Bytes)
   Headers(Bytes)
@@ -73,7 +75,7 @@ pub(all) enum Frame {
   MaxPushId(UInt64)
   Reserved(UInt64, Bytes)
   ReservedHttp2(UInt64)
-} derive(Eq, Debug)
+}
 
 ///|
 /// Whether `t` is an HTTP/2 frame type reused in HTTP/3's registry with no HTTP/3
@@ -252,11 +254,12 @@ pub extend Frame with Eq::{not_equal, equal}
 
 ///|
 /// The stream a frame was received on, for the purpose of frame-placement rules (RFC 9114 §6.2).
+#derive(Eq, Debug)
 pub(all) enum On {
   Control
   Request
   Push
-} derive(Eq, Debug)
+}
 
 ///|
 /// Whether `frame` is permitted on a stream of kind `ctx` (RFC 9114 §7.2).
@@ -305,32 +308,56 @@ pub let max_field_section : UInt64 = 0x06
 pub let blocked_streams : UInt64 = 0x07
 
 ///|
+/// SETTINGS_ENABLE_CONNECT_PROTOCOL (RFC 9220 §5): a server sends it as 1 to let a
+/// client send `:protocol` on an extended CONNECT, which is how a WebSocket is
+/// bootstrapped over HTTP/3. It defaults to 0, so an endpoint that says nothing has
+/// not enabled the method.
+pub let enable_connect : UInt64 = 0x08
+
+///|
 /// An endpoint's HTTP/3 settings.
+#derive(Eq, Debug)
 pub(all) struct Settings {
   qpack_max_table_capacity : UInt64
   max_field_section_size : UInt64
   qpack_blocked_streams : UInt64
-} derive(Eq, Debug)
+  /// Whether this endpoint lets a peer send `:protocol` (RFC 9220 §5).
+  enable_connect_protocol : Bool
+}
 
 ///|
 /// Settings with the given QPACK table capacity, maximum field section size, and blocked-stream
-/// limit.
+/// limit, and — for a server that will take an extended CONNECT — the connect-protocol switch.
 pub fn Settings::new(
   qpack_max_table_capacity : UInt64,
   max_field_section_size : UInt64,
   qpack_blocked_streams : UInt64,
+  enable_connect_protocol~ : Bool = false,
 ) -> Settings {
-  { qpack_max_table_capacity, max_field_section_size, qpack_blocked_streams, }
+  {
+    qpack_max_table_capacity,
+    max_field_section_size,
+    qpack_blocked_streams,
+    enable_connect_protocol,
+  }
 }
 
 ///|
 /// The `(identifier, value)` pairs to carry in a SETTINGS frame.
+///
+/// The connect switch is written only when it is on: its registry default is 0, so
+/// leaving it out says the same thing, and a settings list that carries only what it
+/// changed stays the three QPACK values.
 pub fn Settings::pairs(self : Settings) -> Array[(UInt64, UInt64)] {
-  [
+  let out : Array[(UInt64, UInt64)] = [
     (qpack_capacity, self.qpack_max_table_capacity),
     (max_field_section, self.max_field_section_size),
     (blocked_streams, self.qpack_blocked_streams),
   ]
+  if self.enable_connect_protocol {
+    out.push((enable_connect, 1))
+  }
+  out
 }
 
 ///|
@@ -340,6 +367,7 @@ pub fn Settings::of_pairs(pairs : Array[(UInt64, UInt64)]) -> Settings {
   let mut qmtc = 0UL
   let mut mfss = 0UL
   let mut qbs = 0UL
+  let mut ecp = false
   for p in pairs {
     if p.0 == qpack_capacity {
       qmtc = p.1
@@ -347,12 +375,16 @@ pub fn Settings::of_pairs(pairs : Array[(UInt64, UInt64)]) -> Settings {
       mfss = p.1
     } else if p.0 == blocked_streams {
       qbs = p.1
+    } else if p.0 == enable_connect {
+      // §5: only 1 turns it on; any other value is not one this reader acts on.
+      ecp = p.1 == 1
     }
   }
   {
     qpack_max_table_capacity: qmtc,
     max_field_section_size: mfss,
     qpack_blocked_streams: qbs,
+    enable_connect_protocol: ecp,
   }
 }
 
@@ -393,13 +425,14 @@ pub extend Settings with Eq::{not_equal, equal}
 
 ///|
 /// An HTTP/3 unidirectional stream's type (RFC 9114 §6.2, RFC 9204 §4.2).
+#derive(Eq, Debug)
 pub(all) enum Stream {
   ControlKind
   PushKind(UInt64)
   EncoderKind
   DecoderKind
   ReservedKind(UInt64)
-} derive(Eq, Debug)
+}
 
 ///|
 /// Encode a unidirectional stream's opening bytes: the type varint, plus the push id for a
@@ -558,22 +591,24 @@ pub fn response(
 ///|
 /// Which side of the connection an endpoint is (RFC 9114 §3.1): a server must not receive a push
 /// stream, so the role decides whether one is a protocol violation.
+#derive(Eq, Debug)
 pub(all) enum Role {
   Client
   Server
-} derive(Eq, Debug)
+}
 
 ///|
 /// The result of accepting a peer's unidirectional stream: the control stream carries the peer's
 /// SETTINGS, the QPACK streams carry table instructions, a push stream carries its id, and an
 /// unrecognized type is reserved/greased.
+#derive(Eq, Debug)
 pub(all) enum Event {
   ControlEstablished(Settings)
   QpackEncoder
   QpackDecoder
   Push(UInt64)
   Reserved(UInt64)
-} derive(Eq, Debug)
+}
 
 ///|
 /// One endpoint of an HTTP/3 connection: its role, the settings it advertises, and — once the peer
@@ -676,6 +711,9 @@ pub(all) struct Request {
   scheme : String
   authority : String
   path : String
+  /// The `:protocol` of an extended CONNECT (RFC 9220 §3), or the empty string on any
+  /// other request. A WebSocket upgrade carries `"websocket"` here.
+  protocol : String
   headers : Array[@header.Header]
   body : Bytes
 }
@@ -705,6 +743,7 @@ pub fn read_request(
   let mut scheme = ""
   let mut authority = ""
   let mut path = ""
+  let mut protocol = ""
   let regular : Array[@header.Header] = []
   for h in all_headers {
     let (name, value) = h.ascii()
@@ -713,13 +752,29 @@ pub fn read_request(
       ":scheme" => scheme = value
       ":authority" => authority = value
       ":path" => path = value
+      ":protocol" => protocol = value
       _ => regular.push(h)
     }
   }
-  if meth == "" || path == "" {
-    None
+  // §4.3.1 and §4.4, with the extended CONNECT of RFC 9220: a request names its
+  // method; an ordinary one also names :scheme and :path; a classic CONNECT names
+  // only :authority; and an extended CONNECT — the one that opens a WebSocket —
+  // names :scheme, :path and :authority, all non-empty, beside :protocol.
+  let ok = if meth == "" {
+    false
+  } else if meth == "CONNECT" {
+    if protocol == "" {
+      scheme == "" && path == "" && authority != ""
+    } else {
+      scheme != "" && path != "" && authority != ""
+    }
   } else {
-    Some({ meth, scheme, authority, path, headers: regular, body, })
+    scheme != "" && path != "" && protocol == ""
+  }
+  if ok {
+    Some({ meth, scheme, authority, path, protocol, headers: regular, body, })
+  } else {
+    None
   }
 }
 

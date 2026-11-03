@@ -26,6 +26,7 @@ pub let limit : Int32 = 200
 /// int-range with only a first position, and a suffix-range. They stay
 /// separate because they mean different things — `From(0)` asks for
 /// everything, while `Last(0)` asks for nothing and is unsatisfiable.
+#derive(Eq, Debug)
 pub(all) enum Spec {
   /// `first-last`: both positions, inclusive.
   Between(Int64, Int64)
@@ -33,7 +34,7 @@ pub(all) enum Spec {
   From(Int64)
   /// `-suffix`: the last so many octets.
   Last(Int64)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Spec with Eq::{equal, not_equal}
@@ -48,10 +49,11 @@ pub extend Spec with Debug::{to_repr}
 /// Inclusive because the field is, and converting at the edge is where
 /// off-by-one errors come from. [`Part::length`] gives the count for a caller
 /// who wants one.
+#derive(Eq, Compare, Debug)
 pub(all) struct Part {
   at : Int64
   last : Int64
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub extend Part with Eq::{equal, not_equal}
@@ -334,11 +336,12 @@ fn coalesce(parts : Array[Part]) -> Array[Part] {
 /// `part` is absent in the `*/complete` form a 416 carries. `complete` is
 /// absent in the `part/*` form, which says the total length was not known when
 /// the field was written.
+#derive(Eq, Debug)
 pub(all) struct Content {
   unit : String
   part : Part?
   complete : Int64?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Content with Eq::{equal, not_equal}

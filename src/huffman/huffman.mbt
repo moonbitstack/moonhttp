@@ -8,11 +8,12 @@
 ///
 /// All three are what §5.2 calls a decoding error, and a receiver treats them the same
 /// way; they are separate here so a log says which.
+#derive(Eq, Debug)
 pub(all) suberror Refused {
   Eos
   Padding(String)
   Malformed(String)
-} derive(Eq, Debug)
+}
 
 ///|
 /// A refusal prints as the fault it is.

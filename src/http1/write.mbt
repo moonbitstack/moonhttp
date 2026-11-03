@@ -189,12 +189,13 @@ pub fn last_chunk(trailers~ : Array[@header.Header] = []) -> Bytes {
 
 ///|
 /// What a chunked body reader found at the front of `data`.
+#derive(Eq)
 pub(all) enum Chunk {
   // Octets of the body, and how many octets of `data` they took.
   Piece(Bytes, Int32)
   // The body ended; its trailer fields, and how many octets that took.
   Done(Array[@header.Header], Int32)
-} derive(Eq)
+}
 
 ///|
 pub extend Chunk with Eq::{not_equal, equal}

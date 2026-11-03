@@ -10,10 +10,11 @@
 ///
 /// Both header compressions produce and consume these, so HTTP/2 and HTTP/3 speak of a
 /// header list in the same type and nothing has to be converted between them.
+#derive(Eq, Debug)
 pub(all) struct Header {
   name : Bytes
   value : Bytes
-} derive(Eq, Debug)
+}
 
 ///|
 /// A field from ASCII, which is how a specification writes one and how most code means

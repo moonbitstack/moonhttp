@@ -10,6 +10,7 @@
 /// Every variant names where it happened and what it saw, because a compressed
 /// message from elsewhere is the one input a reader here cannot trust: the point
 /// of the format is that a small stream can expand to more than the machine has.
+#derive(Eq, Debug)
 pub(all) suberror Refused {
   /// The three block-type bits named something §3.2 does not define.
   Block(at~ : Int32, got~ : Int32)
@@ -21,7 +22,7 @@ pub(all) suberror Refused {
   Distance(at~ : Int32, got~ : Int32)
   /// The output passed the ceiling the caller set.
   Exceeded(limit~ : Int32, got~ : Int32)
-} derive(Eq, Debug)
+}
 
 ///|
 /// A refusal prints as the fault it is, with where in the stream it happened.
@@ -123,13 +124,26 @@ fn fixed_code(sym : Int32) -> (Int32, Int32) {
 }
 
 ///|
-/// A canonical Huffman code, held as the count of codes at each width and the
-/// symbols in code order — all a bit-at-a-time reader needs, and a great deal
-/// less than a table (§3.2.2).
+/// A canonical Huffman code, held as the count of codes at each width, the
+/// symbols in code order, and a direct table for the first few bits.
+///
+/// The table turns the common case into one array read: an index of the next
+/// `bits` bits — least significant first, as the stream carries them — gives the
+/// symbol and the width it took. A code longer than `bits` (a dynamic block may
+/// have one, up to fifteen) is left as zero and falls back to the bit-at-a-time
+/// walk, which stays exact.
 priv struct Huffman {
   counts : FixedArray[Int32]
   symbols : FixedArray[Int32]
+  table : Array[Int32]
+  bits : Int32
 }
+
+///|
+/// The widest table this decoder builds. Nine bits cover the fixed code whole, and
+/// capping a dynamic one here keeps the table under two kilobytes while leaving its
+/// longer codes to the exact path.
+let table_bits : Int32 = 9
 
 ///|
 /// Build a code from the width assigned to each symbol. A width of zero means
@@ -152,16 +166,86 @@ fn Huffman::of(lengths : FixedArray[Int32], n : Int32) -> Huffman {
       offsets[lengths[i]] += 1
     }
   }
-  { counts, symbols, }
+  let mut width = 0
+  for i in 0..<n {
+    if lengths[i] > width {
+      width = lengths[i]
+    }
+  }
+  let bits = if width > table_bits { table_bits } else { width }
+  let size = if bits > 0 { 1 << bits } else { 1 }
+  let table = Array::make(size, 0)
+  if bits > 0 {
+    // Canonical codes: widths are handed out shortest first, and within a width in
+    // symbol order, so `next[w]` is the next code of width `w` to give out (§3.2.2).
+    let next = FixedArray::make(16, 0)
+    let mut code = 0
+    for w in 1..<16 {
+      code = (code + counts[w - 1]) << 1
+      next[w] = code
+    }
+    for i in 0..<n {
+      let l = lengths[i]
+      if l != 0 {
+        let c = next[l]
+        next[l] = c + 1
+        if l <= bits {
+          // Reverse the `l` bits into the stream's least-significant-first order,
+          // then fill every index that shares those low bits.
+          let mut rev = 0
+          let mut v = c
+          for _ in 0..<l {
+            rev = (rev << 1) | (v & 1)
+            v = v >> 1
+          }
+          let step = 1 << l
+          let mut idx = rev
+          while idx < size {
+            table.unsafe_set(idx, (i << 4) | l)
+            idx += step
+          }
+        }
+      }
+    }
+  }
+  { counts, symbols, table, bits, }
 }
 
 ///|
-/// Read one symbol, a bit at a time.
+/// Read one symbol: one lookup when the next bits are buffered and name a code the
+/// table covers, and the bit-at-a-time walk otherwise.
+fn Huffman::read(self : Huffman, br : BitReader) -> Int32 raise Refused {
+  if self.bits > 0 {
+    // Fill to the table width without consuming, then read the symbol in one go
+    // when the code is no wider than what arrived. The fill is written out here
+    // because this runs once per symbol, and a call per symbol is the cost.
+    while br.held < self.bits && br.pos < br.src.length() {
+      br.acc = br.acc | (br.src[br.pos].to_int() << br.held)
+      br.pos += 1
+      br.held += 8
+    }
+    let avail = if br.held < self.bits { br.held } else { self.bits }
+    if avail > 0 {
+      let entry = self.table.unsafe_get(br.acc & ((1 << self.bits) - 1))
+      let len = entry & 0xF
+      if len != 0 && len <= avail {
+        br.acc = br.acc >> len
+        br.held = br.held - len
+        return entry >> 4
+      }
+    }
+  }
+  self.read_slow(br)
+}
+
+///|
+/// Read one symbol, a bit at a time: the exact path, which also reports a code that
+/// is not in the table.
 ///
 /// Codes of a width are consecutive integers and widths are assigned shortest
-/// first, so "is this one of the codes at this width" is a subtraction — no
-/// table to build, and no way for a malformed length list to index out of one.
-fn Huffman::read(self : Huffman, br : BitReader) -> Int32 raise Refused {
+/// first, so "is this one of the codes at this width" is a subtraction — no table,
+/// and no way for a malformed length list to index out of one.
+fn Huffman::read_slow(self : Huffman, br : BitReader) -> Int32 raise Refused {
   let mut code = 0
   let mut first = 0
   let mut index = 0
@@ -196,6 +280,44 @@ let fixed_litlen : Huffman = {
 let fixed_dist : Huffman = Huffman::of(FixedArray::make(30, 5), 30)
 
 ///|
+/// The fixed literal/length code, each code reversed into the stream's bit order
+/// once, packed as `(reversed << 4) | width`.
+///
+/// The encoder emits a fixed block, so a literal is written a hundred thousand times
+/// a message; reversing eight bits on every one of them is the difference between a
+/// table read and a loop.
+let fixed_rev : Array[Int32] = {
+  let table = Array::make(288, 0)
+  for sym in 0..<288 {
+    let (code, len) = fixed_code(sym)
+    let mut rev = 0
+    let mut v = code
+    for _ in 0..<len {
+      rev = (rev << 1) | (v & 1)
+      v = v >> 1
+    }
+    table.unsafe_set(sym, (rev << 4) | len)
+  }
+  table
+}
+
+///|
+/// The fixed distance code, five bits, already reversed.
+let dist_rev : Array[Int32] = {
+  let table = Array::make(30, 0)
+  for sym in 0..<30 {
+    let mut rev = 0
+    let mut v = sym
+    for _ in 0..<5 {
+      rev = (rev << 1) | (v & 1)
+      v = v >> 1
+    }
+    table.unsafe_set(sym, rev)
+  }
+  table
+}
+
+///|
 /// The writer both encoders share, holding the bits that have not filled a byte.
 priv struct Writer {
   out : Array[Byte]
@@ -223,17 +345,6 @@ fn Writer::bits(self : Writer, value : Int32, count : Int32) -> Unit {
 }
 
 ///|
-/// A Huffman code, most significant bit first, against the stream's order — so
-/// it is reversed on the way in (§3.1.1).
-fn Writer::huff(self : Writer, code : Int32, len : Int32) -> Unit {
-  let mut flipped = 0
-  for i in 0..<len {
-    flipped = (flipped << 1) | ((code >> i) & 1)
-  }
-  self.bits(flipped, len)
-}
-
-///|
 /// Pad the last byte with zero bits, so what follows starts on a byte boundary.
 fn Writer::align(self : Writer) -> Unit {
   if self.held > 0 {
@@ -244,10 +355,25 @@ fn Writer::align(self : Writer) -> Unit {
 }
 
 ///|
-/// One literal or length symbol of the fixed code.
+/// One literal or length symbol of the fixed code, written from the pre-reversed
+/// table so the stream order costs no per-symbol loop (§3.1.1).
 fn Writer::emit(self : Writer, sym : Int32) -> Unit {
-  let (code, len) = fixed_code(sym)
-  self.huff(code, len)
+  let packed = fixed_rev.unsafe_get(sym)
+  let len = packed & 0xF
+  self.acc = self.acc | (packed >> 4 << self.held)
+  self.held += len
+  // A fixed code is at most nine bits and nothing is held above seven, so at most
+  // two octets come out — an unrolled flush, not a loop.
+  if self.held >= 8 {
+    self.out.push((self.acc & 0xFF).to_byte())
+    self.acc = self.acc >> 8
+    self.held -= 8
+    if self.held >= 8 {
+      self.out.push((self.acc & 0xFF).to_byte())
+      self.acc = self.acc >> 8
+      self.held -= 8
+    }
+  }
 }
 
 ///|
@@ -260,7 +386,7 @@ fn Writer::emit_match(self : Writer, len : Int32, dist : Int32) -> Unit {
     self.bits(lval, lext)
   }
   let (dsym, dext, dval) = distance_code(dist)
-  self.huff(dsym, 5)
+  self.bits(dist_rev.unsafe_get(dsym), 5)
   if dext > 0 {
     self.bits(dval, dext)
   }
@@ -296,4 +422,10 @@ fn BitReader::bits(self : BitReader, count : Int32) -> Int32 raise Refused {
   self.acc = self.acc >> count
   self.held -= count
   value
+}
+
+///|
+/// One whole octet, drawn from the bits already buffered or the stream behind them.
+fn BitReader::byte(self : BitReader) -> Int32 raise Refused {
+  self.bits(8)
 }

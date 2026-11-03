@@ -113,14 +113,25 @@ pub fn Inflater::decompress(
     held: self.held,
   }
   let out : Array[Byte] = []
+  // A compressed message is usually about the size of what it expands to, so a
+  // reservation the size of the payload avoids growing the buffer a dozen times.
+  out.reserve_capacity(payload.length() + 16)
   // Where the last whole step ended — a block header, a stored run, a symbol —
-  // which is where the next call resumes if this one runs out of octets.
-  let mut mark = (0, self.acc, self.held)
+  // which is where the next call resumes if this one runs out of octets. Three
+  // scalars rather than a tuple: the loop runs once per symbol, and a tuple here
+  // is an allocation per octet of the message.
+  let mut mark_pos = 0
+  let mut mark_acc = self.acc
+  let mut mark_held = self.held
   let mut cut = false
   let mut done = false
-  while !done {
-    mark = (br.pos, br.acc, br.held)
-    try {
+  // The handler sits outside the loop: installing one per symbol costs more than
+  // the symbol itself for a message of a hundred thousand of them.
+  try {
+    while !done {
+      mark_pos = br.pos
+      mark_acc = br.acc
+      mark_held = br.held
       match self.mode {
         Header => {
           if br.empty() {
@@ -131,35 +142,78 @@ pub fn Inflater::decompress(
           self.mode = header(br, self)
         }
         Stored(left) => {
-          let there = br.src.length() - br.pos
-          let take = if left < there { left } else { there }
-          if self.limit >= 0 && out.length() + take > self.limit {
-            raise Exceeded(limit=self.limit, got=out.length() + take)
+          if self.limit >= 0 && out.length() + left > self.limit {
+            raise Exceeded(limit=self.limit, got=out.length() + left)
           }
+          let mut need = left
+          // Whole octets the table lookup buffered come before the stream's own.
+          while need > 0 && br.held >= 8 {
+            out.push((br.acc & 0xFF).to_byte())
+            br.acc = br.acc >> 8
+            br.held = br.held - 8
+            need -= 1
+          }
+          let there = br.src.length() - br.pos
+          let take = if need < there { need } else { there }
           for _ in 0..<take {
             out.push(br.src[br.pos])
             br.pos += 1
           }
-          if take < left {
-            self.mode = Stored(left - take)
+          if take < need {
+            self.mode = Stored(need - take)
             raise Truncated(at=br.pos)
           }
           self.mode = Header
           done = self.last
         }
-        Codes(litlen, dist) =>
-          if symbol(br, out, self.dict, self.bits, litlen, dist, self.limit) {
+        Codes(litlen, dist) => {
+          // The symbol is decoded here rather than in a helper: this branch runs
+          // once per octet the message expands to, and a call per octet is the
+          // difference between a table read and a call plus a table read.
+          if self.limit >= 0 && out.length() > self.limit {
+            raise Exceeded(limit=self.limit, got=out.length())
+          }
+          let sym = litlen.read(br)
+          if sym < 256 {
+            out.push(sym.to_byte())
+          } else if sym == 256 {
             self.mode = Header
             done = self.last
+          } else {
+            let index = sym - 257
+            if index >= 29 {
+              raise Code(at=br.pos)
+            }
+            let len = length_base[index] + br.bits(length_extra[index])
+            let dcode = dist.read(br)
+            if dcode >= 30 {
+              raise Code(at=br.pos)
+            }
+            let back = dist_base[dcode] + br.bits(dist_extra[dcode])
+            if back > 1 << self.bits || back > out.length() + self.dict.length() {
+              raise Distance(at=br.pos, got=back)
+            }
+            if self.limit >= 0 && out.length() + len > self.limit {
+              raise Exceeded(limit=self.limit, got=out.length() + len)
+            }
+            // A byte at a time on purpose: a match may overlap itself, and the
+            // octets it copies are the ones this loop is writing.
+            for _ in 0..<len {
+              let at = out.length()
+              let value = if back <= at {
+                out.unsafe_get(at - back).to_int()
+              } else {
+                self.dict.unsafe_get(self.dict.length() - (back - at)).to_int()
+              }
+              out.push(value.to_byte())
+            }
           }
+        }
       }
-    } catch {
-      Truncated(..) => {
-        cut = true
-        break
-      }
-      e => raise e
     }
+  } catch {
+    Truncated(..) => cut = true
+    e => raise e
   }
   if !more && (cut || !(self.mode is Header)) {
     // A message that stops inside a block is a message somebody cut short.
@@ -168,11 +222,9 @@ pub fn Inflater::decompress(
   if cut {
     // A stored run keeps what it copied; anything else resumes at the step it
     // was in the middle of, so what that step read is read again.
-    let (at, acc, held) = if self.mode is Stored(_) {
-      (br.pos, br.acc, br.held)
-    } else {
-      mark
-    }
+    let at = if self.mode is Stored(_) { br.pos } else { mark_pos }
+    let acc = if self.mode is Stored(_) { br.acc } else { mark_acc }
+    let held = if self.mode is Stored(_) { br.held } else { mark_held }
     self.pending = br.src[at:].to_owned()
     self.acc = acc
     self.held = held
@@ -196,19 +248,17 @@ fn header(br : BitReader, self : Inflater) -> Mode raise Refused {
   let last = br.bits(1) == 1
   let mode = match br.bits(2) {
     0 => {
-      // Whatever is left of the current byte is the padding the format put there.
-      br.acc = 0
-      br.held = 0
-      if br.pos + 4 > br.src.length() {
-        raise Truncated(at=br.pos)
-      }
-      let len = br.src[br.pos].to_int() | (br.src[br.pos + 1].to_int() << 8)
-      let nlen = br.src[br.pos + 2].to_int() |
-        (br.src[br.pos + 3].to_int() << 8)
+      // §3.2.4: a stored block starts on the next byte boundary. Drop what is left
+      // of the current byte, but keep any whole bytes the table lookup buffered:
+      // they are the LEN the block begins with.
+      let pad = br.held & 7
+      br.acc = br.acc >> pad
+      br.held = br.held - pad
+      let len = br.byte() | (br.byte() << 8)
+      let nlen = br.byte() | (br.byte() << 8)
       if len != (nlen ^ 0xFFFF) {
         raise Block(at=br.pos, got=3)
       }
-      br.pos += 4
       Mode::Stored(len)
     }
     1 => Codes(fixed_litlen, fixed_dist)
@@ -303,61 +353,4 @@ fn tables(br : BitReader) -> (Huffman, Huffman) raise Refused {
     dist[k] = lengths[nlit + k]
   }
   (Huffman::of(lit, nlit), Huffman::of(dist, ndist))
-}
-
-///|
-/// One symbol of a compressed block, under whichever pair of code tables,
-/// answering whether it was the block's end. A symbol that runs out of octets
-/// halfway writes nothing, so reading it again from its start is exact.
-///
-/// `dict` is the window the previous messages and fragments left behind: a
-/// match may reach into it, which is what context takeover is for.
-fn symbol(
-  br : BitReader,
-  out : Array[Byte],
-  dict : Array[Byte],
-  bits : Int32,
-  litlen : Huffman,
-  dist : Huffman,
-  ceiling : Int32,
-) -> Bool raise Refused {
-  if ceiling >= 0 && out.length() > ceiling {
-    raise Exceeded(limit=ceiling, got=out.length())
-  }
-  let sym = litlen.read(br)
-  if sym < 256 {
-    out.push(sym.to_byte())
-    return false
-  }
-  if sym == 256 {
-    return true
-  }
-  let index = sym - 257
-  if index >= 29 {
-    raise Code(at=br.pos)
-  }
-  let len = length_base[index] + br.bits(length_extra[index])
-  let dcode = dist.read(br)
-  if dcode >= 30 {
-    raise Code(at=br.pos)
-  }
-  let back = dist_base[dcode] + br.bits(dist_extra[dcode])
-  if back > 1 << bits || back > out.length() + dict.length() {
-    raise Distance(at=br.pos, got=back)
-  }
-  if ceiling >= 0 && out.length() + len > ceiling {
-    raise Exceeded(limit=ceiling, got=out.length() + len)
-  }
-  // A byte at a time on purpose: a match may overlap itself, and the octets it
-  // copies are the ones this loop is writing.
-  for _ in 0..<len {
-    let at = out.length()
-    let value = if back <= at {
-      out[at - back].to_int()
-    } else {
-      dict[dict.length() - (back - at)].to_int()
-    }
-    out.push(value.to_byte())
-  }
-  false
 }

@@ -15,6 +15,7 @@ pub let hops : Int32 = 20
 /// The four answers a client needs, in one place: where to go, with which method,
 /// with or without the body that was sent, and which of the fields it was going to
 /// send must be dropped on the way.
+#derive(Eq, Debug)
 pub(all) struct Follow {
   /// The target, resolved against the request that was redirected.
   url : @moonurl.Url
@@ -25,7 +26,7 @@ pub(all) struct Follow {
   /// Field names to drop before sending, lowercased. Empty when the origin did
   /// not change.
   strip : Array[String]
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Follow with Eq::{equal, not_equal}
@@ -35,6 +36,7 @@ pub extend Follow with Debug::{to_repr}
 
 ///|
 /// Why a redirect was not followed.
+#derive(Eq, Debug)
 pub(all) suberror Refused {
   /// The status is not one a client follows: a 304, a 300 it would have to choose
   /// from, or something that is not a 3xx at all.
@@ -47,7 +49,7 @@ pub(all) suberror Refused {
   TooMany(limit~ : Int32, got~ : Int32)
   /// The method and the body both have to be resent, and the body cannot be.
   Replay(String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Refused with Eq::{equal, not_equal}

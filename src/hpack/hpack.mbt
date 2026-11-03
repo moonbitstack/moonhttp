@@ -8,11 +8,12 @@
 /// ends' dynamic tables have gone out of step and nothing after this point can be read.
 /// `Exceeded` is not. The block was decoded to its end, so the table is in step, and
 /// only this one field section is refused for being larger than the caller allows.
+#derive(Eq, Debug)
 pub(all) suberror Refused {
   Malformed(String)
   Index(got~ : Int32)
   Exceeded(limit~ : Int32, got~ : Int32)
-} derive(Eq, Debug)
+}
 
 ///|
 /// A refusal prints as the fault it is.

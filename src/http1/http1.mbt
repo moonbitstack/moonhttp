@@ -8,13 +8,14 @@
 /// arrived, which is the answer a caller feeds more and asks again. `Order` is
 /// this side's mistake, an event sent where the exchange does not allow it.
 /// Everything else is a peer's message that will not become valid by waiting.
+#derive(Eq, Debug)
 pub(all) suberror Refused {
   Partial
   Malformed(String)
   Exceeded(limit~ : Int32, got~ : Int32)
   Smuggled(String)
   Order(String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub impl Show for Refused with fn output(self, logger) {
@@ -56,13 +57,14 @@ pub fn Refused::status(self : Refused) -> Int32 {
 /// The three ways are not interchangeable and picking the wrong one is how a
 /// request gets smuggled past a proxy, so this is read from the headers once and
 /// carried rather than re-derived.
+#derive(Eq, Debug)
 pub(all) enum Body {
   Empty
   Sized(Int32)
   Chunked
   // Until the connection closes, which only a response may use (§6.3).
   Closed
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Body with Debug::{to_repr}
@@ -75,10 +77,11 @@ pub extend Body with Eq::{not_equal, equal}
 ///
 /// The preset is [`limits`]. Build another with [`Limits::new`], or update one in
 /// place with `{ ..limits, head: 8192 }`.
+#derive(Eq, Debug)
 pub(all) struct Limits {
   head : Int32
   fields : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Limits with Debug::{to_repr}
@@ -110,6 +113,7 @@ pub fn Limits::new(
 /// Field names are lowercased, because HTTP/1.1 says they are case-insensitive and
 /// every consumer would otherwise lowercase them again. Values are octets, not
 /// text: a field value may carry anything, and gRPC's `-bin` metadata does.
+#derive(Eq, Debug)
 pub(all) struct Request {
   verb : String
   target : String
@@ -119,7 +123,7 @@ pub(all) struct Request {
   // `Expect: 100-continue` — the client is waiting to be told to send the body.
   expects : Bool
   keep_alive : Bool
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Request with Eq::{not_equal, equal}
@@ -129,6 +133,7 @@ pub extend Request with Debug::{to_repr}
 
 ///|
 /// A response's head: the status line and the fields under it.
+#derive(Eq, Debug)
 pub(all) struct Response {
   version : String
   status : Int32
@@ -136,7 +141,7 @@ pub(all) struct Response {
   fields : Array[@header.Header]
   body : Body
   keep_alive : Bool
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Response with Eq::{not_equal, equal}

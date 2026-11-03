@@ -27,11 +27,12 @@ pub fn unsatisfied(Int64, unit? : String) -> Content
 // Errors
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) struct Content {
   unit : String
   part : Part?
   complete : Int64?
-} derive(Eq, @debug.Debug)
+}
 pub fn Content::decode(StringView) -> Self?
 pub fn Content::encode(Self) -> String
 pub fn Content::equal(Self, Self) -> Bool
@@ -39,10 +40,11 @@ pub fn Content::new(Part, complete? : Int64, unit? : String) -> Self
 pub fn Content::not_equal(Self, Self) -> Bool
 pub fn Content::to_repr(Self) -> @debug.Repr
 
+#derive(Compare, Eq, @debug.Debug)
 pub(all) struct Part {
   at : Int64
   last : Int64
-} derive(Compare, Eq, @debug.Debug)
+}
 pub fn Part::compare(Self, Self) -> Int32
 pub fn Part::equal(Self, Self) -> Bool
 pub fn Part::length(Self) -> Int64
@@ -53,11 +55,12 @@ pub fn Part::op_le(Self, Self) -> Bool
 pub fn Part::op_lt(Self, Self) -> Bool
 pub fn Part::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum Spec {
   Between(Int64, Int64)
   From(Int64)
   Last(Int64)
-} derive(Eq, @debug.Debug)
+}
 pub fn Spec::equal(Self, Self) -> Bool
 pub fn Spec::not_equal(Self, Self) -> Bool
 pub fn Spec::to_repr(Self) -> @debug.Repr
