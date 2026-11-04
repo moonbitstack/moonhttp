@@ -83,7 +83,7 @@ def parse(path):
                 continue
             items.append(shape([sig], doc))
             doc = []
-        elif s == "":
+        elif s == "" or s.startswith("#"):
             pass
         else:
             doc = []
