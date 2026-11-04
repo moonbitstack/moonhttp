@@ -252,8 +252,8 @@ a WebSocket carries.
 with the values the grammar forbids — and then against Autobahn, whose 12.x and
 13.x groups are the conformance suite for this extension: `scripts/autobahn/run.sh`
 starts the endpoint and points the fuzzingclient at it, and CI runs it. The
-endpoint answers `server_no_context_takeover`, so a message that does not repeat
-is carried stored rather than searched against the one before it. The last run
+endpoint answers `server_no_context_takeover`, so a message that reads as noise is
+carried stored rather than searched against the one before it. The last run
 passes 250 cases with three informational and none failed; the thousand-message
 128 KiB case 12.2.10 takes about 9 to 13 seconds on the shared runners, and the
 binary 12.3.15 about 11 to 16, where they were 78 and 199 seconds before. The
