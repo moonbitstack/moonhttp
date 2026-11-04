@@ -343,11 +343,52 @@ let chain : Int32 = 4
 let nice : Int32 = 32
 
 ///|
-/// Whether a message is worth Huffman-coding: a cheap probe over up to 8192 sample
-/// positions, counting exact three-octet repeats. Text repeats a word every few
-/// octets and clears the bar at once; random octets almost never do, and a message
-/// that does not repeat is cheaper stored.
+/// What carrying `n` octets stored would cost: eight bits each and a five-octet
+/// header per 65535, plus the padding that puts the first block on a byte boundary
+/// (§3.2.4).
+fn stored_bits(n : Int32) -> Int32 {
+  let blocks = (n + 65534) / 65535
+  8 * n + 40 * blocks + 7
+}
+
+///|
+/// What a dynamic block would spend if every octet were a literal: the cost of a
+/// code for this message's alphabet, before any match has been looked for. Below
+/// the stored cost, coding the message pays for itself whatever the matches add.
+fn literal_bits(all : Array[Int32], hlen : Int32, total : Int32) -> Int32 {
+  let lit_freq = Array::make(286, 0)
+  for i in hlen..<total {
+    let value = all.unsafe_get(i)
+    lit_freq.unsafe_set(value, lit_freq.unsafe_get(value) + 1)
+  }
+  lit_freq.unsafe_set(256, lit_freq.unsafe_get(256) + 1)
+  let dist_freq = Array::make(30, 0)
+  build_plan(lit_freq, dist_freq).data_bits(lit_freq, dist_freq)
+}
+
+///|
+/// Whether a message is worth coding rather than copying into stored blocks.
+///
+/// Two signals, either of them enough, because they miss different messages. The
+/// first is the alphabet: octets drawn from ninety-five symbols carry about six
+/// and a half bits each and pay for a code of their own even where nothing in the
+/// message repeats, and a token or a base64 blob is exactly that. The second is
+/// repetition: octets spread across the whole alphabet still come out far cheaper
+/// coded when long runs of them recur, and that is what the three-octet probe
+/// below finds. A message that fails both is noise, and copying it costs less than
+/// any code.
 fn compressible(all : Array[Int32], hlen : Int32, total : Int32) -> Bool {
+  if literal_bits(all, hlen, total) < stored_bits(total - hlen) {
+    return true
+  }
+  repeats(all, hlen, total)
+}
+
+///|
+/// A cheap probe over up to 8192 sample positions, counting exact three-octet
+/// repeats. Text repeats a word every few octets and clears the bar at once;
+/// random octets almost never do.
+fn repeats(all : Array[Int32], hlen : Int32, total : Int32) -> Bool {
   let n = total - hlen
   let table = Array::make(8192, -1)
   let stride = if n > 8192 { n / 8192 } else { 1 }
