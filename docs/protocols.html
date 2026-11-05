@@ -326,6 +326,47 @@
       </div>
     </figure>
 
+    <!-- 11 -->
+    <figure class="fig">
+      <div class="fig-head"><span class="no">FIG. 11</span><h2>What a connection error is called</h2><span class="tag">RFC 9114 §8.1 · RFC 9204 §6</span></div>
+      <div class="plate">
+        <div class="plate-top"><span class="label"><b>every fault</b> is the connection's</span><span class="legend">the number is what the peer is told</span></div>
+        <table class="tbl">
+          <thead><tr><th>Code</th><th>Number</th><th>Raised when</th></tr></thead>
+          <tbody>
+            <tr><td>H3_NO_ERROR</td><td>0x100</td><td>the connection ends and nothing went wrong</td></tr>
+            <tr><td>H3_GENERAL_PROTOCOL_ERROR</td><td>0x101</td><td>a fault no other code names</td></tr>
+            <tr><td>H3_INTERNAL_ERROR</td><td>0x102</td><td>this endpoint hit a fault of its own</td></tr>
+            <tr><td>H3_STREAM_CREATION_ERROR</td><td>0x103</td><td>a second control, encoder or decoder stream; a push stream at a server</td></tr>
+            <tr><td>H3_CLOSED_CRITICAL_STREAM</td><td>0x104</td><td>the control, encoder or decoder stream ended</td></tr>
+            <tr><td>H3_FRAME_UNEXPECTED</td><td>0x105</td><td>a frame on a stream that does not carry it, or in an order it may not take</td></tr>
+            <tr><td>H3_FRAME_ERROR</td><td>0x106</td><td>a frame that could not be read: a length that does not add up</td></tr>
+            <tr><td>H3_EXCESSIVE_LOAD</td><td>0x107</td><td>a frame over the size this endpoint advertised</td></tr>
+            <tr><td>H3_ID_ERROR</td><td>0x108</td><td>a push id never promised, or used twice</td></tr>
+            <tr><td>H3_SETTINGS_ERROR</td><td>0x109</td><td>a setting HTTP/2 defined, or the same identifier twice</td></tr>
+            <tr><td>H3_MISSING_SETTINGS</td><td>0x10a</td><td>a control stream that opened with something other than SETTINGS</td></tr>
+            <tr><td>H3_REQUEST_REJECTED</td><td>0x10b</td><td>a request this endpoint will not serve</td></tr>
+            <tr><td>H3_REQUEST_CANCELLED</td><td>0x10c</td><td>a request the client abandoned</td></tr>
+            <tr><td>H3_REQUEST_INCOMPLETE</td><td>0x10d</td><td>a request stream that ended before the request did</td></tr>
+            <tr><td>H3_MESSAGE_ERROR</td><td>0x10e</td><td>a malformed request: a repeated, absent or misplaced pseudo-header, a connection-specific field</td></tr>
+            <tr><td>H3_CONNECT_ERROR</td><td>0x10f</td><td>the CONNECT method or its extended form misused</td></tr>
+            <tr><td>H3_VERSION_FALLBACK</td><td>0x110</td><td>a version this endpoint does not serve</td></tr>
+            <tr><td>QPACK_DECOMPRESSION_FAILED</td><td>0x200</td><td>a field section the table cannot resolve: a static index past the table, a dynamic entry that is not there</td></tr>
+            <tr><td>QPACK_ENCODER_STREAM_ERROR</td><td>0x201</td><td>a table capacity over the one advertised, or an instruction that names no entry</td></tr>
+            <tr><td>QPACK_DECODER_STREAM_ERROR</td><td>0x202</td><td>an Insert Count Increment of 0</td></tr>
+          </tbody>
+        </table>
+        <figcaption><code>@http3.Code</code> names all twenty and <code>Code::code</code> is the number. <code>Refused::code</code> is the code a refusal closes the connection with, and it is what <code>Refused::to_string</code> prints in front of the reason.</figcaption>
+      </div>
+      <div class="fig-notes">
+        <p class="label">What to notice</p>
+        <div>
+          <p>None of these is a stream error. A peer that gets one of them wrong has a different idea of what the streams mean than this endpoint does, and resetting one stream leaves the two ends still disagreeing, so §4.1.2 and §7.2 close the connection instead.</p>
+          <p>The greeting a server sends on its control stream is inside all of this: SETTINGS first, once, and nothing a request stream carries. That is what <code>Control::feed</code> enforces before the connection is worth using.</p>
+        </div>
+      </div>
+    </figure>
+
     <p style="font-family:var(--mono);font-size:11px;color:var(--ink-2);letter-spacing:.04em;padding:4px 0 48px">
       Each plate is drawn from the section named in its header. The calculator runs RFC 9111 §4.2.3 with the same comparison the library uses.
     </p>

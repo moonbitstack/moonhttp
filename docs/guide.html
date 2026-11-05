@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Guide — moonhttp</title>
-<meta name="description" content="Fifteen steps through moonhttp: a request head, an answer, event streams, cookies, forms, ranges, conditional requests, cache decisions, redirects, WebSocket frames and compression, and the same WebSocket over HTTP/3.">
+<meta name="description" content="Sixteen steps through moonhttp: a request head, an answer, event streams, cookies, forms, ranges, conditional requests, cache decisions, redirects, WebSocket frames and compression, the same WebSocket over HTTP/3, and the code a refusal closes a connection with.">
 <meta name="theme-color" content="#e8f4f8" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0d232d" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
@@ -36,7 +36,7 @@
     <svg class="tick tick-tr" width="148" height="56" viewBox="0 0 148 56" aria-hidden="true">
       <path class="a" d="M36 4h112"/><path class="b" d="M72 20h76"/><path class="c" d="M110 36h38"/>
     </svg>
-    <p class="label">Guide · <b>fifteen steps</b></p>
+    <p class="label">Guide · <b>sixteen steps</b></p>
     <h1 class="display">From octets<br>to decisions.</h1>
     <p class="lede">One message at a time, in the order it travels: a head, an answer, the fields around it, and then the decisions a cache or a client makes before anything is sent. Every output shown here came from running the code.</p>
     <div class="meta"><span>20 minutes</span><i>/</i><span>MoonBit</span><i>/</i><span>no sockets</span></div>
@@ -59,7 +59,9 @@
         <a href="#redirects"><span>11</span>Redirects</a>
         <a href="#frames"><span>12</span>WebSocket frames</a>
         <a href="#compression"><span>13</span>Compression</a>
-        <a href="#bounds"><span>14</span>Bounds</a>
+        <a href="#connect3"><span>14</span>WebSocket over HTTP/3</a>
+        <a href="#refusals"><span>15</span>What a refusal closes with</a>
+        <a href="#bounds"><span>16</span>Bounds</a>
       </nav>
     </aside>
 
@@ -346,8 +348,29 @@ let answer = @http3.websocket_response(request, settings=settings)</pre>
         <p>What follows a 200 is no longer an HTTP message stream: WebSocket frames ride its DATA frames, and the stream's <code>FIN</code> is the orderly close a TCP connection would have carried. The RFC 7692 parameters and the frame layer above are the same ones HTTP/1.1 and HTTP/2 use — only the bootstrap differs.</p>
       </section>
 
+      <section class="step" id="refusals">
+        <span class="step-no">15 — WHAT A REFUSAL CLOSES WITH</span>
+        <h2>A fault in HTTP/3 belongs to the connection</h2>
+        <p>HTTP/1.1 answers a bad request by dropping one exchange, and HTTP/2 answers most of them by resetting one stream. HTTP/3 cannot: a peer that puts DATA before HEADERS, repeats a pseudo-header or opens a second control stream has a different idea of what the streams mean than this endpoint does, and resetting one of them leaves the two ends still disagreeing. Every refusal therefore carries the connection error to close with, and <code>Refused::code</code> is that error.</p>
+        <div class="code">
+          <div class="code-top"><span>moonbit</span><button>copy</button></div>
+          <pre>let reader = @http3.Incoming::new(limit=16384)   // the largest field section
+let parts = reader.feed(bytes) catch {
+  e => {
+    // H3_MESSAGE_ERROR for a malformed request, H3_FRAME_UNEXPECTED for a frame in
+    // the wrong place, QPACK_DECOMPRESSION_FAILED for a section the table cannot
+    // resolve: the code says which, and to_string() names the rule it broke.
+    transport.close(e.code().code())
+    return
+  }
+}</pre>
+        </div>
+        <div class="out">H3_MESSAGE_ERROR · H3_FRAME_UNEXPECTED · QPACK_DECOMPRESSION_FAILED</div>
+        <p>A request stream, the peer's control stream and QPACK's two instruction streams each have a reader that keeps the tail of an incomplete frame or instruction, so something split across packets is read once it is whole and refused at the octet that made it wrong. <a href="./protocols.html">The plate on connection errors</a> has all twenty codes with their numbers.</p>
+      </section>
+
       <section class="step" id="bounds">
-        <span class="step-no">15 — BOUNDS</span>
+        <span class="step-no">16 — BOUNDS</span>
         <h2>Every bound is an argument</h2>
         <p>Nothing here grows without a limit, and no limit is hidden. Each one has the default the mainstream uses, so a caller who does not care gets a defensible answer and a caller who does care passes a value.</p>
         <table class="tbl">

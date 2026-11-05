@@ -95,7 +95,7 @@ WebSocket keeps open.
 | `qpack` | HTTP/3 header compression: both tables, the field lines, both instruction streams | RFC 9204 |
 | `http1` | HTTP/1.1 messages: the request and status lines, field lines, body framing and the chunked coding; `Conn`, a whole connection for either end on h11's state machine, octets in and events out | RFC 9112 |
 | `http2` | HTTP/2 framing: the nine-octet header, all ten frame types, the connection preface; `Conn`, a whole connection for either end after python-hyper h2, with stream states, flow control, settings, push and field validation | RFC 9113, RFC 8441 |
-| `http3` | HTTP/3 frames, their placement rules, settings, stream types and connection; and WebSocket over HTTP/3 as the extended CONNECT RFC 9220 defines | RFC 9114, RFC 9220 |
+| `http3` | HTTP/3 frames, their placement rules, settings, stream types and connection; the connection error each refusal closes with; a reader for a request stream and one for each unidirectional stream; and WebSocket over HTTP/3 as the extended CONNECT RFC 9220 defines | RFC 9114, RFC 9220 |
 
 ## One vocabulary
 
@@ -175,6 +175,55 @@ allocate more than it has. A form over its bounds is refused whole, not
 truncated — a handler given the first thousand parts of a larger form would be
 answering a request nobody sent.
 
+## Refusals that close a connection
+
+HTTP/1.1 and HTTP/2 have faults an endpoint answers by dropping one stream and
+carrying on. HTTP/3 has almost none: a peer that puts DATA before HEADERS,
+repeats a pseudo-header, or opens a second control stream has a different idea of
+what the streams mean than this endpoint does, and resetting one of them leaves
+the two ends still disagreeing. So every refusal in `http3` carries the
+connection error the peer is to be told, and `Refused::code` is that error.
+
+```moonbit
+let reader = @http3.Incoming::new(limit=16384)   // SETTINGS_MAX_FIELD_SECTION_SIZE
+let parts = reader.feed(bytes) catch {
+  e => {
+    // e.code() is what the connection closes with; e.to_string() names the rule.
+    transport.close(e.code().code())
+    return
+  }
+}
+```
+
+| Code | Number | Raised when |
+|:--|:--:|:--|
+| `NoError` | 0x100 | the connection ends and nothing went wrong |
+| `GeneralProtocolError` | 0x101 | a fault no other code names |
+| `InternalError` | 0x102 | the endpoint hit a fault of its own |
+| `StreamCreationError` | 0x103 | a second control, encoder or decoder stream; a push stream at a server |
+| `ClosedCriticalStream` | 0x104 | the control, encoder or decoder stream ended |
+| `FrameUnexpected` | 0x105 | a frame on a stream that does not carry it, or in an order it may not take |
+| `FrameError` | 0x106 | a frame that could not be read: a length that does not add up |
+| `ExcessiveLoad` | 0x107 | a frame over the size this endpoint advertised |
+| `IdError` | 0x108 | a push id never promised, or used twice |
+| `SettingsError` | 0x109 | a setting HTTP/2 defined, or the same identifier twice |
+| `MissingSettings` | 0x10a | a control stream that opened with something other than SETTINGS |
+| `RequestRejected` | 0x10b | a request this endpoint will not serve |
+| `RequestCancelled` | 0x10c | a request the client abandoned |
+| `RequestIncomplete` | 0x10d | a request stream that ended before the request did |
+| `MessageError` | 0x10e | a malformed request: a repeated, absent or misplaced pseudo-header, a connection-specific field |
+| `ConnectError` | 0x10f | the CONNECT method or its extended form misused |
+| `VersionFallback` | 0x110 | a version this endpoint does not serve |
+| `QpackDecompressionFailed` | 0x200 | a field section the table cannot resolve: a static index past the table, a dynamic entry that is not there |
+| `QpackEncoderStreamError` | 0x201 | a table capacity over the one advertised, or an instruction that names no entry |
+| `QpackDecoderStreamError` | 0x202 | an Insert Count Increment of 0 |
+
+Three readers enforce the rules the codes name, one per stream that carries
+state: `Incoming` for a request stream, `Control` for the peer's control stream,
+and `Encoder` and `Decoder` for QPACK's two. Each keeps the tail of an
+instruction whose end has not arrived, so a frame or an instruction split across
+packets is read once it is whole and refused at the octet that made it wrong.
+
 ## What is checked
 
 `sse` is measured against the two example streams the WHATWG specification
@@ -207,6 +256,25 @@ blocks contain.
 placement rule of §7.2 is checked on each of the three stream kinds, the
 settings and the unidirectional stream types round-trip, and a request stream
 decodes into its pseudo-headers, its fields and its body.
+
+The rules a server keeps are measured one code at a time. On a request stream:
+DATA before HEADERS and after the trailers, a third HEADERS, and a frame a
+control stream owns; the four ways a field section is malformed — a repeated
+pseudo-header, one this protocol does not define, one after the regular fields,
+and the missing mandatory set — with a `http` scheme still owing an authority to
+`:authority` or to `Host`; the six connection-specific fields, with `te:
+trailers` still accepted; a field over the advertised section size; and the two
+QPACK faults a field section can carry. On the control stream: SETTINGS first and
+once, DATA and HEADERS refused there, the HTTP/2 identifiers and a repeated one,
+a payload ending between an identifier and its value, a frame over the size limit
+refused before its payload is held, and the stream not being allowed to end. On
+the unidirectional streams: each of the three critical ones refused a second
+time, a push stream refused at a server, all four refused closure, and the two
+QPACK faults — a capacity over the advertised one, an Insert Count Increment of
+zero.
+
+Against h3spec 0.1.14's "HTTP/3 servers" section, a server built on this package
+passes all 34 cases.
 
 The extended CONNECT of RFC 9220 is measured beside it. The connect switch is
 written only when it is on and survives the control stream; the client's request

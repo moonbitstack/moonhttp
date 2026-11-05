@@ -246,7 +246,9 @@ def main():
                         '<p class="count" id="hits">%d entries</p>' % total)
 
     out = ROOT / "docs" / "api.html"
-    out.write_text(body, encoding="utf-8")
+    # Byte for byte the same on every system: Python would write CRLF on Windows otherwise, and
+    # the workflow that regenerates the page and diffs it would go red there alone.
+    out.write_bytes(body.replace("\r\n", "\n").encode("utf-8"))
     print("wrote %s (%d public items across %d packages)" % (out, total, len(PKGS)))
 
 
