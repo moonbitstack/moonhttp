@@ -25,6 +25,17 @@ pub impl Show for Refused with fn output(self, logger) {
 }
 
 ///|
+/// What went wrong, as one line: a caller that reports the fault under a code of its own — the
+/// connection error that closes the stream it was read on — needs the reason without the shape.
+pub fn Refused::detail(self : Refused) -> String {
+  match self {
+    Malformed(m) => m
+    Index(got~) => "a table index of \{got}, which names no entry"
+    Exceeded(limit~, got~) => "\{got}, past the limit of \{limit}"
+  }
+}
+
+///|
 pub extend Refused with Debug::{to_repr}
 
 ///|
@@ -935,7 +946,9 @@ pub fn Ack::encode(inst : Ack) -> Bytes {
 
 ///|
 /// Decode one decoder-stream instruction from the front of `input` (RFC 9204 §4.4).
-/// Returns `(instruction, bytes-consumed)`, or `None` on a partial read.
+/// Returns `(instruction, bytes-consumed)`, or `None` on a partial read. An Insert Count
+/// Increment of 0 is refused here rather than left to the caller: §4.4.3 makes it a connection
+/// error of type QPACK_DECODER_STREAM_ERROR, and no state makes a 0 mean anything.
 pub fn Ack::decode(input : BytesView) -> (Ack, Int32)? raise Refused {
   if input.length() == 0 {
     return None
@@ -953,7 +966,14 @@ pub fn Ack::decode(input : BytesView) -> (Ack, Int32)? raise Refused {
     }
   } else {
     match partial(input, 6) {
-      Some((inc, c)) => Some((Increment(increment=inc), c))
+      Some((inc, c)) =>
+        if inc == 0 {
+          raise Malformed(
+            "an Insert Count Increment of 0 (RFC 9204 §4.4.3, QPACK_DECODER_STREAM_ERROR)",
+          )
+        } else {
+          Some((Increment(increment=inc), c))
+        }
       None => None
     }
   }
