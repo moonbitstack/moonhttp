@@ -444,6 +444,9 @@ test "after GOAWAY the server takes no new streams and the client opens none" {
   // One already in flight past the last stream is ignored.
   s.receive(headers_frame(3, get("/late"), end=true))
   inspect(drain(s), content="")
+  // So is what the peer sends after it on that stream, before it has heard.
+  s.receive(headers_frame(3, get("/later"), end=true))
+  inspect(drain(s), content="")
 }
 
 ///|
@@ -637,8 +640,72 @@ test "frames on a closed stream: ignored after this side's reset, refused otherw
   t.receive(
     @http2.Frame::Data(stream_id=1, data=b"late", end_stream=false, padding=0).encode(),
   )
-  inspect(drain(t), content="")
-  inspect(frames(t.take()), content="RST_STREAM 1 5")
+  // The peer said END_STREAM, so this is a connection error (§5.1).
+  inspect(
+    refused(() => ignore(t.next())),
+    content="Connection(code=5, a frame after the peer's END_STREAM)",
+  )
+  inspect(
+    frames(t.take()),
+    content="GOAWAY 1 5 a frame after the peer's END_STREAM",
+  )
+  let peer_reset = server()
+  peer_reset.receive(headers_frame(1, get("/")))
+  let _ = drain(peer_reset)
+  peer_reset.receive(
+    @http2.Frame::RstStream(stream_id=1, error_code=8).encode(),
+  )
+  let _ = drain(peer_reset)
+  let _ = peer_reset.take()
+  peer_reset.receive(
+    @http2.Frame::Data(stream_id=1, data=b"late", end_stream=false, padding=0).encode(),
+  )
+  inspect(drain(peer_reset), content="")
+  inspect(frames(peer_reset.take()), content="RST_STREAM 1 5")
+}
+
+///|
+test "HEADERS after the peer's END_STREAM is a connection error" {
+  let s = server()
+  s.receive(headers_frame(1, get("/"), end=true))
+  let _ = drain(s)
+  s.headers(1, status("204"), end=true)
+  let _ = s.take()
+  s.receive(headers_frame(1, get("/"), end=true))
+  inspect(
+    refused(() => ignore(s.next())),
+    content="Connection(code=5, a frame after the peer's END_STREAM)",
+  )
+}
+
+///|
+test "a stream id lower than one already used is a connection error" {
+  let s = server()
+  s.receive(headers_frame(5, get("/"), end=true))
+  let _ = drain(s)
+  let _ = s.take()
+  s.receive(headers_frame(3, get("/"), end=true))
+  inspect(
+    refused(() => ignore(s.next())),
+    content="Connection(code=1, a stream id lower than one already used)",
+  )
+}
+
+///|
+test "HEADERS on a stream too old to remember is answered with a reset, not a connection error" {
+  let s = server()
+  let mut id = 1
+  // One more than the 256 a connection keeps, so stream 1 is dropped from the record.
+  for _ in 0..<257 {
+    s.receive(headers_frame(id, get("/"), end=true))
+    let _ = drain(s)
+    s.headers(id, status("204"), end=true)
+    id = id + 2
+  }
+  let _ = s.take()
+  s.receive(headers_frame(1, get("/"), end=true))
+  let _ = drain(s)
+  inspect(frames(s.take()), content="RST_STREAM 1 5")
 }
 
 ///|

@@ -122,7 +122,7 @@ fn Conn::handle(
     RstStream(stream_id~, error_code~) =>
       if self.streams.contains(stream_id) {
         self.events.push(Reset(stream=stream_id, code=error_code, remote=true))
-        self.close(stream_id, false)
+        self.close(stream_id, ResetThere)
       } else if self.idle(stream_id) {
         raise self.fail(error_protocol_error, "RST_STREAM on an idle stream")
       }
@@ -270,12 +270,20 @@ fn Conn::headers_new(
     return self.lapsed(id)
   }
   if !self.idle(id) {
+    // An id passed over can never be opened (§5.1.1). Below `forgotten` the stream may really have
+    // run, with its trailers still in flight, so only ids still on record are judged.
+    if id > self.forgotten && !self.closed.contains(id) {
+      raise self.fail(
+        error_protocol_error, "a stream id lower than one already used",
+      )
+    }
     return self.lapsed(id)
   }
   self.last_peer = id
-  // After a GOAWAY, streams past the last one it named are not processed (§6.8).
+  // After a GOAWAY, streams past the last one it named are not processed (§6.8), and whatever else
+  // the peer sends on them before it hears is as good as sent on a stream reset here.
   if self.told is Some(last) && id > last {
-    return
+    return self.close(id, ResetHere)
   }
   guard fields is Some(fields) else {
     return self.refuse(id, error_enhance_your_calm)
@@ -297,15 +305,18 @@ fn Conn::headers_new(
 }
 
 ///|
-/// A frame that only HEADERS or DATA bring, on a stream that has closed.
-///
-/// One this side reset may still have frames in flight, which §5.4.2 says to
-/// ignore; any other gets RST_STREAM with STREAM_CLOSED (§5.1).
-fn Conn::lapsed(self : Conn, id : Int32) -> Unit {
-  if self.closed.get(id) is Some(true) {
-    return
+/// A frame that only HEADERS or DATA bring, on a stream that has closed. What it means depends on
+/// how the stream ended (§5.1).
+fn Conn::lapsed(self : Conn, id : Int32) -> Unit raise Refused {
+  match self.closed.get(id) {
+    Some(ResetHere) => ()
+    Some(EndedThere) =>
+      raise self.fail(
+        error_stream_closed, "a frame after the peer's END_STREAM",
+      )
+    Some(ResetThere) | None =>
+      self.write(Frame::RstStream(stream_id=id, error_code=error_stream_closed))
   }
-  self.write(Frame::RstStream(stream_id=id, error_code=error_stream_closed))
 }
 
 ///|
@@ -322,9 +333,9 @@ fn Conn::promise_in(
   match self.streams.get(id) {
     Some(s) if s.phase is (Open | HalfLocal) && !self.peers(id) => ()
     // The associated stream was reset here and the promise crossed the reset.
-    _ if self.closed.get(id) is Some(true) => {
+    _ if self.closed.get(id) is Some(ResetHere) => {
       self.write(Frame::RstStream(stream_id=promised, error_code=error_cancel))
-      return self.close(promised, true)
+      return self.close(promised, ResetHere)
     }
     _ =>
       raise self.fail(
@@ -335,7 +346,7 @@ fn Conn::promise_in(
     self.write(
       Frame::RstStream(stream_id=promised, error_code=error_protocol_error),
     )
-    return self.close(promised, true)
+    return self.close(promised, ResetHere)
   }
   let s = self.stream(promised, ReservedRemote)
   s.head = find(fields, ":method") is Some(m) && m == b"HEAD"
@@ -407,7 +418,7 @@ fn Conn::ended(self : Conn, s : Stream) -> Unit {
   self.events.push(End(stream=s.id))
   match s.phase {
     Open => s.phase = HalfRemote
-    HalfLocal => self.close(s.id, false)
+    HalfLocal => self.close(s.id, EndedThere)
     _ => ()
   }
 }

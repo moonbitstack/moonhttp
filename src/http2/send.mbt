@@ -170,7 +170,7 @@ pub fn Conn::reset(
     raise Order("a reset of a stream that is not open")
   }
   self.write(Frame::RstStream(stream_id=stream, error_code=code))
-  self.close(stream, true)
+  self.close(stream, ResetHere)
 }
 
 ///|
@@ -313,7 +313,7 @@ fn Conn::alive(self : Conn) -> Unit raise Refused {
 fn Conn::finish(self : Conn, s : Stream) -> Unit {
   match s.phase {
     Open => s.phase = HalfLocal
-    HalfRemote => self.close(s.id, false)
+    HalfRemote => self.close(s.id, EndedThere)
     _ => ()
   }
 }

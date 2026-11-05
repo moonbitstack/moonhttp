@@ -104,6 +104,17 @@ priv struct Block {
 let remembered : Int32 = 256
 
 ///|
+/// How a closed stream ended, which is what a late frame on it means (RFC 9113 §5.1).
+priv enum Ending {
+  /// This side reset it, and the peer may not have heard yet: late frames are ignored (§5.4.2).
+  ResetHere
+  /// The peer reset it: a late frame is a stream error.
+  ResetThere
+  /// The peer sent END_STREAM on it: a late frame is a connection error.
+  EndedThere
+}
+
+///|
 /// An HTTP/2 connection without a socket (RFC 9113): octets in, events out; calls
 /// in, octets out.
 ///
@@ -127,9 +138,11 @@ struct Conn {
   // 7541 §4.2).
   mut resize : Int32?
   streams : Map[Int32, Stream]
-  // Recently closed streams: `true` when this side reset them.
-  closed : Map[Int32, Bool]
+  // Recently closed streams and how each ended.
+  closed : Map[Int32, Ending]
   order : Array[Int32]
+  // The highest id dropped from `closed`: below it, a stream may have run without a record of it.
+  mut forgotten : Int32
   mut held : Bytes
   mut at : Int32
   mut eof : Bool
@@ -190,6 +203,7 @@ pub fn Conn::new(role : Role, settings~ : Settings = settings) -> Conn {
       2
     },
     last_peer: 0,
+    forgotten: 0,
     block: None,
     told: None,
     gone: None,
@@ -358,12 +372,16 @@ fn Conn::stream(self : Conn, id : Int32, phase : Phase) -> Stream {
 }
 
 ///|
-fn Conn::close(self : Conn, id : Int32, reset : Bool) -> Unit {
+fn Conn::close(self : Conn, id : Int32, how : Ending) -> Unit {
   self.streams.remove(id)
-  self.closed[id] = reset
+  self.closed[id] = how
   self.order.push(id)
   if self.order.length() > remembered {
-    self.closed.remove(self.order.remove(0))
+    let old = self.order.remove(0)
+    self.closed.remove(old)
+    if old > self.forgotten {
+      self.forgotten = old
+    }
   }
 }
 
@@ -375,7 +393,7 @@ fn Conn::refuse(self : Conn, id : Int32, code : Int32) -> Unit {
   if self.streams.contains(id) {
     self.events.push(Reset(stream=id, code~, remote=false))
   }
-  self.close(id, true)
+  self.close(id, ResetHere)
 }
 
 ///|
