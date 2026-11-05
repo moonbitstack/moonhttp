@@ -762,6 +762,9 @@ table.tbl {
   border-bottom: 1px dotted var(--rule);
   vertical-align: top;
   color: var(--ink-2);
+  /* A code name has no spaces to break at, so the cell has to break it: without this a
+     single long token widens the table past a phone's width. */
+  overflow-wrap: anywhere;
 }
 .tbl td:first-child { color: var(--ink); font-family: var(--mono); font-size: 12.5px; }
 .tbl tr:last-child td { border-bottom: 0; }
