@@ -1,6 +1,6 @@
 name = "moonbitstack/moonhttp"
 
-version = "0.15.6"
+version = "0.15.7"
 
 readme = "README.md"
 
@@ -57,7 +57,7 @@ description = "HTTP formats for MoonBit with no I/O: HTTP/1 to HTTP/3, WebSocket
 import {
   "moonbitstack/moonvar@0.2.1",
   "moonbitstack/moondate@0.1.4",
-  "moonbitstack/mooncrypt@0.4.10",
+  "moonbitstack/mooncrypt@0.4.11",
   "moonbitstack/moonbase@0.4.3",
   "moonbitstack/moonmime@0.2.2",
   "moonbitstack/moonurl@0.2.5",
