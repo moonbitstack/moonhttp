@@ -4,6 +4,7 @@ package "moonbitstack/moonhttp/http3"
 import {
   "moonbitlang/core/debug",
   "moonbitstack/moonhttp/header",
+  "moonbitstack/moonhttp/qpack",
 }
 
 // Values
@@ -17,9 +18,9 @@ pub fn connect(String, String, String, String, Array[@header.Header]) -> Bytes
 
 pub fn control(Array[(UInt64, UInt64)]) -> Bytes
 
-pub fn decode(BytesView) -> (Frame, Int32)? raise Refused
+pub fn decode(BytesView, limit? : UInt64) -> (Frame, Int32)? raise Refused
 
-pub fn decode_all(Bytes) -> (Array[Frame], Int32) raise Refused
+pub fn decode_all(Bytes, limit? : UInt64) -> (Array[Frame], Int32) raise Refused
 
 pub let enable_connect : UInt64
 
@@ -57,7 +58,9 @@ pub fn websocket_response(Request, settings~ : Settings, headers? : Array[@heade
 #derive(Eq, @debug.Debug)
 pub(all) suberror Refused {
   Malformed(String)
+  Fault(code~ : Code, detail~ : String)
 }
+pub fn Refused::code(Self) -> Code
 pub fn Refused::equal(Self, Self) -> Bool
 pub fn Refused::not_equal(Self, Self) -> Bool
 pub fn Refused::output(Self, &Logger) -> Unit
@@ -66,17 +69,79 @@ pub fn Refused::to_string(Self) -> String
 pub impl Show for Refused
 
 // Types and methods
+#derive(Eq, @debug.Debug)
+pub(all) enum Code {
+  NoError
+  GeneralProtocolError
+  InternalError
+  StreamCreationError
+  ClosedCriticalStream
+  FrameUnexpected
+  FrameError
+  ExcessiveLoad
+  IdError
+  SettingsError
+  MissingSettings
+  RequestRejected
+  RequestCancelled
+  RequestIncomplete
+  MessageError
+  ConnectError
+  VersionFallback
+  QpackDecompressionFailed
+  QpackEncoderStreamError
+  QpackDecoderStreamError
+}
+pub fn Code::code(Self) -> UInt64
+pub fn Code::equal(Self, Self) -> Bool
+pub fn Code::label(Self) -> String
+pub fn Code::not_equal(Self, Self) -> Bool
+pub fn Code::to_repr(Self) -> @debug.Repr
+
 pub struct Conn {
   role : Role
   local_settings : Settings
   mut peer_settings : Settings?
   mut control_seen : Bool
+  mut encoder_seen : Bool
+  mut decoder_seen : Bool
 }
-pub fn Conn::accept_uni_stream(Self, Bytes) -> Event raise
+pub fn Conn::accept_settings(Self, Settings) -> Unit
+pub fn Conn::accept_uni_stream(Self, Bytes) -> Event raise Refused
+pub fn Conn::close_stream(Self, Stream) -> Unit raise Refused
+pub fn Conn::local_settings(Self) -> Settings
 pub fn Conn::new(Role, Settings) -> Self
 pub fn Conn::open_control_stream(Self) -> Bytes
+pub fn Conn::open_stream(Self, Stream) -> Unit raise Refused
 pub fn Conn::peer_settings(Self) -> Settings?
 pub fn Conn::settings_established(Self) -> Bool
+
+pub struct Control {
+  mut held : Bytes
+  mut settings : Settings?
+  limit : UInt64
+}
+pub fn Control::end(Self) -> Unit raise Refused
+pub fn Control::feed(Self, Bytes) -> Settings? raise Refused
+pub fn Control::new(limit? : UInt64) -> Self
+pub fn Control::settings(Self) -> Settings?
+
+pub struct Decoder {
+  mut held : Bytes
+}
+pub fn Decoder::end(Self) -> Unit raise Refused
+pub fn Decoder::feed(Self, Bytes) -> Unit raise Refused
+pub fn Decoder::new() -> Self
+
+pub struct Encoder {
+  mut held : Bytes
+  table : @qpack.Table
+  limit : Int32
+}
+pub fn Encoder::end(Self) -> Unit raise Refused
+pub fn Encoder::feed(Self, Bytes) -> Unit raise Refused
+pub fn Encoder::new(limit? : Int32) -> Self
+pub fn Encoder::table(Self) -> @qpack.Table
 
 #derive(Eq, @debug.Debug)
 pub(all) enum Event {
@@ -107,6 +172,18 @@ pub fn Frame::equal(Self, Self) -> Bool
 pub fn Frame::not_equal(Self, Self) -> Bool
 pub fn Frame::to_repr(Self) -> @debug.Repr
 
+pub struct Incoming {
+  mut held : Bytes
+  mut head : Bool
+  mut trailers : Bool
+  mut left : UInt64
+  limit : UInt64
+  chunk : Int32
+}
+pub fn Incoming::end(Self) -> Unit raise Refused
+pub fn Incoming::feed(Self, Bytes) -> Array[Part] raise Refused
+pub fn Incoming::new(limit? : UInt64, chunk? : Int32) -> Self
+
 #derive(Eq, @debug.Debug)
 pub(all) enum On {
   Control
@@ -116,6 +193,16 @@ pub(all) enum On {
 pub fn On::equal(Self, Self) -> Bool
 pub fn On::not_equal(Self, Self) -> Bool
 pub fn On::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub(all) enum Part {
+  Head(Array[@header.Header])
+  Data(Bytes)
+  Trailers(Array[@header.Header])
+}
+pub fn Part::equal(Self, Self) -> Bool
+pub fn Part::not_equal(Self, Self) -> Bool
+pub fn Part::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Request {
   meth : String
@@ -169,6 +256,8 @@ pub(all) enum Stream {
 pub fn Stream::decode(BytesView) -> (Self, Int32)?
 pub fn Stream::encode(Self) -> Bytes
 pub fn Stream::equal(Self, Self) -> Bool
+pub fn Stream::is_critical(Self) -> Bool
+pub fn Stream::label(Self) -> String
 pub fn Stream::not_equal(Self, Self) -> Bool
 pub fn Stream::to_repr(Self) -> @debug.Repr
 
