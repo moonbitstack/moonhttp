@@ -49,16 +49,20 @@ test "a head that has not all arrived is partial, not malformed" {
 
 ///|
 test "the body framing is read once and carried" {
-  let sized = request(raw("POST / HTTP/1.1\r\nContent-Length: 5\r\n\r\n")[:]).0
+  let sized = request(
+      raw("POST / HTTP/1.1\r\nHost: x\r\nContent-Length: 5\r\n\r\n")[:],
+    ).0
   assert_eq(sized.body, Sized(5))
-  let none = request(raw("POST / HTTP/1.1\r\nContent-Length: 0\r\n\r\n")[:]).0
+  let none = request(
+      raw("POST / HTTP/1.1\r\nHost: x\r\nContent-Length: 0\r\n\r\n")[:],
+    ).0
   assert_eq(none.body, Empty)
   let chunked = request(
-      raw("POST / HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n")[:],
+      raw("POST / HTTP/1.1\r\nHost: x\r\nTransfer-Encoding: chunked\r\n\r\n")[:],
     ).0
   assert_eq(chunked.body, Chunked)
   // A request with neither has no body; it may not run to the close.
-  let bare = request(raw("GET / HTTP/1.1\r\n\r\n")[:]).0
+  let bare = request(raw("GET / HTTP/1.1\r\nHost: x\r\n\r\n")[:]).0
   assert_eq(bare.body, Empty)
 }
 
@@ -68,22 +72,29 @@ test "the ways a request is smuggled are refused rather than resolved" {
   // parsers disagreeing about which to believe is the whole attack.
   assert_eq(
     smuggled(
-      "POST / HTTP/1.1\r\nContent-Length: 5\r\nTransfer-Encoding: chunked\r\n\r\n",
+      "POST / HTTP/1.1\r\nHost: x\r\nContent-Length: 5\r\nTransfer-Encoding: chunked\r\n\r\n",
     ),
     true,
   )
   // Two different lengths.
   assert_eq(
     smuggled(
-      "POST / HTTP/1.1\r\nContent-Length: 5\r\nContent-Length: 6\r\n\r\n",
+      "POST / HTTP/1.1\r\nHost: x\r\nContent-Length: 5\r\nContent-Length: 6\r\n\r\n",
     ),
     true,
   )
   // A length that is not a number, including the forms that look like one.
-  assert_eq(smuggled("POST / HTTP/1.1\r\nContent-Length: +5\r\n\r\n"), true)
-  assert_eq(smuggled("POST / HTTP/1.1\r\nContent-Length: 5, 5\r\n\r\n"), true)
   assert_eq(
-    smuggled("POST / HTTP/1.1\r\nContent-Length: 5 \r\n\r\n") == false,
+    smuggled("POST / HTTP/1.1\r\nHost: x\r\nContent-Length: +5\r\n\r\n"),
+    true,
+  )
+  assert_eq(
+    smuggled("POST / HTTP/1.1\r\nHost: x\r\nContent-Length: 5, 5\r\n\r\n"),
+    true,
+  )
+  assert_eq(
+    smuggled("POST / HTTP/1.1\r\nHost: x\r\nContent-Length: 5 \r\n\r\n") ==
+    false,
     true,
   )
   // Whitespace before the colon.
@@ -92,13 +103,13 @@ test "the ways a request is smuggled are refused rather than resolved" {
   assert_eq(smuggled("GET / HTTP/1.1\r\nHost: x\r\n  more\r\n\r\n"), true)
   // A transfer coding that does not delimit.
   assert_eq(
-    smuggled("POST / HTTP/1.1\r\nTransfer-Encoding: gzip\r\n\r\n"),
+    smuggled("POST / HTTP/1.1\r\nHost: x\r\nTransfer-Encoding: gzip\r\n\r\n"),
     true,
   )
   // Two identical lengths agree, so there is nothing to disagree about.
   assert_eq(
     smuggled(
-      "POST / HTTP/1.1\r\nContent-Length: 5\r\nContent-Length: 5\r\n\r\n",
+      "POST / HTTP/1.1\r\nHost: x\r\nContent-Length: 5\r\nContent-Length: 5\r\n\r\n",
     ),
     false,
   )
@@ -112,13 +123,13 @@ test "a malformed line is refused with what was wrong" {
   assert_eq(refused("GET / HTTP/11\r\n\r\n"), true)
   assert_eq(refused("GET / SPDY/1.1\r\n\r\n"), true)
   assert_eq(refused("GE T / HTTP/1.1\r\n\r\n"), true)
-  assert_eq(refused("GET / HTTP/1.1\r\n: nothing\r\n\r\n"), true)
+  assert_eq(refused("GET / HTTP/1.1\r\nHost: x\r\n: nothing\r\n\r\n"), true)
 }
 
 ///|
 test "a head past the limit is refused with the status it deserves" {
   let big = StringBuilder()
-  big.write_string("GET / HTTP/1.1\r\n")
+  big.write_string("GET / HTTP/1.1\r\nHost: x\r\n")
   for i = 0; i < 200; i = i + 1 {
     big.write_string("x-pad-\{i}: 0123456789\r\n")
   }
@@ -134,7 +145,7 @@ test "a head past the limit is refused with the status it deserves" {
   assert_eq(out, 431)
   // And too many octets, checked before the blank line arrives so a peer cannot
   // hold a connection open by never sending one.
-  let endless = raw("GET / HTTP/1.1\r\nx: " + "y".repeat(20000))
+  let endless = raw("GET / HTTP/1.1\r\nHost: x\r\nx: " + "y".repeat(20000))
   let out2 = try {
     let _ = request(endless[:])
     0
@@ -147,10 +158,13 @@ test "a head past the limit is refused with the status it deserves" {
 
 ///|
 test "keep-alive defaults by version, which is where a server hangs" {
-  assert_eq(request(raw("GET / HTTP/1.1\r\n\r\n")[:]).0.keep_alive, true)
+  assert_eq(
+    request(raw("GET / HTTP/1.1\r\nHost: x\r\n\r\n")[:]).0.keep_alive,
+    true,
+  )
   assert_eq(request(raw("GET / HTTP/1.0\r\n\r\n")[:]).0.keep_alive, false)
   assert_eq(
-    request(raw("GET / HTTP/1.1\r\nConnection: close\r\n\r\n")[:]).0.keep_alive,
+    request(raw("GET / HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n")[:]).0.keep_alive,
     false,
   )
   assert_eq(
@@ -163,11 +177,14 @@ test "keep-alive defaults by version, which is where a server hangs" {
 test "a request may say it is waiting to be told to send its body" {
   let r = request(
       raw(
-        "POST / HTTP/1.1\r\nExpect: 100-continue\r\nContent-Length: 5\r\n\r\n",
+        "POST / HTTP/1.1\r\nHost: x\r\nExpect: 100-continue\r\nContent-Length: 5\r\n\r\n",
       )[:],
     ).0
   assert_eq(r.expects, true)
-  assert_eq(request(raw("POST / HTTP/1.1\r\n\r\n")[:]).0.expects, false)
+  assert_eq(
+    request(raw("POST / HTTP/1.1\r\nHost: x\r\n\r\n")[:]).0.expects,
+    false,
+  )
   assert_eq(continue_, b"HTTP/1.1 100 Continue\r\n\r\n")
 }
 
@@ -371,4 +388,126 @@ fn refused_chunk(src : String) -> Bool {
     Partial => false
     _ => true
   }
+}
+
+///|
+fn refusal(wire : String) -> Refused? {
+  try {
+    let _ = request(raw(wire)[:])
+    None
+  } catch {
+    e => Some(e)
+  }
+}
+
+///|
+test "RFC 9112 §3.2: an HTTP/1.1 request names one Host, and an HTTP/1.0 one may name none" {
+  assert_eq(
+    refusal("GET / HTTP/1.1\r\n\r\n"),
+    Some(Malformed("an HTTP/1.1 request with no Host field")),
+  )
+  assert_eq(
+    refusal("GET / HTTP/1.1\r\nHost: a\r\nHost: b\r\n\r\n"),
+    Some(Malformed("more than one Host field")),
+  )
+  assert_eq(
+    refusal("GET / HTTP/1.0\r\nHost: a\r\nHost: b\r\n\r\n"),
+    Some(Malformed("more than one Host field")),
+  )
+  assert_eq(refusal("GET / HTTP/1.1\r\nHost: a\r\n\r\n"), None)
+  assert_eq(refusal("GET / HTTP/1.0\r\n\r\n"), None)
+}
+
+///|
+test "a version this does not speak is the 505, and a later HTTP/1 is HTTP/1" {
+  let two = refusal("GET / HTTP/2.0\r\nHost: x\r\n\r\n")
+  assert_eq(two.map(e => e.status()), Some(505))
+  assert_eq(
+    refusal("GET / HTTP/3.7\r\nHost: x\r\n\r\n").map(e => e.status()),
+    Some(505),
+  )
+  assert_eq(refusal("GET / HTTP/1.9\r\nHost: x\r\n\r\n"), None)
+  // Not a version at all stays a 400.
+  assert_eq(
+    refusal("GET / http/1.1\r\nHost: x\r\n\r\n").map(e => e.status()),
+    Some(400),
+  )
+}
+
+///|
+test "RFC 9110 §5.5: a field value holds no control characters, and a tab is not one" {
+  for bad in ["a\u{0}b", "a\rb", "\u{b}chunked", "a\u{7f}b", "a\u{1}b"] {
+    assert_eq(
+      refusal("GET / HTTP/1.1\r\nHost: x\r\nA: \{bad}\r\n\r\n"),
+      Some(Malformed("a field value with a control character")),
+    )
+  }
+  assert_eq(refusal("GET / HTTP/1.1\r\nHost: x\r\nA: a\tb\r\n\r\n"), None)
+  assert_eq(
+    request(b"GET / HTTP/1.1\r\nHost: x\r\nA: caf\xe9\r\n\r\n"[:]).0.field("a"),
+    Some(b"caf\xe9"),
+  )
+}
+
+///|
+test "Transfer-Encoding is read as a list, so a word that contains chunked is not chunked" {
+  let framed = (coding : String) => {
+    let wire = "POST / HTTP/1.1\r\nHost: x\r\nTransfer-Encoding: \{coding}\r\n\r\n"
+    refusal(wire)
+  }
+  for
+    smuggling in [
+      "xchunked", "chunkedx", "chunked, chunked", "chunked, gzip", "gzip", ",", "chunked;a=1",
+    ] {
+    assert_eq(framed(smuggling).map(e => e.status()), Some(400))
+  }
+  assert_eq(framed("gzip, chunked").map(e => e.status()), Some(501))
+  assert_eq(framed("chunked"), None)
+  assert_eq(framed("CHUNKED"), None)
+  assert_eq(framed(" chunked ,"), None)
+  // Two lines are one list (RFC 9110 §5.3).
+  assert_eq(
+    refusal(
+      "POST / HTTP/1.1\r\nHost: x\r\nTransfer-Encoding: chunked\r\nTransfer-Encoding: chunked\r\n\r\n",
+    ).map(e => e.status()),
+    Some(400),
+  )
+  assert_eq(
+    refusal(
+      "POST / HTTP/1.1\r\nHost: x\r\nTransfer-Encoding: gzip\r\nTransfer-Encoding: chunked\r\n\r\n",
+    ).map(e => e.status()),
+    Some(501),
+  )
+}
+
+///|
+test "RFC 9112 §6.1: a Transfer-Encoding on HTTP/1.0 is a faulty frame" {
+  assert_eq(
+    refusal("POST / HTTP/1.0\r\nTransfer-Encoding: chunked\r\n\r\n"),
+    Some(Smuggled("a Transfer-Encoding on HTTP/1.0")),
+  )
+}
+
+///|
+test "a response whose last coding is not chunked runs to the close" {
+  let read = (coding : String) => {
+    let wire = "HTTP/1.1 200 OK\r\nTransfer-Encoding: \{coding}\r\n\r\n"
+    response(raw(wire)[:]).0.body
+  }
+  assert_eq(read("gzip"), Closed)
+  assert_eq(read("gzip, chunked"), Chunked)
+  assert_eq(read("chunked"), Chunked)
+}
+
+///|
+test "RFC 9112 §2.2: one empty line before a request is skipped and counted" {
+  let plain = "GET / HTTP/1.1\r\nHost: x\r\n\r\n"
+  let (_, used) = request(raw(plain)[:])
+  let (r, more) = request(raw("\r\n" + plain)[:])
+  assert_eq(r.target, "/")
+  assert_eq(more, used + 2)
+  assert_eq(request(raw("\n" + plain)[:]).1, used + 1)
+  // Only one: it is not a way to keep a server reading for ever.
+  assert_true(refusal("\r\n\r\n" + plain) is Some(_))
+  assert_eq(refusal("\r\n"), Some(Partial))
 }

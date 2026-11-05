@@ -15,6 +15,10 @@ pub(all) suberror Refused {
   Exceeded(limit~ : Int32, got~ : Int32)
   Smuggled(String)
   Order(String)
+  /// A version of HTTP this does not speak: the 505 of RFC 9110 §15.6.6.
+  Version(String)
+  /// A transfer coding this does not implement: the 501 of RFC 9112 §6.1.
+  Coding(String)
 }
 
 ///|
@@ -26,6 +30,8 @@ pub impl Show for Refused with fn output(self, logger) {
       logger.write_string("Exceeded(limit=\{limit}, got=\{got})")
     Smuggled(m) => logger.write_string("Smuggled(" + m + ")")
     Order(m) => logger.write_string("Order(" + m + ")")
+    Version(m) => logger.write_string("Version(" + m + ")")
+    Coding(m) => logger.write_string("Coding(" + m + ")")
   }
 }
 
@@ -47,6 +53,8 @@ pub extend Refused with Eq::{not_equal, equal}
 pub fn Refused::status(self : Refused) -> Int32 {
   match self {
     Exceeded(..) => 431
+    Version(_) => 505
+    Coding(_) => 501
     _ => 400
   }
 }

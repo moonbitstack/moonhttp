@@ -453,15 +453,6 @@ fn Conn::head(self : Conn, data : BytesView) -> Event raise Refused {
         Partial => return self.wait(data.length() == 0)
         e => raise e
       }
-      // RFC 9112 §3.2: a server must answer 400 to an HTTP/1.1 request with no
-      // Host, and to any request with more than one.
-      let hosts = r.fields.iter().filter(f => f.name == ascii("host")).count()
-      if hosts > 1 {
-        raise Malformed("more than one Host field")
-      }
-      if hosts == 0 && r.version == "HTTP/1.1" {
-        raise Malformed("an HTTP/1.1 request with no Host field")
-      }
       self.at = self.at + used
       Request(r)
     }

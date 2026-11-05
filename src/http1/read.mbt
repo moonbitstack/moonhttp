@@ -8,12 +8,38 @@
 /// answer a caller reads more on. This reads the head only: the body is framed by
 /// [`Request::body`] and is the caller's to collect, because a body may be larger
 /// than anything worth holding in one buffer.
+///
+/// One empty line before the request is skipped, as RFC 9112 §2.2 asks: old clients send one after a
+/// body. The refusals a server owes are made here, so nobody reading requests has to remember them:
+/// an HTTP/1.1 request with no `Host`, any with two (§3.2), a version this cannot speak (RFC 9110
+/// §15.6.6), and a `Transfer-Encoding` on HTTP/1.0 (§6.1).
 pub fn request(
-  data : BytesView,
+  whole : BytesView,
   limits~ : Limits = limits,
 ) -> (Request, Int32) raise Refused {
+  let skip = if whole.length() >= 2 && whole[0] == b'\r' && whole[1] == b'\n' {
+    2
+  } else if whole.length() >= 1 && whole[0] == b'\n' {
+    1
+  } else {
+    0
+  }
+  let data = whole[skip:]
   let (line, fields, used) = head(data, limits)
   let (verb, target, version) = request_line(line)
+  if version[:6] != "HTTP/1" {
+    raise Version("a version this does not speak")
+  }
+  let hosts = fields.iter().filter(f => f.name == ascii("host")).count()
+  if hosts > 1 {
+    raise Malformed("more than one Host field")
+  }
+  if hosts == 0 && version != "HTTP/1.0" {
+    raise Malformed("an HTTP/1.1 request with no Host field")
+  }
+  if version == "HTTP/1.0" && find(fields, "transfer-encoding") is Some(_) {
+    raise Smuggled("a Transfer-Encoding on HTTP/1.0")
+  }
   let body = framing(fields, true)
   (
     {
@@ -25,7 +51,7 @@ pub fn request(
       expects: token(fields, "expect", "100-continue"),
       keep_alive: alive(fields, version),
     },
-    used,
+    skip + used,
   )
 }
 
@@ -156,6 +182,14 @@ fn field(line : BytesView) -> @header.Header raise Refused {
   while to > from && (line[to - 1] == b' ' || line[to - 1] == b'\t') {
     to = to - 1
   }
+  // RFC 9110 §5.5: a value is visible characters, space and tab. NUL, a bare CR and the rest change
+  // meaning from one parser to the next.
+  for i = from; i < to; i = i + 1 {
+    let c = line[i].to_int()
+    if (c < 0x20 && c != 0x09) || c == 0x7f {
+      raise Malformed("a field value with a control character")
+    }
+  }
   { name: name.to_bytes(), value: line[from:to].to_owned(), }
 }
 
@@ -237,17 +271,10 @@ fn framing(
   fields : Array[@header.Header],
   request : Bool,
 ) -> Body raise Refused {
-  let chunked = match find(fields, "transfer-encoding") {
-    Some(v) => {
-      let coding = text(v[:]).to_lower()
-      // Only a final `chunked` delimits; anything else leaves the length unknown,
-      // which a request may not have.
-      if !coding.contains("chunked") {
-        raise Smuggled("a transfer coding that does not delimit the body")
-      }
-      true
-    }
-    None => false
+  let chunked = delimited(fields, request)
+  // A response whose last coding is not `chunked` runs until the connection closes (§6.3).
+  if !chunked && !request && find(fields, "transfer-encoding") is Some(_) {
+    return Closed
   }
   let mut length = -1
   let mut seen = 0
@@ -275,6 +302,46 @@ fn framing(
   }
   let _ = request
   Empty
+}
+
+///|
+/// Whether the `Transfer-Encoding` field lines end in `chunked` (RFC 9112 §6.1). The list is read
+/// as a list, so `xchunked` is not `chunked`, and `chunked` twice is refused. A request whose body
+/// nothing delimits is refused too, and a coding this does not implement is the 501 §6.1 asks for.
+fn delimited(
+  fields : Array[@header.Header],
+  request : Bool,
+) -> Bool raise Refused {
+  let codings : Array[String] = []
+  for f in fields {
+    if f.name == ascii("transfer-encoding") {
+      for part in text(f.value[:]).to_lower().split(",") {
+        let coding = part.trim(chars=" \t").to_owned()
+        if coding != "" {
+          codings.push(coding)
+        }
+      }
+    }
+  }
+  guard codings.last() is Some(last) else {
+    if fields.iter().any(f => f.name == ascii("transfer-encoding")) {
+      raise Smuggled("an empty Transfer-Encoding")
+    }
+    return false
+  }
+  if codings[:codings.length() - 1].iter().any(c => c == "chunked") {
+    raise Smuggled("chunked applied more than once, or not last")
+  }
+  if last != "chunked" {
+    if request {
+      raise Smuggled("a transfer coding that does not delimit the body")
+    }
+    return false
+  }
+  if request && codings.length() > 1 {
+    raise Coding("a transfer coding this does not implement")
+  }
+  true
 }
 
 ///|
