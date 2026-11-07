@@ -112,10 +112,14 @@ jobs:
           moon version --all
           moon update
 
-      - name: autobahn, cases 7.*, 12.* and 13.*
-        run: sh scripts/autobahn/run.sh
+      # Three runs of the whole suite, one after another: a case that is close to
+      # the time it is allowed (12.2.10, a thousand 128 KiB messages) has to be
+      # inside it every time, not on the run that happened to get the machine to
+      # itself.
+      - name: autobahn, cases 7.*, 12.* and 13.*, three times
+        run: sh scripts/autobahn/run.sh 3
 
-      - name: the report
+      - name: the reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
