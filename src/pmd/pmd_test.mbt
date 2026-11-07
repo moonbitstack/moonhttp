@@ -522,7 +522,10 @@ test "every window a peer may name round-trips" {
   // wider window would do by default.
   for bits in 8..<=15 {
     let terms = @pmd.Extension::new(server_window=bits, client_window=bits)
-    let payload = text(4096)
+    // The same 2 KiB twice, so the only useful match is 2048 octets back — past
+    // every window but the widest, which is what makes a writer that ignores the
+    // agreed window visible.
+    let payload = mixed(2048) + mixed(2048)
     let (frame, compressed) = @pmd.Writer::new(extension=terms).frame(
       @ws.Opcode::Binary,
       payload[:],
