@@ -63,7 +63,7 @@ assert_eq(wire.payload, b"\xf2H\xcd\xc9\xc9\x07\x00")
 
 // The same WebSocket over HTTP/3: the extended CONNECT of RFC 9220, allowed by
 // one setting the server sends and answered with 200 or 501.
-let congrue : @http3.Request = {
+let connect : @http3.Request = {
   meth: "CONNECT",
   scheme: "https",
   authority: "example.com",
@@ -75,8 +75,8 @@ let congrue : @http3.Request = {
 let settings = @http3.Settings::new(
   4096, 16384, 100, enable_connect_protocol=true,
 )
-assert_eq(@http3.Upgrade::of(congrue, settings~) is @http3.Upgrade::Accept, true)
-assert_eq(@http3.websocket_response(congrue, settings~).status, "200")
+assert_eq(@http3.Upgrade::of(connect, settings~) is @http3.Upgrade::Accept, true)
+assert_eq(@http3.websocket_response(connect, settings~).status, "200")
 ```
 
 ```moonbit
