@@ -28,7 +28,9 @@ trap 'kill $endpoint 2>/dev/null || true' EXIT
 # The endpoint prints when it is listening; a second is what the build leaves it.
 sleep 1
 
-rm -rf _build/autobahn
+# The reports of an earlier run are docker's, so they may not be ours to remove;
+# a run overwrites its own directory either way.
+rm -rf _build/autobahn 2>/dev/null || true
 mkdir -p _build/autobahn
 run=1
 while [ "$run" -le "$runs" ]; do
