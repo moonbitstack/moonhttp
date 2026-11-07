@@ -10,42 +10,100 @@ in, with nothing about sockets in them.
 [mooncakes](https://mooncakes.io/docs/moonbitstack/moonhttp)
 
 ```moonbit
-// An event stream, one frame at a time.
-@sse.Event::new(data="{\"seq\":1}", kind="tick", id="1").encode()
-@sse.decode(received[:])  // the frames as written
-@sse.events(received[:])  // what an EventSource dispatches from them
+// An event stream: the frames as written, and the events an EventSource
+// dispatches from them.
+let received = "id: 1\nevent: tick\ndata: {\"seq\":1}\n\n"
+let events = @sse.events(received)
+assert_eq(events[0].data, "{\"seq\":1}")
+assert_eq(events[0].kind, Some("tick"))
+assert_eq(
+  @sse.Event::new(data="{\"seq\":1}", kind="tick", id="1").encode(),
+  "id: 1\nevent: tick\ndata: {\"seq\":1}\n\n",
+)
 
-// A cookie set on the way out and read on the way back.
-@cookie.Cookie::new("sid", token, http_only=true, secure=true).encode()
-@cookie.get(request_header[:], "sid"[:])
+// A cookie set on the way out, and read on the way back.
+assert_eq(
+  @cookie.Cookie::new("sid", "s3cr3t", http_only=true, secure=true).encode(),
+  "sid=s3cr3t; Path=/; Secure; HttpOnly; SameSite=Lax",
+)
+assert_eq(@cookie.get("sid=s3cr3t; theme=dark", "theme"), Some("dark"))
 
 // A posted form, whichever way the browser encoded it.
-let form = @form.parse(body[:], content_type[:])
-form.field("name")
-form.file("avatar")
+let form = @form.parse(
+  b"name=ada&lang=mo"[:],
+  "application/x-www-form-urlencoded"[:],
+)
+assert_eq(form.field("name"), Some("ada"))
 
 // A second request for something that has not changed.
-let etag = @conditional.hash(body[:], digest=@sha2.Hasher::new())
-@conditional.Ask::read(headers[:]).evaluate(verb="GET", etag~)  // Go | Fresh | Failed
+let etag = @conditional.hash(b"hello"[:], digest=@sha2.Hasher::new())
+let ask = @conditional.Ask::read([("If-None-Match", etag.encode())])
+assert_eq(ask.evaluate(verb="GET", etag~), @conditional.Verdict::Fresh)
+```
 
-// A WebSocket message compressed the way RFC 7692 asks, and the bit that says so.
-let terms = @pmd.Extension::agree(@pmd.offers(offer[:])[:]).unwrap()
-let (frame, compressed) = @pmd.Writer::new(extension=terms).frame(@ws.Opcode::Text, body[:])
-frame.encode_extension(rsv1=compressed)  // one deflate segment, tail stripped
+```moonbit
+// A frame is a byte layout: two header octets, a mask key, then the payload.
+let frame : @ws.Frame = { fin: true, opcode: @ws.Opcode::Text, payload: b"hi" }
+assert_eq(
+  frame.encode(mask=b"\x01\x02\x03\x04"),
+  b"\x81\x82\x01\x02\x03\x04\x69\x6b",
+)
 
-// The same WebSocket over HTTP/3: the extended CONNECT of RFC 9220, allowed by one
-// setting the server sends, and answered with 200 or 501.
-let wire = @http3.websocket_request("https", "example.com", "/chat", headers)
-@http3.Upgrade::of(request, settings=@http3.Settings::new(4096, 16384, 100, enable_connect_protocol=true))
-// Accept | Unsupported("...") | Refused("...")
+// A message compressed the way RFC 7692 asks, and the bit that says so.
+let terms = @pmd.Extension::agree(
+  @pmd.offers("permessage-deflate; client_max_window_bits"[:])[:],
+)
+assert_eq(terms is Some(_), true)
+let (wire, compressed) = @pmd.Writer::new(extension=terms.unwrap()).frame(
+  @ws.Opcode::Text,
+  b"Hello"[:],
+)
+assert_eq(compressed, true)
+assert_eq(wire.payload, b"\xf2H\xcd\xc9\xc9\x07\x00")
 
+// The same WebSocket over HTTP/3: the extended CONNECT of RFC 9220, allowed by
+// one setting the server sends and answered with 200 or 501.
+let congrue : @http3.Request = {
+  meth: "CONNECT",
+  scheme: "https",
+  authority: "example.com",
+  path: "/chat",
+  protocol: "websocket",
+  headers: [@header.Header::of("sec-websocket-version", "13")],
+  body: b"",
+}
+let settings = @http3.Settings::new(
+  4096, 16384, 100, enable_connect_protocol=true,
+)
+assert_eq(@http3.Upgrade::of(congrue, settings~) is @http3.Upgrade::Accept, true)
+assert_eq(@http3.websocket_response(congrue, settings~).status, "200")
+```
+
+```moonbit
 // A stored response, and what may be done with it.
-let stored = @cache.Entry::read(status=200, headers, request, sent~, received~)
-stored.verdict(request=@cache.control, presented=headers, now~)  // Serve | Validate | Miss
-stored.conditional()  // the If-None-Match a cache sends instead
+let sent = @moondate.http("Sun, 06 Nov 1994 08:49:37 GMT")
+let stored = @cache.Entry::read(
+  status=200,
+  headers=[("Cache-Control", "max-age=60")],
+  request=[],
+  sent~,
+  received=sent,
+)
+assert_eq(stored.lifetime(), Some(60))
 
-// And where a 302 sends the request next.
-@client.follow(status=302, location="/next", from~, verb=@method.Method::Post, visited=[from][:])
+// And where a 302 sends the request next, with which method.
+let from = @moonurl.Url::decode("https://example.com/a") catch {
+  _ => abort("not a URL")
+}
+let step = @client.follow(
+  status=302,
+  location="/next",
+  from~,
+  verb=@method.Method::Post,
+  visited=[from][:],
+)
+assert_eq(step.url.encode(), "https://example.com/next")
+assert_eq(step.verb, @method.Method::Get)
 ```
 
 Run `moon run src/examples/tour` for the whole surface in one go. The worked
@@ -113,24 +171,34 @@ mainstream uses.
 
 ```moonbit
 // A bound belongs to an endpoint. Either form names one.
+let body = b"name=ada&lang=mo"[:]
+let content_type = "application/x-www-form-urlencoded"
 let small = @moonmime.Limits::new(parts=8, part_size=64 * 1024)
-let same = { ..@moonmime.limits, parts: 8, part_size: 64 * 1024 }
+let widened = { ..@moonmime.limits, parts: 8 }
+assert_eq(small.parts, widened.parts)
 
-@form.parse(body[:], content_type[:], limits=small)
+let limited = @form.parse(body, content_type, limits=small)
+assert_eq(limited.field("lang"), Some("mo"))
 
 // By default a body that is not a form is an empty form, and a multipart body
 // that stops making sense gives up the parts it read. `strict` says so instead.
-@form.parse(body[:], content_type[:], strict=true)   // raises NotAForm, or Malformed(at~)
+let asked = @form.parse(body, content_type, strict=true) catch {
+  _ => abort("this body is a form")
+}
+assert_eq(asked.field("name"), Some("ada"))
 
-@sse.Event::of("hello").encode(space=false)          // drop the optional space
+// The space after the colon is optional in the format and universal on the wire.
+assert_eq(@sse.Event::of("hello").encode(), "data: hello\n\n")
+assert_eq(@sse.Event::of("hello").encode(space=false), "data:hello\n\n")
 
-// A compressed message is the one place a peer can ask for memory it did not
-// pay for, so the reader bounds what one expands to, in octets.
-@pmd.Reader::new(limit=1 * 1024 * 1024)
-
-// And a writer can leave a message under this many octets alone, which is worth
+// A writer can leave a message under this many octets alone, which is worth
 // doing: a compressed "OK" is longer than "OK".
-@pmd.Writer::new(threshold=64)
+let (short, compressed) = @pmd.Writer::new(threshold=64).frame(
+  @ws.Opcode::Text,
+  b"OK"[:],
+)
+assert_eq(compressed, false)
+assert_eq(short.payload, b"OK")
 ```
 
 | Setting | Default | Why that one |
@@ -185,14 +253,19 @@ the two ends still disagreeing. So every refusal in `http3` carries the
 connection error the peer is to be told, and `Refused::code` is that error.
 
 ```moonbit
+// A DATA frame where a request stream still owes its HEADERS.
+let wire = b"\x00\x04body"
 let reader = @http3.Incoming::new(limit=16384)   // SETTINGS_MAX_FIELD_SECTION_SIZE
-let parts = reader.feed(bytes) catch {
+let mut closed : @http3.Code? = None
+let parts = reader.feed(wire) catch {
   e => {
     // e.code() is what the connection closes with; e.to_string() names the rule.
-    transport.close(e.code().code())
-    return
+    closed = Some(e.code())
+    []
   }
 }
+assert_eq(closed, Some(@http3.FrameUnexpected))
+assert_eq(parts.length(), 0)
 ```
 
 | Code | Number | Raised when |
@@ -298,7 +371,10 @@ frame layer changes shape, a stored block, a dynamic block, a window negotiated
 down to nine bits, and four messages that only decode if the window of the first
 survives into the last. The other direction is checked by giving what it writes to
 another DEFLATE implementation to read. Every split of a compressed message is
-read as two pieces, which is what a message arriving in fragments is.
+read as two pieces, which is what a message arriving in fragments is; a 128 KiB
+message — the size Autobahn's slowest case carries a thousand of — is read again
+in 256-octet pieces, so a boundary falls inside a symbol, inside a block header
+and inside a stored run.
 
 Whether to code a message at all is settled before the search. The encoder prices a
 code for the message's own alphabet — an octet histogram, costed as the dynamic
@@ -319,15 +395,25 @@ a WebSocket carries.
 `pmd` is measured on §7.1's four parameters — read, written and negotiated, each
 with the values the grammar forbids — and then against Autobahn, whose 12.x and
 13.x groups are the conformance suite for this extension: `scripts/autobahn/run.sh`
-starts the endpoint and points the fuzzingclient at it, and CI runs it. The
-endpoint answers `server_no_context_takeover`, so a message that reads as noise is
-carried stored rather than searched against the one before it. The last run
-passes 250 cases with three informational and none failed; the thousand-message
-128 KiB case 12.2.10 takes about 9 to 13 seconds on the shared runners, and the
-binary 12.3.15 about 11 to 16, where they were 78 and 199 seconds before. The
-same behaviours are replayed frame by frame in the unit tests, and
-`scripts/autobahn/interop.py` is the check that needs no Docker: a
-permessage-deflate client written against zlib, which is what a browser is.
+starts the endpoint and points the fuzzingclient at it, and the suite is run three
+times in a row so that a case near its time limit has to hold on every run rather
+than on the one that got the machine to itself. The endpoint answers
+`server_no_context_takeover`, so a message that reads as noise is carried stored
+rather than searched against the one before it. The run passes all 253 cases: 250
+`OK` and three informational, none failed. The thousand-message 128 KiB case
+12.2.10 takes about nine seconds and 12.3.15 about ten, where they were 78 and 199
+seconds before; ten seconds is the ceiling for 12.2.10, and a run that passes it
+says so and fails.
+
+The same behaviours are replayed frame by frame in the unit tests: a message with
+a frame boundary at every octet, every window from eight bits to fifteen, a
+hundred messages in one stream, and a ceiling passed part way through a message.
+`scripts/autobahn/interop.py` is the check that needs no Docker — a
+permessage-deflate client written against zlib, which is what a browser is — and
+it carries the shapes that cost the most: eight 128 KiB messages in a row, one
+message in kilobyte frames, a megabyte in one message, a window negotiated down to
+nine bits, and a `server_no_context_takeover` answer whose every message decodes
+without the one before it.
 
 `cache` follows §4.2.1's order for a freshness lifetime, §4.2.2's tenth, §4.2.3's
 arithmetic on four clock readings, §3's list of reasons not to store — each as a

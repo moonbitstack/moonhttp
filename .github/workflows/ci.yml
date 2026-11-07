@@ -89,6 +89,12 @@ jobs:
           python3 scripts/gen_docs.py
           git diff --exit-code
 
+      # A reader pastes the blocks of the README and the skill into a project, so
+      # they have to compile as written, against this commit's source.
+      - name: the code in the docs compiles
+        if: runner.os == 'Linux'
+        run: python3 scripts/check_snippets.py
+
   # The conformance run: Autobahn's fuzzingclient, cases 7.*, 12.*
   # and 13.*, against the endpoint `src/examples/16-ws-echo` builds. It is a job of
   # its own because it needs Docker and a socket, and because a failure here is a
