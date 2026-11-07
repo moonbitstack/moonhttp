@@ -127,7 +127,7 @@ The documentation is a site of four pages: a
 [guide](https://moonbitstack.github.io/moonhttp/guide.html) that takes the
 library one message at a time, the
 [API reference](https://moonbitstack.github.io/moonhttp/api.html) generated from
-the sources' doc comments, and [ten figures](https://moonbitstack.github.io/moonhttp/protocols.html)
+the sources' doc comments, and [eleven figures](https://moonbitstack.github.io/moonhttp/protocols.html)
 that draw the byte layouts — a frame header, a chunked body, the DEFLATE stream a
 WebSocket keeps open.
 
