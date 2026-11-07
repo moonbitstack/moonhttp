@@ -57,6 +57,19 @@ jobs:
             fi
           done
 
+      # The zlib client in scripts/autobahn/interop.py speaks RFC 7692 the way a
+      # browser does. It runs here rather than with Autobahn because it needs no
+      # Docker, and it is a real socket either way.
+      - name: a zlib client inter-operates with the endpoint
+        if: runner.os == 'Linux'
+        run: |
+          moon build src/examples/16-ws-echo --target native --release
+          ./_build/native/release/build/examples/16-ws-echo/16-ws-echo.exe &
+          endpoint=$!
+          trap 'kill $endpoint 2>/dev/null || true' EXIT
+          sleep 1
+          python3 scripts/autobahn/interop.py
+
       - name: lint (fmt is clean)
         run: |
           moon fmt && git diff --exit-code

@@ -26,7 +26,7 @@ OP_TEXT, OP_BINARY, OP_CLOSE, OP_PING, OP_PONG, OP_CONT = 0x1, 0x2, 0x8, 0x9, 0x
 class Client:
     """One connection, with the window kept across messages like a browser's."""
 
-    def __init__(self, offer="permessage-deflate; client_max_window_bits=15"):
+    def __init__(self, offer="permessage-deflate; client_max_window_bits=15", window=15):
         self.sock = socket.create_connection((HOST, PORT), timeout=10)
         key = base64.b64encode(os.urandom(16)).decode()
         request = (
@@ -62,7 +62,7 @@ class Client:
         self.compressing = "permessage-deflate" in self.extension
         # One decompressor for the whole connection: the terms keep the window.
         self.inflate = zlib.decompressobj(-15)
-        self.deflate = zlib.compressobj(6, zlib.DEFLATED, -15)
+        self.deflate = zlib.compressobj(6, zlib.DEFLATED, -window)
 
     # ---------------------------------------------------------------- framing
 
@@ -115,8 +115,8 @@ class Client:
         payload, self.buf = self.buf[at : at + n], self.buf[at + n :]
         return (b0 & 0x80) != 0, b0 & 0x0F, (b0 & 0x40) != 0, payload
 
-    def message(self, opcode, payload, compressed=None):
-        """Send a message and read the echo, which may arrive in fragments."""
+    def exchange(self, opcode, payload, compressed=None):
+        """Send a message and read the echo's octets as they came, and its RSV1."""
         compressed = self.compressing if compressed is None else compressed
         data = self.compress(payload) if compressed else payload
         self.send(opcode, data, rsv1=compressed)
@@ -129,11 +129,20 @@ class Client:
             out += part
             if fin:
                 break
+        return out, rsv1_seen
+
+    def message(self, opcode, payload, compressed=None):
+        """Send a message and read the echo, which may arrive in fragments."""
         # Whether the echo is compressed is the server's choice, so the answer is
         # read by the bit that came back rather than the one that went out.
-        if rsv1_seen:
+        out, rsv1 = self.exchange(opcode, payload, compressed)
+        if rsv1:
             return self.inflate.decompress(out + b"\x00\x00\xff\xff"), True
         return out, False
+
+    def standalone(self, raw):
+        """Read one echo with a decompressor that has seen nothing else."""
+        return zlib.decompressobj(-15).decompress(raw + b"\x00\x00\xff\xff")
 
     def close_frame(self):
         while True:
@@ -153,6 +162,7 @@ def check(name, condition, detail=""):
 def main():
     text = b"Hello, compressed world. " * 20
     binary = bytes((i * 37) & 0xFF for i in range(1000))
+    html = (b"<p class=\"para\">the of and to in a is that for it</p>\n" * 400)
 
     client = Client()
     check("handshake and extension", client.compressing, client.extension)
@@ -189,6 +199,49 @@ def main():
     client.send(OP_PING, b"ping")
     fin, op, _, payload = client.recv()
     check("a ping is answered", op == OP_PONG and payload == b"ping")
+
+    # The server answers `server_no_context_takeover`, so each of its messages
+    # stands alone: one that only decoded after the one before it would be a
+    # message a peer could not read on its own, which is what the flag rules out.
+    check("the answer takes the server's window away between messages", "server_no_context_takeover" in client.extension, client.extension)
+    for i in range(3):
+        raw, rsv1 = client.exchange(OP_TEXT, text + str(i).encode())
+        alone = client.standalone(raw) if rsv1 else raw
+        check("message %d decodes without the one before it" % i, alone == text + str(i).encode())
+
+    # The shape Autobahn's 12.2.10 sends: many large messages on one connection.
+    big = bytes((i * 101 + 7) & 0xFF for i in range(131072))
+    for i in range(8):
+        echo, rsv1 = client.message(OP_BINARY, big)
+        check("a 128 KiB message %d round-trips" % i, echo == big and rsv1)
+
+    # The shape 13.7.x sends: one message, every frame a kilobyte of it.
+    data = client.compress(html)
+    at = 0
+    while at < len(data):
+        client.send(OP_TEXT if at == 0 else OP_CONT, data[at : at + 1024], fin=at + 1024 >= len(data), rsv1=at == 0)
+        at += 1024
+    out = b""
+    while True:
+        fin, op, _, part = client.recv()
+        if op == OP_PING:
+            continue
+        out += part
+        if fin:
+            break
+    check("a message in kilobyte frames round-trips", client.inflate.decompress(out + b"\x00\x00\xff\xff") == html)
+
+    # A window negotiated down to 512 octets: the client may code no further back
+    # than that, and a server that assumed 32 KiB would read the stream as garbage.
+    narrow = Client(offer="permessage-deflate; client_max_window_bits=9", window=9)
+    echo, _ = narrow.message(OP_TEXT, text)
+    check("a nine-bit client window round-trips", echo == text, narrow.extension)
+
+    # A megabyte in one message, which is past every length a frame header has a
+    # short form for.
+    megabyte = bytes((i * 7 + 3) & 0xFF for i in range(1048576))
+    echo, rsv1 = client.message(OP_BINARY, megabyte)
+    check("a megabyte round-trips", echo == megabyte and rsv1)
 
     # RSV1 on a continuation is §6.1's protocol error.
     client.send(OP_TEXT, b"", fin=False, rsv1=True)
