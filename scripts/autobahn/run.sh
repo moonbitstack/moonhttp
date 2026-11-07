@@ -25,8 +25,18 @@ moon build src/examples/16-ws-echo --target native --release
 ./_build/native/release/build/examples/16-ws-echo/16-ws-echo.exe &
 endpoint=$!
 trap 'kill $endpoint 2>/dev/null || true' EXIT
-# The endpoint prints when it is listening; a second is what the build leaves it.
-sleep 1
+# Wait for the endpoint rather than sleep and hope: a port something else holds
+# makes the suite report no cases at all, which reads like a run of no failures.
+python3 - <<'WAIT'
+import socket, sys, time
+for _ in range(100):
+    try:
+        socket.create_connection(("127.0.0.1", 9001), timeout=0.2).close()
+        sys.exit(0)
+    except OSError:
+        time.sleep(0.1)
+sys.exit("the endpoint never listened on 127.0.0.1:9001")
+WAIT
 
 # The reports of an earlier run are docker's, so they may not be ours to remove;
 # a run overwrites its own directory either way.
