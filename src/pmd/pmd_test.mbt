@@ -23,6 +23,19 @@ fn text(n : Int32) -> Bytes {
 }
 
 ///|
+/// Text with enough entropy that no single match covers it: a stream of one
+/// octet a frame only meets interesting boundaries when the blocks are long.
+fn mixed(n : Int32) -> Bytes {
+  let buf = Buffer()
+  let mut s = 24681357
+  while buf.length() < n {
+    s = (s * 1103515245 + 12345) & 0x7fffffff
+    buf.write_byte((97 + (s >> 16) % 26).to_byte())
+  }
+  buf.to_bytes()[:n].to_owned()
+}
+
+///|
 /// Hand a frame to a reader the way a connection does: written with its RSV1 bit,
 /// read back out of the octets, then fed.
 fn send(
@@ -458,4 +471,120 @@ test "a control frame is never compressed" {
   )
   assert_false(compressed)
   assert_eq(quiet.payload, text(16))
+}
+
+///|
+test "a compressed message arriving one octet per frame is read once it is whole" {
+  // Autobahn's 13.x group splits a message at every offset a frame boundary can
+  // fall on; this is the same shape taken to its limit. Each frame carries one
+  // octet of the DEFLATE stream, so a boundary lands inside a symbol, inside a
+  // block header and inside an empty stored block, and the reader has to resume
+  // exactly there.
+  let payload = mixed(1200)
+  let (frame, compressed) = @pmd.Writer::new().frame(
+    @ws.Opcode::Text,
+    payload[:],
+  )
+  assert_true(compressed)
+  let wire = frame.payload
+  assert_true(wire.length() > 400)
+  let reader = @pmd.Reader::new()
+  let mut reported = 0
+  for i in 0..<wire.length() {
+    let last = i + 1 == wire.length()
+    let piece : @ws.Frame = {
+      fin: last,
+      opcode: if i == 0 {
+        @ws.Opcode::Text
+      } else {
+        @ws.Opcode::Continuation
+      },
+      payload: wire[i:i + 1].to_owned(),
+    }
+    let step = send(reader, piece, rsv1=i == 0)
+    match step.message {
+      Some(@ws.Message::Text(got)) => {
+        reported += 1
+        assert_true(last)
+        assert_eq(got, @utf8.decode(payload[:]))
+      }
+      Some(_) => fail("a text message came back as something else")
+      None => assert_false(last)
+    }
+  }
+  assert_eq(reported, 1)
+}
+
+///|
+test "every window a peer may name round-trips" {
+  // §7.1.2 lets either side ask for a smaller window, down to 256 octets. A
+  // compressor must then code no distance past it, which is what a search over a
+  // wider window would do by default.
+  for bits in 8..<=15 {
+    let terms = @pmd.Extension::new(server_window=bits, client_window=bits)
+    let payload = text(4096)
+    let (frame, compressed) = @pmd.Writer::new(extension=terms).frame(
+      @ws.Opcode::Binary,
+      payload[:],
+    )
+    assert_true(compressed)
+    let reader = @pmd.Reader::new(extension=terms)
+    match send(reader, frame).message {
+      Some(@ws.Message::Binary(got)) =>
+        if got != payload {
+          fail("a \{bits}-bit window did not read back what it wrote")
+        }
+      Some(_) => fail("a binary message came back as something else")
+      None => fail("a whole message was not reported")
+    }
+  }
+}
+
+///|
+test "a hundred messages in one stream keep their own bytes" {
+  // One connection, one DEFLATE stream, and a window carried from message to
+  // message: what a reader returns for the last message must not depend on how
+  // many came before it.
+  let writer = @pmd.Writer::new()
+  let reader = @pmd.Reader::new()
+  let sent : Array[Bytes] = []
+  for i in 0..<100 {
+    let payload = text(2048 + i * 13)
+    let (frame, compressed) = writer.frame(@ws.Opcode::Binary, payload[:])
+    assert_true(compressed)
+    match send(reader, frame).message {
+      Some(@ws.Message::Binary(got)) =>
+        if got != payload {
+          fail("message \{i} did not come back as it went out")
+        }
+      Some(_) => fail("a binary message came back as something else")
+      None => fail("a whole message was not reported")
+    }
+    sent.push(payload)
+  }
+  assert_eq(sent.length(), 100)
+}
+
+///|
+test "a message that passes the ceiling part way through is refused there" {
+  // The ceiling counts what the message expands to, and a compressed message's
+  // growth is only known frame by frame, so a message that fits in its first
+  // fragment may still be refused in its last.
+  let zeros = Bytes::from_array(Array::make(4000, b'\x00'))
+  let (frame, _) = @pmd.Writer::new().frame(@ws.Opcode::Binary, zeros[:])
+  let wire = frame.payload
+  assert_true(wire.length() < 100)
+  let reader = @pmd.Reader::new(limit=3000)
+  let first : @ws.Frame = {
+    fin: false,
+    opcode: @ws.Opcode::Binary,
+    payload: wire[:wire.length() / 2].to_owned(),
+  }
+  assert_true(send(reader, first).message is None)
+  let last : @ws.Frame = {
+    fin: true,
+    opcode: @ws.Opcode::Continuation,
+    payload: wire[wire.length() / 2:].to_owned(),
+  }
+  assert_eq(failed(reader, last, rsv1=false), 1009)
 }

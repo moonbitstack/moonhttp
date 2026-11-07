@@ -293,3 +293,34 @@ test "every stream zlib wrote reads the same fed an octet at a time" {
     }
   }
 }
+
+///|
+test "a message split into two hundred and fifty-six-octet pieces reads the same" {
+  // The shape a compressed WebSocket message has when the peer fragments it: one
+  // DEFLATE stream chopped at fixed offsets, so most pieces end inside a symbol
+  // and a few end inside a block header or a stored run. A hundred and twenty
+  // eight kilobytes is the size Autobahn's 12.2.10 sends a thousand of.
+  let payload = text(131072)
+  let wire = @deflate.Deflater::new(takeover=false).compress(payload[:])
+  assert_true(wire.length() < payload.length())
+  let inflater = @deflate.Inflater::new(takeover=false)
+  let got = Buffer()
+  let mut at = 0
+  while at < wire.length() {
+    let piece = if wire.length() - at < 256 {
+      wire[at:]
+    } else {
+      wire[at:at + 256]
+    }
+    let part = inflater.decompress(piece, more=true) catch {
+      e => fail("the piece at \{at} was refused: " + e.to_string())
+    }
+    got.write_bytes(part)
+    at += 256
+  }
+  let rest = inflater.decompress(b""[:]) catch {
+    e => fail("the end of the message was refused: " + e.to_string())
+  }
+  got.write_bytes(rest)
+  assert_eq(got.to_bytes(), payload)
+}
