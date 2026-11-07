@@ -402,8 +402,10 @@ than on the one that got the machine to itself. The endpoint answers
 rather than searched against the one before it. The run passes all 253 cases: 250
 `OK` and three informational, none failed. The thousand-message 128 KiB case
 12.2.10 takes about nine seconds and 12.3.15 about ten, where they were 78 and 199
-seconds before; ten seconds is the ceiling for 12.2.10, and a run that passes it
-says so and fails.
+seconds before. Ten seconds is what 12.2.10 is asked to stay under and a run that
+passes ten says so; fifteen is where it fails, because the same commit has measured
+8.8 s and 11.5 s on two runners of the same size, and a shared machine is not a
+benchmark.
 
 The same behaviours are replayed frame by frame in the unit tests: a message with
 a frame boundary at every octet, every window from eight bits to fifteen, a
