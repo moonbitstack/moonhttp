@@ -1,6 +1,6 @@
 name = "moonbitstack/moonhttp"
 
-version = "0.15.9"
+version = "0.15.10"
 
 readme = "README.md"
 
@@ -55,13 +55,13 @@ keywords = [
 description = "HTTP formats for MoonBit with no I/O: HTTP/1 to HTTP/3, WebSocket, SSE and multipart."
 
 import {
-  "moonbitstack/moonvar@0.2.1",
-  "moonbitstack/moondate@0.1.5",
-  "moonbitstack/mooncrypt@0.4.12",
-  "moonbitstack/moonbase@0.4.3",
-  "moonbitstack/moonmime@0.2.3",
-  "moonbitstack/moonurl@0.2.5",
-  "moonbitstack/moonzip@0.3.7",
+  "moonbitstack/moonvar@0.2.2",
+  "moonbitstack/moondate@0.1.6",
+  "moonbitstack/mooncrypt@0.4.13",
+  "moonbitstack/moonbase@0.4.4",
+  "moonbitstack/moonmime@0.2.4",
+  "moonbitstack/moonurl@0.2.6",
+  "moonbitstack/moonzip@0.3.8",
   "moonbitlang/async@0.22.5",
 }
 
