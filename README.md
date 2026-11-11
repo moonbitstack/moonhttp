@@ -379,19 +379,21 @@ message — the size Autobahn's slowest case carries a thousand of — is read a
 in 256-octet pieces, so a boundary falls inside a symbol, inside a block header
 and inside a stored run.
 
-Whether to code a message at all is settled before the search. The encoder prices a
-code for the message's own alphabet — an octet histogram, costed as the dynamic
-header and symbol widths would cost it — and copies the message into stored blocks
-only when that price, and a sample of three-octet repeats, both read it as noise.
-So a stream of random 128 KiB frames stays linear instead of coded octet by coded
-octet, while a payload of tokens or base64, drawn from ninety-five symbols none of
-which ever repeats, still comes out at 83% of its size rather than the 100% copying
-it would have cost. A message that is coded gets the widths its own symbols
-deserve: the encoder counts what the parse produces, then writes a dynamic block or
-the fixed one, whichever costs fewer bits. On a 128 KiB message of letters drawn at random, that is 60% of the input where the
-fixed code spends all of it. What either writes is decoded through a small table
-rather than a bit at a time, and the fixed codes are reversed once rather than per
-symbol, so the two directions stay close in cost at the lengths a WebSocket carries.
+Whether to code a message at all is settled before the search. The encoder
+prices a code for the message's own alphabet — an octet histogram, costed as the
+dynamic header and symbol widths would cost it — and copies the message into
+stored blocks only when that price, and a sample of three-octet repeats, both
+read it as noise. So a stream of random 128 KiB frames stays linear instead of
+coded octet by coded octet, while a payload of tokens or base64, drawn from
+ninety-five symbols none of which ever repeats, still comes out at 83% of its
+size rather than the 100% copying it would have cost. A message that is coded
+gets the widths its own symbols deserve: the encoder counts what the parse
+produces, then writes a dynamic block or the fixed one, whichever costs fewer
+bits. On a 128 KiB message of letters drawn at random, that is 60% of the input
+where the fixed code spends all of it. What either writes is decoded through a
+small table rather than a bit at a time, and the fixed codes are reversed once
+rather than per symbol, so the two directions stay close in cost at the lengths
+a WebSocket carries.
 
 The encoder is built around the fact that a message repeats itself in long runs.
 A position is hashed on three octets read as one word and multiplied into
