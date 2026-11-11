@@ -56,9 +56,9 @@ description = "HTTP formats for MoonBit with no I/O: HTTP/1 to HTTP/3, WebSocket
 
 import {
   "moonbitstack/moonvar@0.2.2",
-  "moonbitstack/moondate@0.1.6",
-  "moonbitstack/mooncrypt@0.4.13",
-  "moonbitstack/moonbase@0.4.4",
+  "moonbitstack/moondate@0.1.7",
+  "moonbitstack/mooncrypt@0.4.16",
+  "moonbitstack/moonbase@0.4.5",
   "moonbitstack/moonmime@0.2.5",
   "moonbitstack/moonurl@0.2.6",
   "moonbitstack/moonzip@0.3.8",
