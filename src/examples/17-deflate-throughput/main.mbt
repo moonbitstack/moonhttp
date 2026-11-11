@@ -28,7 +28,7 @@ fn main {
     let (size, took) = measure(bytes)
     let rate = bytes.length().to_double() / took
     println(
-      "\{pad(name, 12)}\{align(bytes.length().to_string(), 8)}\{align(size.to_string(), 12)}\{align(rate.to_string(), 13)} MB/s",
+      "\{pad(name, 12)}\{align(bytes.length().to_string(), 8)}\{align(size.to_string(), 10)}\{align(tenths(rate), 8)} MB/s",
     )
   }
 }
@@ -50,6 +50,14 @@ fn measure(payload : Bytes) -> (Int32, Double) {
     }
   }
   (size, best)
+}
+
+///|
+/// The rate to one decimal place. A double prints every digit it has, which makes a
+/// column of them as wide as the slowest machine is precise.
+fn tenths(rate : Double) -> String {
+  let scaled = (rate * 10.0).to_int()
+  "\{scaled / 10}.\{scaled % 10}"
 }
 
 ///|
