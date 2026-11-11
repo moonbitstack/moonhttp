@@ -388,12 +388,10 @@ octet, while a payload of tokens or base64, drawn from ninety-five symbols none 
 which ever repeats, still comes out at 83% of its size rather than the 100% copying
 it would have cost. A message that is coded gets the widths its own symbols
 deserve: the encoder counts what the parse produces, then writes a dynamic block or
-the fixed one, whichever costs fewer bits. On a 128 KiB message drawn from
-twenty-six letters — the shape a text frame has — that is 66% of the input where the
-fixed code alone spends 95%, for the same time. What either writes is decoded
-through a small table rather than a bit at a time, and the fixed codes are reversed
-once rather than per symbol, so the two directions stay close in cost at the lengths
-a WebSocket carries.
+the fixed one, whichever costs fewer bits. On a 128 KiB message of letters drawn at random, that is 60% of the input where the
+fixed code spends all of it. What either writes is decoded through a small table
+rather than a bit at a time, and the fixed codes are reversed once rather than per
+symbol, so the two directions stay close in cost at the lengths a WebSocket carries.
 
 The encoder is built around the fact that a message repeats itself in long runs. A
 position is hashed on three octets read as one word and multiplied into fifteen
