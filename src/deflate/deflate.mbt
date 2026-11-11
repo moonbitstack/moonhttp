@@ -252,8 +252,8 @@ priv struct Parsed {
 /// arranged to be done rarely: four octets hash in one load and one multiply, a
 /// candidate is rejected on one comparison of its first four octets, and the
 /// positions inside a long match are not hashed at all — a message that repeats
-/// itself at length is mostly match, and hashing the octets a match already
-/// covers buys nothing a later position would not find on its own.
+/// itself at length is mostly match, and the octets a match already covers are
+/// found by the next search at the distance it used anyway.
 fn parse(
   all : BytesView,
   hlen : Int32,
@@ -441,13 +441,12 @@ fn insert(
 /// Record the ground a match covers, so the search after it starts from where the
 /// match ended rather than from the octet after its start.
 ///
-/// A short match is hashed through: those positions are what the next few
-/// searches want, and there are only a few of them. A long one is not, because
-/// hashing its inside is most of what taking the match would cost — but its last
-/// position is, and that is the one that matters: the octet after a run repeats
-/// the octet before it, so with the tail in its bucket the next search finds a
-/// distance of one and spends no extra bits on the distance, which is what turns a
-/// megabyte of zeros into two bits a match instead of nine.
+/// A short match is hashed through: those positions are what the next few searches
+/// want, and there are only a few of them. A long one is hashed only at its last
+/// position, because hashing its inside is most of what taking the match would
+/// cost. That tail is the fallback the search reaches for when the distance it last
+/// used does not continue: the octet after a run very often does, but an octet that
+/// merely follows one can still point at the run's end and at a short distance.
 fn cover(
   all : BytesView,
   head : Array[Int32],
@@ -489,8 +488,11 @@ fn insert_range(
 let hash_bits : Int32 = 15
 
 ///|
-/// The number of octets a position is hashed on. Three is DEFLATE's shortest
-/// match, so no match the format can write is missed by the bucket it lands in.
+/// The number of octets a position is hashed on, and the fewest a message must
+/// still have for one to be taken. Three is DEFLATE's shortest match, so a bucket
+/// is keyed on all of one; the search then asks for four to agree, which is
+/// measured as the cheaper bar (a three-octet match costs a length and a distance
+/// where three literals of a text's own alphabet cost less).
 let min_hash : Int32 = 3
 
 ///|
@@ -513,8 +515,9 @@ let lazy_limit : Int32 = 16
 
 ///|
 /// The longest match whose interior is hashed. A short match leaves positions a
-/// later search will want; a long one covers ground nothing needs to look at
-/// again, and hashing it is most of what a long match would cost.
+/// later search will want and there are only a few of them; a longer one covers
+/// ground no search needs to start from, and hashing its inside is most of what
+/// taking it would cost.
 let insert_inside : Int32 = 8
 
 ///|
