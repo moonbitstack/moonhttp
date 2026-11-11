@@ -130,3 +130,9 @@ assert_eq(entry.verdict(request=@cache.control, presented=[], now=sent), @cache.
   `Code` to close with: `e.code()`.
 - **Limits do not cover bodies.** `http1` hands a body over as it arrives; if a
   body must be small, that is the caller's check.
+- **`deflate` compresses a message at a time.** `Deflater::compress` is one call
+  per message and keeps the window between calls when `takeover` is on, which is
+  what RFC 7692 needs; it is not a streaming compressor for a file. A message with
+  nothing to find comes back in stored blocks and costs about a copy, so a
+  caller does not need to test for incompressible payloads first.
+  `src/examples/17-deflate-throughput` prints what each shape costs.
