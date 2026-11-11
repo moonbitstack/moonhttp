@@ -1,0 +1,7 @@
+// The encoder's throughput, measured: `moon run src/examples/17-deflate-throughput`.
+pkgtype(kind: "executable")
+
+import {
+  "moonbitstack/moonhttp/deflate",
+  "moonbitlang/core/bench",
+}
