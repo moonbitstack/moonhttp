@@ -144,7 +144,7 @@ WebSocket keeps open.
 | `cookie` | `Cookie` and `Set-Cookie`, each read and written | RFC 6265, and its revision for `SameSite` |
 | `ws` | WebSocket framing: opcodes, masking, fragment reassembly, close statuses | RFC 6455 §5, §7.4.1 |
 | `pmd` | The permessage-deflate extension: its four parameters, the offer and the answer, and a reader and writer over `ws` frames | RFC 7692 |
-| `deflate` | Raw DEFLATE shaped for a stream that outlives a message: a window carried across messages, and the size a message may grow to left to `ws`, which reassembles it | RFC 1951 |
+| `deflate` | Raw DEFLATE shaped for a stream that outlives a message: a window carried across messages, and expansion that stops at the room its caller gives it | RFC 1951 |
 | `upgrade` | The WebSocket opening handshake, both sides | RFC 6455 §4 |
 | `huffman` | The Huffman code both header compressions use | RFC 7541 Appendix B |
 | `method` | The request method: the nine standard ones and any other token, with whether each is safe and idempotent | RFC 9110 §9, RFC 5789 |
@@ -207,7 +207,7 @@ assert_eq(short.payload, b"OK")
 | `limits.part_size` | 1 MiB | python-multipart's in-memory part size |
 | `strict` | off | A truncated upload is ordinary on a dropped connection, and "this request carried no form" is an answer rather than a failure. On is for the caller who would rather be told |
 | `space` | on | The space after a colon is optional in the format and universal on the wire; a reader strips it either way |
-| `limit` (`pmd`) | 16 MiB | The one ceiling `ws` keeps for every message, compressed or not, and the only copy of it. RFC 7692 sets none, and a compressed message is where that absence would cost the most |
+| `limit` (`pmd`) | 16 MiB | The one ceiling `ws` keeps for every message, compressed or not. `pmd` expands each frame into the room `ws` has left, so a compressed frame stops expanding where the ceiling is passed. RFC 7692 sets none, and a compressed message is where that absence would cost the most |
 | `threshold` (`pmd`) | 0 | Every message compressed, which is what agreeing to the extension means. A caller compressing a bulletin board and not a chat box raises it |
 
 `Limits` has no per-call mirror, and therefore no precedence rule. A bound

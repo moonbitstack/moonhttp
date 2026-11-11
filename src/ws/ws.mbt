@@ -480,6 +480,16 @@ pub fn Reader::pending(self : Reader) -> Int32 {
 }
 
 ///|
+/// How many more bytes the message in progress may take before the ceiling.
+///
+/// A layer that expands what it is given before handing it here — the
+/// permessage-deflate reader — asks this so it can stop expanding at the same
+/// ceiling, rather than expand the whole frame and learn of the overrun after.
+pub fn Reader::room(self : Reader) -> Int32 {
+  self.limit - self.payload.length()
+}
+
+///|
 /// Take one frame (RFC 6455 §5.4 for fragments, §5.5 for the control frames interleaved
 /// with them).
 ///

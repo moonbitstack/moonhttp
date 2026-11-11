@@ -87,6 +87,7 @@ pub struct Reader {
 pub fn Reader::feed(Self, Frame) -> Step raise Refused
 pub fn Reader::new(limit? : Int32) -> Self
 pub fn Reader::pending(Self) -> Int32
+pub fn Reader::room(Self) -> Int32
 
 #derive(Eq, @debug.Debug)
 pub(all) struct Step {

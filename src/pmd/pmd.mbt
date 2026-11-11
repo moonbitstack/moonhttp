@@ -330,9 +330,10 @@ pub fn Extension::accepts(self : Extension, answer : Extension) -> Bool {
 /// Reading one direction: the frames a peer sends, decompressed as they arrive.
 ///
 /// A message is decompressed frame by frame rather than at the end, because the
-/// octets have to be fed to the reassembler as they come: the ceiling they may
-/// pass is the one `ws` keeps for every message, and it is reached there, not in
-/// a copy held here.
+/// ceiling has to hold while the octets are produced: a stream that expands past
+/// it fails the connection then, not after the octets are already in memory. The
+/// ceiling itself is the one `ws` keeps; each frame is expanded into the room it
+/// reports.
 pub struct Reader {
   inner : @ws.Reader
   inflater : @deflate.Inflater
@@ -417,17 +418,21 @@ pub fn Reader::feed(
 /// One fragment of a compressed message, expanded.
 ///
 /// The inflater carries the window when the terms allow it and drops it when
-/// they do not, so what is left here is only the translation of a DEFLATE fault
-/// into the status a failed connection carries (§7.1.7): 1007 for anything the
-/// stream itself got wrong. The ceiling a compressed message can pass is the one
-/// `ws` keeps, reached when `feed` adds the inflated octets to the reassembled
-/// message, and there is no second copy of it here.
+/// they do not. What is left here is the room `ws` has for this message, which
+/// stops the expansion where the ceiling is passed (1009), and the translation of
+/// any other DEFLATE fault into 1007 (§7.1.7).
 fn Reader::inflate(
   self : Reader,
   payload : Bytes,
   more~ : Bool,
 ) -> Bytes raise @ws.Refused {
-  self.inflater.decompress(payload[:], more~) catch {
+  let room = self.inner.room()
+  self.inflater.decompress(payload[:], more~, room~) catch {
+    @deflate.Exceeded(got~, ..) =>
+      raise @ws.Exceeded(
+        limit=self.inner.pending() + room,
+        got=(self.inner.pending() + got).to_int64(),
+      )
     _ => raise @ws.Payload("a message that does not decompress")
   }
 }

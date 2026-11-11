@@ -398,6 +398,30 @@ test "a message that expands past the limit fails with 1009" {
 }
 
 ///|
+test "one frame that would expand far past the ceiling stops near it" {
+  // Four mebibytes of zeros fit in one small frame. The expansion has to stop
+  // where the ceiling is passed: a reader that expanded the whole frame and only
+  // then compared would hold the four mebibytes first, which is what the ceiling
+  // is there to prevent.
+  let zeros = Bytes::from_array(Array::make(4 * 1024 * 1024, b'\x00'))
+  let (frame, _) = @pmd.Writer::new().frame(@ws.Opcode::Binary, zeros[:])
+  assert_true(frame.payload.length() < 8192)
+  let limit = 65536
+  let reader = @pmd.Reader::new(limit~)
+  let got = try {
+    let _ = send(reader, frame)
+    -1L
+  } catch {
+    @ws.Exceeded(got~, ..) => got
+    _ => -2L
+  }
+  assert_true(got > limit.to_int64())
+  // One DEFLATE match copies at most 258 octets, so the expansion stops within
+  // one match of the ceiling.
+  assert_true(got <= (limit + 258).to_int64())
+}
+
+///|
 test "RSV1 where §6.1 does not allow it is a protocol error" {
   // A continuation is never the first frame of a message, so it never carries the
   // bit; a control frame cannot be compressed at all.
