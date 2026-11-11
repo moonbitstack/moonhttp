@@ -182,11 +182,7 @@ pub fn Deflater::compress(
             if dist > window {
               break
             }
-            let mut len = 0
-            while len < cap &&
-                  all.unsafe_get(j + len) == all.unsafe_get(i + len) {
-              len += 1
-            }
+            let len = match_len(all, j, i, cap)
             if len > best_len {
               best_len = len
               best_dist = dist
@@ -334,13 +330,45 @@ pub fn Deflater::compress(
 ///|
 /// How deep the match finder looks at each position. A message repeats itself in
 /// short runs, and the first few links hold the recent ones, so a shallow chain
-/// keeps most of the ratio and spends a fraction of the search.
-let chain : Int32 = 4
+/// keeps most of the ratio and spends a fraction of the search. The depth was
+/// four; two keeps the ratio on English-like text that the benchmarks carry and
+/// spends roughly half the work per position, and three or one lose either speed
+/// or ratio (one leaves too few candidates and the literals that follow cost more
+/// than the search saved). The encoder is the hot path of Autobahn's 12.2.10, so
+/// this is the one knob that moves it.
+let chain : Int32 = 2
 
 ///|
 /// The length at which a match is good enough to stop looking: the deeper links
 /// cannot beat it by enough to pay for the walk.
 let nice : Int32 = 32
+
+///|
+/// How many octets match starting at `j` and `i`, up to `cap`, comparing four at a
+/// time. The four-octet step is why the encoder no longer crawls a byte at a time
+/// through every candidate: the inner loop runs a quarter as often and the result
+/// is the same length a byte-by-byte walk would find.
+fn match_len(all : Array[Int32], j : Int32, i : Int32, cap : Int32) -> Int32 {
+  let mut len = 0
+  while len + 4 <= cap {
+    let a = (all.unsafe_get(j + len).to_int64() << 24) |
+      (all.unsafe_get(j + len + 1).to_int64() << 16) |
+      (all.unsafe_get(j + len + 2).to_int64() << 8) |
+      all.unsafe_get(j + len + 3).to_int64()
+    let b = (all.unsafe_get(i + len).to_int64() << 24) |
+      (all.unsafe_get(i + len + 1).to_int64() << 16) |
+      (all.unsafe_get(i + len + 2).to_int64() << 8) |
+      all.unsafe_get(i + len + 3).to_int64()
+    if a != b {
+      break
+    }
+    len += 4
+  }
+  while len < cap && all.unsafe_get(j + len) == all.unsafe_get(i + len) {
+    len += 1
+  }
+  len
+}
 
 ///|
 /// What carrying `n` octets stored would cost: eight bits each and a five-octet
