@@ -172,6 +172,61 @@ test "moonzip reads what the retuned encoder writes at the measured sizes" {
 }
 
 ///|
+/// English prose with its own word frequencies, repeated to `n`: the shape a text
+/// frame on a real connection has, and one of the two shapes the encoder's
+/// throughput is measured on.
+fn prose(n : Int32) -> Bytes {
+  let para = b"WE THE PEOPLE of the United States, in Order to form a more perfect Union, establish Justice, insure domestic Tranquility, provide for the common defence, promote the general Welfare, and secure the Blessings of Liberty to ourselves and our Posterity, do ordain and establish this Constitution for the United States of America. Article I. Section 1. All legislative Powers herein granted shall be vested in a Congress of the United States, which shall consist of a Senate and House of Representatives. Section 2. The House of Representatives shall be composed of Members chosen every second Year by the People of the several States, and the Electors in each State shall have the Qualifications requisite for Electors of the most numerous Branch of the State Legislature. No Person shall be a Representative who shall not have attained to the Age of twenty five Years, and been seven Years a Citizen of the United States, and who shall not, when elected, be an Inhabitant of that State in which he shall be chosen."
+  let buf = Buffer()
+  while buf.length() < n {
+    buf.write_bytes(para[:])
+  }
+  buf.to_bytes()[:n].to_owned()
+}
+
+///|
+/// Text with a thirteen-octet period: the other shape, where every match is as
+/// long as DEFLATE allows and at one distance.
+fn periodic(n : Int32) -> Bytes {
+  let buf = Buffer()
+  while buf.length() < n {
+    buf.write_bytes(b"Hello World! ")
+  }
+  buf.to_bytes()[:n].to_owned()
+}
+
+///|
+test "the three payloads the encoder is measured on read back through another decoder" {
+  // A hundred and twenty-eight kilobytes of each shape Autobahn's 12.2.10 sends:
+  // one long run, English, and octets with nothing to find.
+  for payload in [periodic(131072), prose(131072), noise(131072)] {
+    let wire = @deflate.Deflater::new(takeover=false).compress(
+      payload[:],
+      finish=true,
+    )
+    let back = @zip.inflate(wire[:]) catch {
+      _ => fail("moonzip refused what the encoder wrote")
+    }
+    assert_eq(back, payload)
+  }
+}
+
+///|
+test "the parse on the measured payloads spends the octets it should" {
+  // The encoder's choices — which positions are hashed, when a short match waits
+  // for a longer one, and whether a message is coded at all — show up as the size
+  // of what it writes. These are the sizes on the payloads the throughput is
+  // measured on: a parse that stops deferring, or a hash that puts a text's keys
+  // in one bucket, changes them.
+  let sizes = [735, 1927, 131088]
+  let payloads = [periodic(131072), prose(131072), noise(131072)]
+  for i in 0..<sizes.length() {
+    let wire = @deflate.Deflater::new(takeover=false).compress(payloads[i][:])
+    assert_eq(wire.length(), sizes[i])
+  }
+}
+
+///|
 test "a message that stops inside a block is refused" {
   // The first three octets of the Hello stream: the block header and half a
   // literal, and then nothing.
