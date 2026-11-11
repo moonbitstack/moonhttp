@@ -214,11 +214,12 @@ test "the three payloads the encoder is measured on read back through another de
 ///|
 test "the parse on the measured payloads spends the octets it should" {
   // The encoder's choices — which positions are hashed, when a short match waits
-  // for a longer one, and whether a message is coded at all — show up as the size
-  // of what it writes. These are the sizes on the payloads the throughput is
-  // measured on: a parse that stops deferring, or a hash that puts a text's keys
-  // in one bucket, changes them.
-  let sizes = [735, 1927, 131088]
+  // for a longer one, whether the previous distance is tried first, and whether a
+  // message is coded at all — show up as the size of what it writes. These are the
+  // sizes on the payloads the throughput is measured on: a parse that stops
+  // deferring, a hash that puts a text's keys in one bucket, or a search that
+  // forgets the distance it last used each change them.
+  let sizes = [287, 1228, 131088]
   let payloads = [periodic(131072), prose(131072), noise(131072)]
   for i in 0..<sizes.length() {
     let wire = @deflate.Deflater::new(takeover=false).compress(payloads[i][:])

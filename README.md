@@ -393,18 +393,20 @@ fixed code spends all of it. What either writes is decoded through a small table
 rather than a bit at a time, and the fixed codes are reversed once rather than per
 symbol, so the two directions stay close in cost at the lengths a WebSocket carries.
 
-The encoder is built around the fact that a message repeats itself in long runs. A
-position is hashed on three octets read as one word and multiplied into fifteen
-bits, a candidate is thrown out on one comparison of its first four octets, and the
-match itself is measured eight octets at a time with a single load on each side.
-The shortest match is where a longer one usually follows, so the octet after it is
-asked first and written out as a literal when its match is longer — which is what
-keeps a parse from spending a run on its first four octets. The
-octets a long match covers are not hashed, only the last of them, because the
-position after a run repeats the position before it and the search there wants a
-distance of one; a match of eight octets or fewer is hashed through, since those
-positions are what the next few searches look for. A message with nothing to find
-is still priced and then copied into stored blocks in one pass, which is why random
+The encoder is built around the fact that a message repeats itself in long runs.
+A position is hashed on three octets read as one word and multiplied into
+fifteen bits, a candidate is thrown out on one comparison of its first four
+octets, and the match itself is measured eight octets at a time with a single
+load on each side. The shortest match is where a longer one usually follows, so
+the octet after it is asked first and written out as a literal when its match is
+longer — which is what keeps a parse from spending a run on its first four
+octets. The octets a long match covers are not hashed, only its last, which is
+what the search after it reaches for when nothing else does; a match of eight
+octets or fewer is hashed through, since those positions are what the next few
+searches look for. The distance the last match was found at is tried before any
+bucket is walked: a message with one period repeats at that distance, and it is
+the cheapest distance there is to name. A message with nothing to find is still
+priced and then copied into stored blocks in one pass, which is why random
 octets cost about what a copy costs.
 
 `moon run src/examples/17-deflate-throughput --release` reports what the encoder

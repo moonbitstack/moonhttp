@@ -283,8 +283,12 @@ fn parse(
       }
     }
     let mut i = hlen
+    // The distance of the last match taken. A message that repeats at one period
+    // keeps repeating at it, so the candidate there is the first one worth asking
+    // and it is the only one that costs no walk.
+    let mut rep = 0
     while i < total {
-      let (best, dist) = search(all, head, prev, mask, i, total, window)
+      let (best, dist) = search(all, head, prev, mask, i, total, window, rep)
       if best >= min_match {
         // The shortest match is where a better one usually follows: the next
         // position may be the start of a longer run, and taking four octets now
@@ -312,6 +316,7 @@ fn parse(
         dist_freq.unsafe_set(ds, dist_freq.unsafe_get(ds) + 1)
         fixed_bits += (fixed_rev.unsafe_get(ls) & 0xF) + 5
         tokens.push(-((dist << 9) | best))
+        rep = dist
         i += best
       } else {
         let value = all.unsafe_get(i).to_int()
@@ -343,6 +348,7 @@ fn search(
   i : Int32,
   total : Int32,
   window : Int32,
+  rep : Int32,
 ) -> (Int32, Int32) {
   let mut best = 0
   let mut best_dist = 0
@@ -351,6 +357,21 @@ fn search(
   }
   let cap = if total - i < max_match { total - i } else { max_match }
   let key = key_at(all, i, total)
+  // The octet after a run usually repeats the octet before it at the distance the
+  // run was found at, and the shortest distance is the cheapest to name: it is one
+  // compare against the bucket walk this message would otherwise spend.
+  if rep > 0 && rep <= i && i + 4 <= total {
+    if key_at(all, i - rep, total) == key {
+      let len = match_len(all, i - rep, i, cap)
+      if len > best {
+        best = len
+        best_dist = rep
+        if len >= cap || len >= nice_length {
+          return (best, best_dist)
+        }
+      }
+    }
+  }
   let mut j = head.unsafe_get(hash_of(key))
   let mut left = max_chain
   while j >= 0 && left > 0 {
