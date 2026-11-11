@@ -496,10 +496,11 @@ let hash_bits : Int32 = 15
 let min_hash : Int32 = 3
 
 ///|
-/// How deep the match finder looks at each position. The chains here are sparse —
-/// the inside of a match is not hashed — so a walk of eight is what it takes to
-/// reach the candidate that pays; deeper costs more than the ratio it buys.
-let max_chain : Int32 = 8
+/// How deep the match finder looks at each position. Four candidates is what a
+/// dense chain needs — a picture's octets repeat in short runs and its buckets are
+/// long — and the text that repeats at length stops at `nice_length` long before
+/// the walk runs out, so a deeper one costs more than it finds.
+let max_chain : Int32 = 4
 
 ///|
 /// The length at which a match is good enough to stop looking: the deeper links

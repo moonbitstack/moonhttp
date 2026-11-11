@@ -219,7 +219,7 @@ test "the parse on the measured payloads spends the octets it should" {
   // sizes on the payloads the throughput is measured on: a parse that stops
   // deferring, a hash that puts a text's keys in one bucket, or a search that
   // forgets the distance it last used each change them.
-  let sizes = [287, 1228, 131088]
+  let sizes = [287, 1230, 131088]
   let payloads = [periodic(131072), prose(131072), noise(131072)]
   for i in 0..<sizes.length() {
     let wire = @deflate.Deflater::new(takeover=false).compress(payloads[i][:])
