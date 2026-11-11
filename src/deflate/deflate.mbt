@@ -95,7 +95,7 @@ pub fn Deflater::compress(
   let hlen = self.history.length()
   let total = hlen + n
   // The window and the message in one buffer: a match may reach across the
-  // boundary between them, and one array turns every read in the search into one
+  // boundary between them, and one buffer turns every read in the search into one
   // load — a four- or eight-octet load at that, which is what the search and the
   // compare are built on.
   let all : BytesView = if hlen == 0 {
