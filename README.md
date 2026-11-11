@@ -407,9 +407,9 @@ positions are what the next few searches look for. A message with nothing to fin
 is still priced and then copied into stored blocks in one pass, which is why random
 octets cost about what a copy costs.
 
-`src/examples/17-deflate-throughput` reports what the encoder does on the three
-shapes a compressed message has — a short period, English prose, and noise, each
-128 KiB — as mebibytes a second.
+`moon run src/examples/17-deflate-throughput --release` reports what the encoder
+does on the three shapes a compressed message has — a short period, English prose,
+and noise, each 128 KiB — as mebibytes a second.
 
 `pmd` is measured on §7.1's four parameters — read, written and negotiated, each
 with the values the grammar forbids — and then against Autobahn, whose 12.x and

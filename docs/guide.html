@@ -325,7 +325,7 @@ println(terms.encode(role=@pmd.Role::Server))</pre>
         </div>
         <div class="out">permessage-deflate; client_max_window_bits=15</div>
         <p>Agreeing to the extension means every message may be compressed, so <code>threshold</code> exists for the caller who would rather not pay for a message under sixty-four octets. On the reading side, <code>limit</code> caps what one message may expand to — the one place a peer can ask for memory it did not pay for.</p>
-        <p>The encoder searches the window with a fifteen-bit hash of three octets, walks a handful of candidates, and measures a match eight octets at a time. A short match is not taken before the octet after it has been asked, because that octet often starts a longer one; the octets a long match covers are hashed only at their end, which is where the next search wants a distance of one. What a message costs is measured rather than estimated: <code>moon run src/examples/17-deflate-throughput</code> compresses a periodic text, English prose and noise of 128 KiB each and prints mebibytes a second.</p>
+        <p>The encoder searches the window with a fifteen-bit hash of three octets, walks a handful of candidates, and measures a match eight octets at a time. A short match is not taken before the octet after it has been asked, because that octet often starts a longer one; the octets a long match covers are hashed only at their end, which is where the next search wants a distance of one. What a message costs is measured rather than estimated: <code>moon run src/examples/17-deflate-throughput --release</code> compresses a periodic text, English prose and noise of 128 KiB each and prints mebibytes a second.</p>
       </section>
 
       <section class="step" id="connect3">

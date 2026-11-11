@@ -6,7 +6,10 @@
 /// message actually has: text that repeats with a short period, English prose,
 /// and octets with no structure to find.
 ///
-///     moon run src/examples/17-deflate-throughput --target native
+///     moon run src/examples/17-deflate-throughput --target native --release
+///
+/// A debug build is an order of magnitude slower and says nothing about the
+/// encoder, so the numbers here are worth reading only from a release build.
 ///
 /// Each payload is a hundred and twenty-eight kilobytes, the size Autobahn's
 /// 12.2.10 compresses a thousand of, and each is compressed several times with a
