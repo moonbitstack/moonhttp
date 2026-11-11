@@ -59,7 +59,7 @@ import {
   "moonbitstack/moondate@0.1.6",
   "moonbitstack/mooncrypt@0.4.13",
   "moonbitstack/moonbase@0.4.4",
-  "moonbitstack/moonmime@0.2.4",
+  "moonbitstack/moonmime@0.2.5",
   "moonbitstack/moonurl@0.2.6",
   "moonbitstack/moonzip@0.3.8",
   "moonbitlang/async@0.22.5",
