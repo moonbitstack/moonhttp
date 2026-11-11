@@ -116,8 +116,9 @@ assert_eq(entry.verdict(request=@cache.control, presented=[], now=sent), @cache.
   without data, `message` as the default type, the id and re-ty carried across
   frames.
 - **Every bound is an argument** with the mainstream default: `http1.limits`
-  (head, field count), `pmd.Reader(limit=)` for what one compressed message may
-  expand to, `form.parse(limits=, strict=)`. A bound that is passed reads
+  (head, field count), `pmd.Reader(limit=)` for the one ceiling a message may
+  reach, compressed or not — `ws` keeps it and `pmd` passes it through —
+  `form.parse(limits=, strict=)`. A bound that is passed reads
   `Exceeded(limit~, got~)`.
 - **`strict` is off by default** where being told is a policy rather than a rule:
   a request that carries no form is an empty form, and a truncated upload gives up

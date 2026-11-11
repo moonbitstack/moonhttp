@@ -21,7 +21,7 @@ PKGS = [
     ("sse", "sse", "WHATWG", "Server-Sent Events, framed both ways and dispatched the way an EventSource does."),
     ("ws", "ws", "RFC 6455 §5", "WebSocket framing: opcodes, masking, reassembly, close statuses."),
     ("pmd", "pmd", "RFC 7692", "permessage-deflate: the four parameters, the offer and answer, and a reader and writer over ws frames."),
-    ("deflate", "deflate", "RFC 1951", "Raw DEFLATE shaped for a stream that outlives one message: a window carried across messages, and a ceiling on what one may expand to."),
+    ("deflate", "deflate", "RFC 1951", "Raw DEFLATE shaped for a stream that outlives one message: a window carried across messages, and the size a message may grow to left to ws, which reassembles it."),
     ("upgrade", "upgrade", "RFC 6455 §4", "The opening handshake — both sides, and the proof that makes the difference."),
     ("method", "method", "RFC 9110 §9", "Request methods: the nine standard ones and any other token, and whether each is safe and idempotent."),
     ("header", "header", "RFC 9110 §5", "Header fields, as the octets both header compressions share."),
