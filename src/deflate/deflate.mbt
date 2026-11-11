@@ -286,10 +286,10 @@ fn parse(
     while i < total {
       let (best, dist) = search(all, head, prev, mask, i, total, window)
       if best >= min_match {
-        // A match of three or four octets is where a better one usually follows:
-        // the next position may be the start of a longer run, and taking the short
-        // one now would spend the same octets for fewer. Only a short match is
-        // worth asking about — past that the answer is this one.
+        // The shortest match is where a better one usually follows: the next
+        // position may be the start of a longer run, and taking four octets now
+        // would spend the same space on less. Only a short match is worth asking
+        // about — past that the answer is this one.
         if best < lazy_limit && i + min_hash <= total {
           insert(all, head, prev, mask, i, total)
           let next = lookahead(all, head, i + 1, total, window)
@@ -484,10 +484,10 @@ let max_chain : Int32 = 8
 let nice_length : Int32 = 48
 
 ///|
-/// The longest match still worth asking the next position about. A three- or
-/// four-octet match is a coincidence of text and the octet after it often starts a
-/// longer one; past sixteen the next position has been covered by this match and
-/// asking costs more than the ratio it buys.
+/// The longest match still worth asking the next position about. Four octets of
+/// text repeat by coincidence and the octet after them often starts a longer run;
+/// past sixteen the next position has been covered by this match and asking costs
+/// more than the ratio it buys.
 let lazy_limit : Int32 = 16
 
 ///|
