@@ -278,6 +278,30 @@ test "the window survives a message boundary only while that is agreed" {
 }
 
 ///|
+test "a stored message leaves its window for the one after it" {
+  // The first message is octets with nothing to find, so it is copied; the second
+  // begins with the same octets and ends in text, so it is coded, and the copy of
+  // the first message in it is a set of matches only if that message's window
+  // survived.
+  let stored = noise(8192)
+  let next = stored + text(2048)
+  let deflater = @deflate.Deflater::new(takeover=true)
+  let first = deflater.compress(stored[:])
+  assert_true(first.length() >= stored.length())
+  let second = deflater.compress(next[:])
+  assert_true(second.length() < 1024)
+  let inflater = @deflate.Inflater::new(takeover=true)
+  let one = inflater.decompress(first[:]) catch {
+    e => fail("the stored message was refused: " + e.to_string())
+  }
+  let two = inflater.decompress(second[:]) catch {
+    e => fail("the message after it was refused: " + e.to_string())
+  }
+  assert_eq(one, stored)
+  assert_eq(two, next)
+}
+
+///|
 test "a reader that drops the window cannot read a stream that used it" {
   // The four-message case only decodes while the window is kept, which is what
   // RFC 7692 §7.2.2 makes a receiver do when takeover was not refused.
