@@ -39,11 +39,10 @@ pub fn Deflater::window(Self) -> Int32
 pub struct Inflater {
   bits : Int32
   takeover : Bool
-  limit : Int32
   // private fields
 }
 pub fn Inflater::decompress(Self, BytesView, more? : Bool) -> Bytes raise Refused
-pub fn Inflater::new(bits? : Int32, takeover? : Bool, limit? : Int32) -> Self
+pub fn Inflater::new(bits? : Int32, takeover? : Bool) -> Self
 pub fn Inflater::reset(Self) -> Unit
 
 // Type aliases

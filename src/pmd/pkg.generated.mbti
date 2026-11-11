@@ -37,10 +37,8 @@ pub fn Extension::to_repr(Self) -> @debug.Repr
 pub struct Reader {
   inner : @ws.Reader
   inflater : @deflate.Inflater
-  limit : Int32
   mut compressed : Bool
   mut in_message : Bool
-  mut got : Int32
 }
 pub fn Reader::feed(Self, @ws.Frame, compressed? : Bool) -> @ws.Step raise @ws.Refused
 pub fn Reader::new(extension? : Extension, role? : Role, limit? : Int32) -> Self

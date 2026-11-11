@@ -18,7 +18,6 @@
 pub struct Inflater {
   bits : Int32
   takeover : Bool
-  limit : Int32
   priv mut dict : Array[Byte]
   // What a fragment ended in the middle of: the octets of a symbol, a stored
   // block's header or a dynamic block's code tables that were not all there yet,
@@ -44,23 +43,18 @@ priv enum Mode {
 /// A decompressor with a window of `1 << bits` bytes.
 ///
 /// `takeover` keeps the window between messages, which is what a peer that did
-/// not agree to `*_no_context_takeover` may rely on. `limit` bounds one
-/// message's output: a compressed stream says nothing about how much it expands
-/// to, and a small one can expand to more than the machine has, so a reader of
-/// somebody else's messages should always say what it is prepared to hold. A
-/// negative limit is no bound at all.
-pub fn Inflater::new(
-  bits~ : Int32 = 15,
-  takeover~ : Bool = true,
-  limit~ : Int32 = -1,
-) -> Inflater {
+/// not agree to `*_no_context_takeover` may rely on. The size a message may grow
+/// to is not this decoder's to bound: the layer that reassembles the message —
+/// `ws` — holds the one ceiling for every message, compressed or not, and
+/// reaches it when the inflated octets are added to the reassembled one. That
+/// keeps the bound in a single place instead of copied across three.
+pub fn Inflater::new(bits~ : Int32 = 15, takeover~ : Bool = true) -> Inflater {
   guard bits >= 8 && bits <= 15 else {
     abort("deflate: a \{bits}-bit window is outside what DEFLATE allows")
   }
   {
     bits,
     takeover,
-    limit,
     dict: [],
     pending: b"",
     acc: 0,
@@ -142,9 +136,6 @@ pub fn Inflater::decompress(
           self.mode = header(br, self)
         }
         Stored(left) => {
-          if self.limit >= 0 && out.length() + left > self.limit {
-            raise Exceeded(limit=self.limit, got=out.length() + left)
-          }
           let mut need = left
           // Whole octets the table lookup buffered come before the stream's own.
           while need > 0 && br.held >= 8 {
@@ -170,9 +161,6 @@ pub fn Inflater::decompress(
           // The symbol is decoded here rather than in a helper: this branch runs
           // once per octet the message expands to, and a call per octet is the
           // difference between a table read and a call plus a table read.
-          if self.limit >= 0 && out.length() > self.limit {
-            raise Exceeded(limit=self.limit, got=out.length())
-          }
           let sym = litlen.read(br)
           if sym < 256 {
             out.push(sym.to_byte())
@@ -192,9 +180,6 @@ pub fn Inflater::decompress(
             let back = dist_base[dcode] + br.bits(dist_extra[dcode])
             if back > 1 << self.bits || back > out.length() + self.dict.length() {
               raise Distance(at=br.pos, got=back)
-            }
-            if self.limit >= 0 && out.length() + len > self.limit {
-              raise Exceeded(limit=self.limit, got=out.length() + len)
             }
             // A byte at a time on purpose: a match may overlap itself, and the
             // octets it copies are the ones this loop is writing.

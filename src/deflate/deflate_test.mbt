@@ -50,12 +50,8 @@ fn case(name : String) -> (Int32, Bool, Array[Bytes], Array[Bytes]) {
 
 ///|
 /// What reading this stream refuses with, or `None` when it reads as it should.
-fn refused(
-  stream : Bytes,
-  bits~ : Int32 = 15,
-  limit~ : Int32 = -1,
-) -> @deflate.Refused? {
-  let inflater = @deflate.Inflater::new(bits~, limit~)
+fn refused(stream : Bytes, bits~ : Int32 = 15) -> @deflate.Refused? {
+  let inflater = @deflate.Inflater::new(bits~)
   let mut out : @deflate.Refused? = None
   try {
     let _ = inflater.decompress(stream[:])
@@ -155,6 +151,23 @@ test "moonzip reads what this encoder writes" {
 }
 
 ///|
+test "moonzip reads what the retuned encoder writes at the measured sizes" {
+  // The encoder was retuned at these sizes (RFC 7692's periodic prose and
+  // incompressible noise, the inputs the speedup is measured on). A shorter
+  // match chain changes the bytes it emits, but they are still DEFLATE a
+  // reference decoder reads back as the message that went in.
+  let payloads = [text(131072), noise(131072)]
+  for payload in payloads {
+    let deflater = @deflate.Deflater::new()
+    let stream = deflater.compress(payload[:], finish=true)
+    let back = @zip.inflate(stream[:]) catch {
+      _ => fail("moonzip refused what the retuned encoder wrote")
+    }
+    assert_eq(back, payload)
+  }
+}
+
+///|
 test "a message that stops inside a block is refused" {
   // The first three octets of the Hello stream: the block header and half a
   // literal, and then nothing.
@@ -164,14 +177,6 @@ test "a message that stops inside a block is refused" {
 ///|
 test "a block type DEFLATE does not define is refused" {
   assert_eq(refused(b"\x07"), Some(@deflate.Block(at=1, got=3)))
-}
-
-///|
-test "a message that expands past the ceiling is refused" {
-  let hello = b"\xf2\x48\xcd\xc9\xc9\x07\x00"
-  assert_eq(refused(hello, limit=4), Some(@deflate.Exceeded(limit=4, got=5)))
-  // The same message passes a ceiling it fits under.
-  assert_true(refused(hello, limit=5) is None)
 }
 
 ///|

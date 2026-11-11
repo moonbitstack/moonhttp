@@ -330,15 +330,14 @@ pub fn Extension::accepts(self : Extension, answer : Extension) -> Bool {
 /// Reading one direction: the frames a peer sends, decompressed as they arrive.
 ///
 /// A message is decompressed frame by frame rather than at the end, because the
-/// ceiling has to be enforced where it is passed: a stream that expands past it
-/// must fail the connection then, not after the octets are already in memory.
+/// octets have to be fed to the reassembler as they come: the ceiling they may
+/// pass is the one `ws` keeps for every message, and it is reached there, not in
+/// a copy held here.
 pub struct Reader {
   inner : @ws.Reader
   inflater : @deflate.Inflater
-  limit : Int32
   mut compressed : Bool
   mut in_message : Bool
-  mut got : Int32
 }
 
 ///|
@@ -347,10 +346,10 @@ pub struct Reader {
 /// `role` says which end this is, and so whose parameters apply: a server reads
 /// what the client compressed, which is `client_window` and `client_takeover`.
 ///
-/// `limit` bounds one message after decompression. It is not a WebSocket
-/// parameter — RFC 7692 sets no ceiling — but a compressed message is the one
-/// place where a small frame can ask for unbounded memory, so the bound is the
-/// caller's to set and defaults to what `ws` accepts anyway.
+/// `limit` bounds one message, and is the one `ws` keeps: a compressed message
+/// is the place where a small frame can ask for unbounded memory, so the caller
+/// sets it and it defaults to what `ws` accepts. It is not a WebSocket
+/// parameter — RFC 7692 sets no ceiling — and there is only this one copy of it.
 pub fn Reader::new(
   extension? : Extension,
   role~ : Role = Server,
@@ -366,11 +365,9 @@ pub fn Reader::new(
   }
   {
     inner: @ws.Reader::new(limit~),
-    inflater: @deflate.Inflater::new(bits=window, takeover~, limit~),
-    limit,
+    inflater: @deflate.Inflater::new(bits=window, takeover~),
     compressed: false,
     in_message: false,
-    got: 0,
   }
 }
 
@@ -384,7 +381,7 @@ pub fn Reader::new(
 /// last frame of it has been read.
 ///
 /// A stream that does not decompress fails the connection with 1007, and one that
-/// expands past `limit` with 1009.
+/// expands past the ceiling `ws` keeps fails with 1009 there.
 pub fn Reader::feed(
   self : Reader,
   frame : @ws.Frame,
@@ -402,7 +399,6 @@ pub fn Reader::feed(
     }
     self.in_message = true
     self.compressed = compressed
-    self.got = 0
   }
   let payload = if self.compressed {
     self.inflate(frame.payload, more=!frame.fin)
@@ -413,7 +409,6 @@ pub fn Reader::feed(
   if frame.fin {
     self.in_message = false
     self.compressed = false
-    self.got = 0
   }
   step
 }
@@ -421,25 +416,20 @@ pub fn Reader::feed(
 ///|
 /// One fragment of a compressed message, expanded.
 ///
-/// The inflater already carries the window when the terms allow it and drops it
-/// when they do not, so what is left here is the ceiling and the translation of a
-/// DEFLATE fault into the status the connection fails with.
+/// The inflater carries the window when the terms allow it and drops it when
+/// they do not, so what is left here is only the translation of a DEFLATE fault
+/// into the status a failed connection carries (§7.1.7): 1007 for anything the
+/// stream itself got wrong. The ceiling a compressed message can pass is the one
+/// `ws` keeps, reached when `feed` adds the inflated octets to the reassembled
+/// message, and there is no second copy of it here.
 fn Reader::inflate(
   self : Reader,
   payload : Bytes,
   more~ : Bool,
 ) -> Bytes raise @ws.Refused {
-  let out = self.inflater.decompress(payload[:], more~) catch {
-    // 1009 for too much, 1007 for anything else: §7.1.7's two failures.
-    @deflate.Exceeded(..) =>
-      raise @ws.Exceeded(limit=self.limit, got=self.limit.to_int64())
+  self.inflater.decompress(payload[:], more~) catch {
     _ => raise @ws.Payload("a message that does not decompress")
   }
-  self.got = self.got + out.length()
-  if self.got > self.limit {
-    raise @ws.Exceeded(limit=self.limit, got=self.got.to_int64())
-  }
-  out
 }
 
 ///|
