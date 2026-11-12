@@ -16,11 +16,11 @@
 /// fresh window; the fastest run is reported, because the slower ones are the
 /// machine's other work.
 ///
-/// The picture is the shape that case carries, and it is the one to read: a
-/// gradient with texture in it repeats in runs of four to eight octets, so the
-/// search takes a match at nearly every position and the ratio it reaches decides
-/// what a bitmap costs both ways. Text stops at a long match and says nothing
-/// about that path.
+/// The picture is the one to read: a gradient with texture in it repeats in runs
+/// of four to eight octets, so the search takes a match at nearly every position
+/// and the ratio it reaches decides what a bitmap costs both ways. Text stops at a
+/// long match and says nothing about that path, and noise is copied stored rather
+/// than searched at all.
 #coverage.skip
 fn main {
   let payloads = [
@@ -125,9 +125,9 @@ fn noise(n : Int32) -> Bytes {
 
 ///|
 /// A picture: rows of a gradient, with a little texture on it so that neighbouring
-/// octets are close without being equal. This is the shape Autobahn's 12.2.10
-/// carries — a bitmap rather than text — and the only one where the search takes a
-/// short match at nearly every position.
+/// octets are close without being equal. A bitmap is the payload a frame of image
+/// data actually is, and it is the only one of the four where the search takes a
+/// fresh short match at nearly every position instead of stopping at a long one.
 fn picture(n : Int32) -> Bytes {
   let width = 512
   let out = Buffer()

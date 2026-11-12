@@ -414,9 +414,9 @@ octets cost about what a copy costs.
 `moon run src/examples/17-deflate-throughput --release` reports what the encoder
 does on the four shapes a compressed message has — a short period, English
 prose, a picture, and noise, each 128 KiB — as mebibytes a second. The picture
-is the one to read: a bitmap repeats in runs of four to eight octets, so the
-search takes a match at almost every position, and that is the shape the
-thousand-message case 12.2.10 carries.
+is the row to read: a bitmap repeats in runs of four to eight octets, so the
+search takes a match at nearly every position, where text stops at a long one
+long before that.
 
 `pmd` is measured on §7.1's four parameters — read, written and negotiated, each
 with the values the grammar forbids — and then against Autobahn, whose 12.x and
@@ -427,15 +427,14 @@ has to hold on every run rather than on the one that got the machine to itself.
 The endpoint answers `server_no_context_takeover`, so a message that reads as
 noise is carried stored rather than searched against the one before it. The run
 passes all 253 cases: 250 `OK` and three informational, none failed. On the
-runner the conformance job uses, the thousand-message 128 KiB case 12.2.10 takes
-11.5 s on each of three runs in a row, and the slowest case of the run, 12.3.15,
-13.6 s; before the inflater learned to resume inside a symbol those two stood at
-78 and 199 seconds. The ceiling a case is failed at is 15 s. Ten seconds is what
-12.2.10 is asked to stay under, and it does not: that payload is a picture,
-where the search takes a short match at nearly every position — the `picture`
-row of the throughput example is that shape, and it costs about ten times the
-prose row per octet — so what the case spends is one search per position, and a
-fifth would have to come out of that.
+runner the conformance job uses, 12.2.10 — a thousand messages of 128 KiB, which
+this endpoint answered with 111.8 MB of compressed frames for 131.1 MB of
+payload — takes 11.5 s on each of three runs in a row, and the slowest case of
+the run, 12.3.15, 13.6 s; before the inflater learned to resume inside a symbol
+those two stood at 78 and 199 seconds. The ceiling a case is failed at is 15 s.
+Ten seconds is what 12.2.10 is asked to stay under, and it does not: the payload
+is binary that barely compresses, so nearly every position is a search that
+finds little and a literal, and a fifth would have to come out of that.
 
 The same behaviours are replayed frame by frame in the unit tests: a message with
 a frame boundary at every octet, every window from eight bits to fifteen, a
