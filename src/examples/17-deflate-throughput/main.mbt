@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 ///|
-/// What the encoder costs per octet, on the three shapes a compressed WebSocket
+/// What the encoder costs per octet, on the four shapes a compressed WebSocket
 /// message actually has: text that repeats with a short period, English prose,
-/// and octets with no structure to find.
+/// octets with no structure to find, and a picture.
 ///
 ///     moon run src/examples/17-deflate-throughput --target native --release
 ///
@@ -15,11 +15,18 @@
 /// 12.2.10 compresses a thousand of, and each is compressed several times with a
 /// fresh window; the fastest run is reported, because the slower ones are the
 /// machine's other work.
+///
+/// The picture is the shape that case carries, and it is the one to read: a
+/// gradient with texture in it repeats in runs of four to eight octets, so the
+/// search takes a match at nearly every position and the ratio it reaches decides
+/// what a bitmap costs both ways. Text stops at a long match and says nothing
+/// about that path.
 #coverage.skip
 fn main {
   let payloads = [
     ("periodic", periodic(131072)),
     ("english", english(131072)),
+    ("picture", picture(131072)),
     ("noise", noise(131072)),
   ]
   println("payload      octets  compressed   throughput")
@@ -114,4 +121,29 @@ fn noise(n : Int32) -> Bytes {
     out.push(((x >> 16) & 0xFFU).reinterpret_as_int().to_byte())
   }
   Bytes::from_array(out)
+}
+
+///|
+/// A picture: rows of a gradient, with a little texture on it so that neighbouring
+/// octets are close without being equal. This is the shape Autobahn's 12.2.10
+/// carries — a bitmap rather than text — and the only one where the search takes a
+/// short match at nearly every position.
+fn picture(n : Int32) -> Bytes {
+  let width = 512
+  let out = Buffer()
+  let mut y = 0
+  while out.length() < n {
+    let mut x = 0
+    while x < width && out.length() < n {
+      let gradient = (x * 200 + y * 110) / width
+      let grain = (x * 7 + y * 13) % 11 - 5
+      let v = gradient + grain
+      out.write_byte(
+        (if v < 0 { 0 } else if v > 255 { 255 } else { v }).to_byte(),
+      )
+      x += 1
+    }
+    y += 1
+  }
+  out.to_bytes()
 }
