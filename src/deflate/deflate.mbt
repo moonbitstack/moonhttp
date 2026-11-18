@@ -101,7 +101,7 @@ pub fn Deflater::compress(
   let all : BytesView = if hlen == 0 {
     data
   } else {
-    let joined = Buffer::Buffer(size_hint=total)
+    let joined = Buffer::Buffer(capacity=total)
     joined.write_bytes(self.history[:])
     joined.write_bytes(data)
     joined.to_bytes()[:]
@@ -116,7 +116,7 @@ pub fn Deflater::compress(
     let payload = total - hlen
     let blocks = (payload + 65534) / 65535
     let tail = if finish { 5 } else { 1 }
-    let out = Buffer::Buffer(size_hint=payload + 5 * blocks + tail)
+    let out = Buffer::Buffer(capacity=payload + 5 * blocks + tail)
     let mut at = hlen
     while at < total {
       let chunk = if total - at < 65535 { total - at } else { 65535 }

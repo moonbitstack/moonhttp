@@ -231,7 +231,7 @@ pub(all) enum Frame {
     end_stream~ : Bool,
     end_headers~ : Bool,
     priority~ : Priority?,
-    padding~ : Int32
+    padding~ : Int32,
   )
   Priority(stream_id~ : Int32, priority~ : Priority)
   RstStream(stream_id~ : Int32, error_code~ : Int32)
@@ -241,7 +241,7 @@ pub(all) enum Frame {
     promised_id~ : Int32,
     fragment~ : Bytes,
     end_headers~ : Bool,
-    padding~ : Int32
+    padding~ : Int32,
   )
   Ping(payload~ : Bytes, ack~ : Bool)
   GoAway(last_stream_id~ : Int32, error_code~ : Int32, debug~ : Bytes)
@@ -422,7 +422,7 @@ pub fn Frame::encode(self : Frame) -> Bytes {
       end_stream~,
       end_headers~,
       priority~,
-      padding~
+      padding~,
     ) => {
       let mut flags = 0
       if end_stream {

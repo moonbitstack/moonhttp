@@ -174,7 +174,7 @@ pub fn Conn::receive(self : Conn, data : BytesView) -> Unit raise Refused {
   if self.eof {
     raise Order("octets received after the peer closed")
   }
-  let buf = Buffer(size_hint=self.held.length() - self.at + data.length())
+  let buf = Buffer(capacity=self.held.length() - self.at + data.length())
   buf.write_bytesview(self.held[self.at:])
   buf.write_bytesview(data)
   self.held = buf.to_bytes()

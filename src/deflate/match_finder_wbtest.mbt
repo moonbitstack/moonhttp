@@ -30,7 +30,7 @@ test "a short match waits for the longer one that starts on the next octet" {
   // search there finds four octets. One octet later the message repeats "YZW" and
   // twenty octets after it, which is the match worth taking.
   let tail = b"0123456789ABCDEFGHIJ"
-  let out = Buffer::Buffer(size_hint=52)
+  let out = Buffer::Buffer(capacity=52)
   out.write_bytes(b"XYZW")
   out.write_bytes(b"j")
   out.write_bytes(b"YZW")
