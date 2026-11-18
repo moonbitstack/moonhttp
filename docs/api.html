@@ -848,7 +848,7 @@ then the value string.
     end_stream~ : <span class="ty">Bool</span>,
     end_headers~ : <span class="ty">Bool</span>,
     priority~ : <span class="ty">Priority</span><span class="op">?</span>,
-    padding~ : <span class="ty">Int32</span>
+    padding~ : <span class="ty">Int32</span>,
   )
   <span class="ty">Priority</span>(stream_id~ : <span class="ty">Int32</span>, priority~ : <span class="ty">Priority</span>)
   <span class="ty">RstStream</span>(stream_id~ : <span class="ty">Int32</span>, error_code~ : <span class="ty">Int32</span>)
@@ -858,7 +858,7 @@ then the value string.
     promised_id~ : <span class="ty">Int32</span>,
     fragment~ : <span class="ty">Bytes</span>,
     end_headers~ : <span class="ty">Bool</span>,
-    padding~ : <span class="ty">Int32</span>
+    padding~ : <span class="ty">Int32</span>,
   )
   <span class="ty">Ping</span>(payload~ : <span class="ty">Bytes</span>, ack~ : <span class="ty">Bool</span>)
   <span class="ty">GoAway</span>(last_stream_id~ : <span class="ty">Int32</span>, error_code~ : <span class="ty">Int32</span>, debug~ : <span class="ty">Bytes</span>)
